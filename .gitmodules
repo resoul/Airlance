@@ -1,0 +1,6 @@
+[submodule "libraries/mozjpeg/mozjpeg"]
+	path = libraries/mozjpeg/mozjpeg
+	url = https://github.com/mozilla/mozjpeg.git
+[submodule "libraries/libjxl/libjxl"]
+	path = libraries/libjxl/libjxl
+	url = https://github.com/libjxl/libjxl.git
