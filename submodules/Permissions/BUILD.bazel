@@ -1,0 +1,40 @@
+load("@rules_swift//swift:swift_library.bzl", "swift_library")
+
+swift_library(
+    name = "PermissionsAPI",
+    module_name = "PermissionsAPI",
+    srcs = glob(["API/**/*.swift"]),
+    copts = ["-swift-version", "6"],
+    visibility = ["//visibility:public"],
+)
+
+swift_library(
+    name = "Permissions",
+    module_name = "Permissions",
+    srcs = glob(["Sources/**/*.swift"]),
+    copts = ["-swift-version", "6"],
+    deps = [
+        ":PermissionsAPI",
+        "//submodules/Observers",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+[
+    swift_library(
+        name = name + "Permission",
+        module_name = name + "Permission",
+        srcs = glob(["Providers/" + name + "/**/*.swift"]),
+        copts = ["-swift-version", "6"],
+        deps = [":PermissionsAPI"],
+        visibility = ["//visibility:public"],
+    )
+    for name in [
+        "Camera",
+        "Contacts",
+        "Location",
+        "Microphone",
+        "Notifications",
+        "Photos",
+    ]
+]

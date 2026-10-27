@@ -3,8 +3,10 @@
 "chats.settings" = "Ajustes";
 
 "chat.title" = "Chat %d";
+"chat.attachPhoto" = "Adjuntar foto";
 "chat.media" = "Multimedia";
 "chat.profile" = "Perfil";
+"chat.videoMessage" = "Mensaje de vídeo";
 
 "newChat.title" = "Nuevo chat";
 
@@ -20,6 +22,7 @@
 "settings.accent" = "Color de acento";
 "settings.font" = "Fuente";
 "settings.language" = "Idioma";
+"settings.permissions" = "Permisos";
 
 "theme.mode.system" = "Sistema";
 "theme.mode.light" = "Claro";
@@ -33,3 +36,43 @@
 "theme.font.system" = "Sistema";
 
 "language.system" = "Sistema";
+
+"permissions.title" = "Permisos";
+"permissions.allow" = "Permitir";
+"permissions.openSettings" = "Abrir Ajustes";
+
+"permission.notifications.title" = "Notificaciones";
+"permission.notifications.summary" = "Mensajes y llamadas nuevos con la app cerrada.";
+"permission.notifications.refusal" = "Permite las notificaciones en Ajustes para enterarte de los mensajes nuevos.";
+
+"permission.camera.title" = "Cámara";
+"permission.camera.summary" = "Fotos, mensajes de vídeo y videollamadas.";
+"permission.camera.refusal" = "Permite el acceso a la cámara en Ajustes para hacer fotos y grabar vídeos.";
+
+"permission.microphone.title" = "Micrófono";
+"permission.microphone.summary" = "Mensajes de voz y llamadas.";
+"permission.microphone.refusal" = "Permite el acceso al micrófono en Ajustes para grabar mensajes de voz y llamar.";
+
+"permission.photos.title" = "Fotos";
+"permission.photos.summary" = "Enviar fotos y vídeos, guardar archivos de los chats.";
+"permission.photos.refusal" = "Permite el acceso a las fotos en Ajustes para enviar fotos y vídeos.";
+
+"permission.contacts.title" = "Contactos";
+"permission.contacts.summary" = "Encontrar amigos y compartir contactos en chats.";
+"permission.contacts.refusal" = "Permite el acceso a los contactos en Ajustes para encontrar amigos y compartir contactos.";
+
+"permission.location.title" = "Ubicación";
+"permission.location.summary" = "Enviar tu ubicación a un chat.";
+"permission.location.refusal" = "Permite el acceso a tu ubicación en Ajustes para enviarla a un chat.";
+
+"permission.status.notDetermined" = "Sin solicitar";
+"permission.status.granted" = "Permitido";
+"permission.status.limited" = "Limitado";
+"permission.status.denied" = "Denegado";
+"permission.status.restricted" = "Restringido";
+
+"permission.alert.title" = "Se necesita acceso";
+"permission.alert.restricted" = "El acceso está restringido en este dispositivo.";
+"permission.alert.notNow" = "Ahora no";
+"permission.alert.settings" = "Ajustes";
+"permission.alert.ok" = "OK";

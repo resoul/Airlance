@@ -3,8 +3,10 @@
 "chats.settings" = "Налаштування";
 
 "chat.title" = "Чат %d";
+"chat.attachPhoto" = "Прикріпити фото";
 "chat.media" = "Медіа";
 "chat.profile" = "Профіль";
+"chat.videoMessage" = "Відеоповідомлення";
 
 "newChat.title" = "Новий чат";
 
@@ -20,6 +22,7 @@
 "settings.accent" = "Колір акценту";
 "settings.font" = "Шрифт";
 "settings.language" = "Мова";
+"settings.permissions" = "Дозволи";
 
 "theme.mode.system" = "Системне";
 "theme.mode.light" = "Світле";
@@ -33,3 +36,43 @@
 "theme.font.system" = "Системний";
 
 "language.system" = "Системна";
+
+"permissions.title" = "Дозволи";
+"permissions.allow" = "Дозволити";
+"permissions.openSettings" = "Відкрити налаштування";
+
+"permission.notifications.title" = "Сповіщення";
+"permission.notifications.summary" = "Нові повідомлення та дзвінки, коли застосунок закрито.";
+"permission.notifications.refusal" = "Дозвольте сповіщення в налаштуваннях, щоб дізнаватися про нові повідомлення.";
+
+"permission.camera.title" = "Камера";
+"permission.camera.summary" = "Фото, відеоповідомлення та відеодзвінки.";
+"permission.camera.refusal" = "Дозвольте доступ до камери в налаштуваннях, щоб знімати фото й відео.";
+
+"permission.microphone.title" = "Мікрофон";
+"permission.microphone.summary" = "Голосові повідомлення та дзвінки.";
+"permission.microphone.refusal" = "Дозвольте доступ до мікрофона в налаштуваннях, щоб записувати голосові повідомлення й дзвонити.";
+
+"permission.photos.title" = "Фото";
+"permission.photos.summary" = "Надсилати фото й відео, зберігати медіа з чатів.";
+"permission.photos.refusal" = "Дозвольте доступ до фото в налаштуваннях, щоб надсилати фото й відео.";
+
+"permission.contacts.title" = "Контакти";
+"permission.contacts.summary" = "Знаходити друзів і ділитися контактами в чатах.";
+"permission.contacts.refusal" = "Дозвольте доступ до контактів у налаштуваннях, щоб знаходити друзів і ділитися контактами.";
+
+"permission.location.title" = "Геолокація";
+"permission.location.summary" = "Надсилати своє місцезнаходження в чат.";
+"permission.location.refusal" = "Дозвольте доступ до геолокації в налаштуваннях, щоб надіслати її в чат.";
+
+"permission.status.notDetermined" = "Не запитано";
+"permission.status.granted" = "Дозволено";
+"permission.status.limited" = "Обмежено";
+"permission.status.denied" = "Заборонено";
+"permission.status.restricted" = "Недоступно";
+
+"permission.alert.title" = "Потрібен доступ";
+"permission.alert.restricted" = "Доступ обмежено на цьому пристрої.";
+"permission.alert.notNow" = "Не зараз";
+"permission.alert.settings" = "Налаштування";
+"permission.alert.ok" = "OK";

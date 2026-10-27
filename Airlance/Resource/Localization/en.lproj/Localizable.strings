@@ -3,8 +3,10 @@
 "chats.settings" = "Settings";
 
 "chat.title" = "Chat %d";
+"chat.attachPhoto" = "Attach photo";
 "chat.media" = "Media";
 "chat.profile" = "Profile";
+"chat.videoMessage" = "Video message";
 
 "newChat.title" = "New chat";
 
@@ -20,6 +22,7 @@
 "settings.accent" = "Accent color";
 "settings.font" = "Font";
 "settings.language" = "Language";
+"settings.permissions" = "Permissions";
 
 "theme.mode.system" = "System";
 "theme.mode.light" = "Light";
@@ -33,3 +36,43 @@
 "theme.font.system" = "System";
 
 "language.system" = "System";
+
+"permissions.title" = "Permissions";
+"permissions.allow" = "Allow";
+"permissions.openSettings" = "Open Settings";
+
+"permission.notifications.title" = "Notifications";
+"permission.notifications.summary" = "New messages and calls while the app is closed.";
+"permission.notifications.refusal" = "Allow notifications in Settings to learn about new messages.";
+
+"permission.camera.title" = "Camera";
+"permission.camera.summary" = "Photos, video messages and video calls.";
+"permission.camera.refusal" = "Allow access to the camera in Settings to take photos and record videos.";
+
+"permission.microphone.title" = "Microphone";
+"permission.microphone.summary" = "Voice messages and calls.";
+"permission.microphone.refusal" = "Allow access to the microphone in Settings to record voice messages and make calls.";
+
+"permission.photos.title" = "Photos";
+"permission.photos.summary" = "Send photos and videos, save media from chats.";
+"permission.photos.refusal" = "Allow access to photos in Settings to send photos and videos.";
+
+"permission.contacts.title" = "Contacts";
+"permission.contacts.summary" = "Find friends and share contacts in chats.";
+"permission.contacts.refusal" = "Allow access to contacts in Settings to find friends and share contacts.";
+
+"permission.location.title" = "Location";
+"permission.location.summary" = "Send your location to a chat.";
+"permission.location.refusal" = "Allow access to your location in Settings to send it to a chat.";
+
+"permission.status.notDetermined" = "Not requested";
+"permission.status.granted" = "Allowed";
+"permission.status.limited" = "Limited";
+"permission.status.denied" = "Denied";
+"permission.status.restricted" = "Restricted";
+
+"permission.alert.title" = "Access needed";
+"permission.alert.restricted" = "Access is restricted on this device.";
+"permission.alert.notNow" = "Not Now";
+"permission.alert.settings" = "Settings";
+"permission.alert.ok" = "OK";

@@ -1,0 +1,6 @@
+"NSCameraUsageDescription" = "Contact використовує камеру, щоб знімати фото й відео, записувати відеоповідомлення та здійснювати відеодзвінки.";
+"NSContactsUsageDescription" = "Contact використовує ваші контакти, щоб знаходити друзів у застосунку й ділитися контактами в чатах.";
+"NSLocationWhenInUseUsageDescription" = "Contact використовує вашу геолокацію, коли ви надсилаєте її в чат.";
+"NSMicrophoneUsageDescription" = "Contact використовує мікрофон для голосових повідомлень і дзвінків.";
+"NSPhotoLibraryAddUsageDescription" = "Contact зберігає фото й відео з чатів у вашу медіатеку.";
+"NSPhotoLibraryUsageDescription" = "Contact використовує ваші фото й відео, щоб ви могли надсилати їх у чатах.";

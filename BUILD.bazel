@@ -21,7 +21,7 @@ localization_files = glob(["Airlance/Resource/Localization/**/*.strings"])
 
 genrule(
     name = "AppStringsSource",
-    srcs = localization_files,
+    srcs = glob(["Airlance/Resource/Localization/**/Localizable.strings"]),
     tools = ["tools/localization/generate-strings.py"],
     outs = ["Generated/AppStrings.swift"],
     cmd = "/usr/bin/python3 $(location tools/localization/generate-strings.py) --base en --output $@ $(SRCS)",
@@ -37,6 +37,14 @@ swift_library(
         "//submodules/Database:DatabaseAPI",
         "//submodules/Localization",
         "//submodules/Observers",
+        "//submodules/Permissions",
+        "//submodules/Permissions:CameraPermission",
+        "//submodules/Permissions:ContactsPermission",
+        "//submodules/Permissions:LocationPermission",
+        "//submodules/Permissions:MicrophonePermission",
+        "//submodules/Permissions:NotificationsPermission",
+        "//submodules/Permissions:PermissionsAPI",
+        "//submodules/Permissions:PhotosPermission",
         "//submodules/Routing",
         "//submodules/Theme",
     ],

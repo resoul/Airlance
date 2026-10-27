@@ -1,0 +1,6 @@
+"NSCameraUsageDescription" = "Contact usa la cámara para hacer fotos y vídeos, grabar mensajes de vídeo y hacer videollamadas.";
+"NSContactsUsageDescription" = "Contact usa tus contactos para encontrar amigos que usan la app y compartir contactos en chats.";
+"NSLocationWhenInUseUsageDescription" = "Contact usa tu ubicación cuando la envías a un chat.";
+"NSMicrophoneUsageDescription" = "Contact usa el micrófono para mensajes de voz y llamadas.";
+"NSPhotoLibraryAddUsageDescription" = "Contact guarda en tu fototeca las fotos y vídeos de los chats.";
+"NSPhotoLibraryUsageDescription" = "Contact usa tus fotos y vídeos para que puedas enviarlos en chats.";
