@@ -1,0 +1,45 @@
+load("@rules_apple//apple:ios.bzl", "ios_application")
+load("@rules_apple//apple:resources.bzl", "apple_metal_library")
+load("@rules_swift//swift:swift_library.bzl", "swift_library")
+load("@rules_cc//cc:objc_library.bzl", "objc_library")
+load("@rules_swift//swift:swift_interop_hint.bzl", "swift_interop_hint")
+
+config_setting(
+    name = "ios_device",
+    constraint_values = ["@apple_support//constraints:device"],
+)
+
+genrule(
+    name = "AirlanceEntitlements",
+    srcs = ["signing/development.mobileprovision"],
+    tools = ["tools/signing/device-entitlements.py"],
+    outs = ["Airlance.entitlements"],
+    cmd = "/usr/bin/python3 $(location tools/signing/device-entitlements.py) $(location signing/development.mobileprovision) $@",
+)
+
+swift_library(
+    name = "AirlanceSources",
+    srcs = glob(["Airlance/**/*.swift"]),
+    module_name = "Airlance",
+    deps = [
+        "//submodules/AsyncDisplayKit",
+    ],
+)
+
+ios_application(
+    name = "Airlance",
+    bundle_id = "org.airlance.Contact",
+    families = ["iphone", "ipad"],
+    infoplists = ["Airlance/Resource/Info.plist"],
+    minimum_os_version = "16.0",
+    entitlements = select({
+        ":ios_device": ":AirlanceEntitlements",
+        "//conditions:default": "Airlance/Resource/Simulator.entitlements",
+    }),
+    provisioning_profile = select({
+        ":ios_device": "signing/development.mobileprovision",
+        "//conditions:default": None,
+    }),
+    deps = [":AirlanceSources"],
+    visibility = ["//visibility:public"],
+)
