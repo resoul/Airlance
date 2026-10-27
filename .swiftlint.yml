@@ -9,32 +9,90 @@ excluded:
 only_rules:
   - block_based_kvo
   - class_delegate_protocol
+  - closing_brace
+  - closure_end_indentation
+  - closure_spacing
+  - colon
+  - comma
   - compiler_protocol_init
+  - control_statement
   - custom_rules
+  - cyclomatic_complexity
   - discarded_notification_center_observer
   - duplicate_conditions
   - duplicate_enum_cases
   - duplicate_imports
   - duplicated_key_in_dictionary_literal
   - dynamic_inline
+  - empty_count
+  - file_length
+  - first_where
+  - force_cast
+  - force_try
+  - force_unwrapping
+  - function_body_length
+  - implicit_optional_initialization
+  - implicitly_unwrapped_optional
   - invalid_swiftlint_command
+  - leading_whitespace
   - line_length
+  - modifier_order
+  - multiline_arguments
+  - multiline_arguments_brackets
+  - multiline_function_chains
+  - multiline_literal_brackets
   - multiline_parameters
+  - multiline_parameters_brackets
   - notification_center_detachment
   - nsobject_prefer_isequal
+  - opening_brace
+  - operator_usage_whitespace
   - overridden_super_call
+  - private_over_fileprivate
   - prohibited_super_call
+  - return_arrow_whitespace
   - return_value_from_void_function
   - self_in_property_initialization
+  - sorted_imports
+  - statement_position
   - superfluous_disable_command
+  - syntactic_sugar
+  - trailing_newline
+  - trailing_semicolon
+  - trailing_whitespace
+  - type_body_length
   - unavailable_condition
   - unneeded_override
+  - unneeded_parentheses_in_closure_argument
   - unused_closure_parameter
   - unused_control_flow_label
   - unused_enumerated
   - unused_optional_binding
   - valid_ibinspectable
+  - vertical_whitespace
+  - vertical_whitespace_closing_braces
+  - vertical_whitespace_opening_braces
   - weak_delegate
+
+file_length:
+  warning: 400
+  error: 400
+  ignore_comment_only_lines: true
+
+type_body_length:
+  warning: 250
+  error: 250
+
+function_body_length:
+  warning: 40
+  error: 40
+
+cyclomatic_complexity:
+  warning: 10
+  error: 10
+
+multiline_arguments:
+  only_enforce_after_first_closure_on_first_line: true
 
 line_length:
   warning: 120
@@ -53,6 +111,31 @@ custom_rules:
       - doccomment
       - string
     message: Put the body of the function or computed property on separate lines.
+    severity: error
+  single_line_body:
+    name: Single-line body
+    regex: '\{[ \t]*(?!(?:get|set)(?:[ \t]+(?:get|set))?[ \t]*\})[^\s}][^{}\n]*\}'
+    excluded_match_kinds:
+      - comment
+      - doccomment
+      - string
+    message: Put the body of the closure or statement on separate lines.
+    severity: error
+  blank_line_before_return:
+    name: Blank line before return
+    regex: '[^{:\s][ \t]*\n[ \t]*return\b'
+    excluded_match_kinds:
+      - comment
+      - doccomment
+      - string
+    message: Separate return from the statements above it with an empty line.
+    severity: error
+  no_doc_comments:
+    name: No doc comments
+    regex: '///|/\*\*'
+    match_kinds:
+      - doccomment
+    message: Describe how the code works in docs/ instead of doc comments.
     severity: error
   multiple_statements_per_line:
     name: Multiple statements per line
