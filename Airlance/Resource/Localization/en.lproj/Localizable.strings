@@ -1,0 +1,29 @@
+"chats.title" = "Chats";
+"chats.settings" = "Settings";
+
+"chat.title" = "Chat %d";
+"chat.profile" = "Profile";
+
+"profile.title" = "Profile %d";
+"profile.message" = "Write a message";
+
+"notification.from" = "Message from chat %d";
+
+"settings.title" = "Settings";
+"settings.appearance" = "Appearance";
+"settings.accent" = "Accent color";
+"settings.font" = "Font";
+"settings.language" = "Language";
+
+"theme.mode.system" = "System";
+"theme.mode.light" = "Light";
+"theme.mode.dark" = "Dark";
+
+"theme.accent.blue" = "Blue";
+"theme.accent.violet" = "Violet";
+"theme.accent.green" = "Green";
+
+"theme.font.montserrat" = "Montserrat";
+"theme.font.system" = "System";
+
+"language.system" = "System";

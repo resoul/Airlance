@@ -2,6 +2,25 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>en</string>
+        <string>uk</string>
+        <string>es</string>
+    </array>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>org.airlance.routes</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>airlance</string>
+            </array>
+        </dict>
+    </array>
     <key>CFBundleDisplayName</key>
     <string>Contact</string>
     <key>CFBundleShortVersionString</key>

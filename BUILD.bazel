@@ -17,12 +17,28 @@ genrule(
     cmd = "/usr/bin/python3 $(location tools/signing/device-entitlements.py) $(location signing/development.mobileprovision) $@",
 )
 
+localization_files = glob(["Airlance/Resource/Localization/**/*.strings"])
+
+genrule(
+    name = "AppStringsSource",
+    srcs = localization_files,
+    tools = ["tools/localization/generate-strings.py"],
+    outs = ["Generated/AppStrings.swift"],
+    cmd = "/usr/bin/python3 $(location tools/localization/generate-strings.py) --base en --output $@ $(SRCS)",
+)
+
 swift_library(
     name = "AirlanceSources",
-    srcs = glob(["Airlance/**/*.swift"]),
+    srcs = glob(["Airlance/**/*.swift"]) + [":AppStringsSource"],
     module_name = "Airlance",
     deps = [
         "//submodules/AsyncDisplayKit",
+        "//submodules/Database",
+        "//submodules/Database:DatabaseAPI",
+        "//submodules/Localization",
+        "//submodules/Observers",
+        "//submodules/Routing",
+        "//submodules/Theme",
     ],
 )
 
@@ -31,6 +47,7 @@ ios_application(
     bundle_id = "org.airlance.Contact",
     families = ["iphone", "ipad"],
     infoplists = ["Airlance/Resource/Info.plist"],
+    resources = localization_files,
     minimum_os_version = "16.0",
     entitlements = select({
         ":ios_device": ":AirlanceEntitlements",

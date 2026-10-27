@@ -1,0 +1,29 @@
+"chats.title" = "Chats";
+"chats.settings" = "Ajustes";
+
+"chat.title" = "Chat %d";
+"chat.profile" = "Perfil";
+
+"profile.title" = "Perfil %d";
+"profile.message" = "Escribir";
+
+"notification.from" = "Mensaje del chat %d";
+
+"settings.title" = "Ajustes";
+"settings.appearance" = "Apariencia";
+"settings.accent" = "Color de acento";
+"settings.font" = "Fuente";
+"settings.language" = "Idioma";
+
+"theme.mode.system" = "Sistema";
+"theme.mode.light" = "Claro";
+"theme.mode.dark" = "Oscuro";
+
+"theme.accent.blue" = "Azul";
+"theme.accent.violet" = "Violeta";
+"theme.accent.green" = "Verde";
+
+"theme.font.montserrat" = "Montserrat";
+"theme.font.system" = "Sistema";
+
+"language.system" = "Sistema";

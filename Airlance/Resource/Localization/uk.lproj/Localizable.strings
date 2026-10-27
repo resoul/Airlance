@@ -1,0 +1,29 @@
+"chats.title" = "Чати";
+"chats.settings" = "Налаштування";
+
+"chat.title" = "Чат %d";
+"chat.profile" = "Профіль";
+
+"profile.title" = "Профіль %d";
+"profile.message" = "Написати";
+
+"notification.from" = "Повідомлення з чату %d";
+
+"settings.title" = "Налаштування";
+"settings.appearance" = "Оформлення";
+"settings.accent" = "Колір акценту";
+"settings.font" = "Шрифт";
+"settings.language" = "Мова";
+
+"theme.mode.system" = "Системне";
+"theme.mode.light" = "Світле";
+"theme.mode.dark" = "Темне";
+
+"theme.accent.blue" = "Синій";
+"theme.accent.violet" = "Фіолетовий";
+"theme.accent.green" = "Зелений";
+
+"theme.font.montserrat" = "Montserrat";
+"theme.font.system" = "Системний";
+
+"language.system" = "Системна";
