@@ -9,6 +9,7 @@ final class ChatsViewController: UIViewController {
     private let dependencies: ChatsDependencies
     private let router: AppRouter
     private let chatButtons: [UIButton]
+    private let newChatButton: UIButton
     private let settingsButton: UIButton
     private var presentationObservation: ObservationToken?
 
@@ -19,6 +20,9 @@ final class ChatsViewController: UIViewController {
             UIButton.action {
                 router.open(.chat(id))
             }
+        }
+        newChatButton = UIButton.action {
+            router.open(.newChat)
         }
         settingsButton = UIButton.action {
             router.open(.settings)
@@ -33,7 +37,7 @@ final class ChatsViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        placeActionButtons(chatButtons + [settingsButton])
+        placeActionButtons(chatButtons + [newChatButton, settingsButton])
 
         presentationObservation = dependencies.presentationContext.observe { [weak self] data in
             self?.apply(data)
@@ -48,6 +52,7 @@ final class ChatsViewController: UIViewController {
             button.apply(title: data.strings.chatTitle(id), theme: data.theme)
         }
 
+        newChatButton.apply(title: data.strings.chatsNewChat, theme: data.theme)
         settingsButton.apply(title: data.strings.chatsSettings, theme: data.theme)
     }
 }

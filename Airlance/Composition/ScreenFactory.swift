@@ -25,6 +25,21 @@ final class ScreenFactory {
         )
     }
 
+    func makeMedia(id: Int) -> UIViewController {
+        MediaViewController(
+            id: id,
+            dependencies: MediaDependencies(presentationContext: app.presentationContext),
+            router: router
+        )
+    }
+
+    func makeNewChat() -> UIViewController {
+        NewChatViewController(
+            dependencies: NewChatDependencies(presentationContext: app.presentationContext),
+            router: router
+        )
+    }
+
     func makeProfile(id: Int) -> UIViewController {
         ProfileViewController(
             id: id,

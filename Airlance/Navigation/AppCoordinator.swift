@@ -1,15 +1,31 @@
 import Observers
 import Routing
+import Theme
 import UIKit
 
 @MainActor
 final class AppCoordinator: NSObject, RouteNavigator {
+    private typealias Completion = @MainActor @Sendable () -> Void
+
+    private struct PendingTransition {
+        let transition: RouteTransition<AppRoute>
+        let animated: Bool
+    }
+
     private let window: UIWindow
     private let router: AppRouter
     private let factory: ScreenFactory
-    private let navigationController = UINavigationController()
+    private let rootNavigation = UINavigationController()
+    private var modalNavigations: [UINavigationController] = []
     private var routes: [ObjectIdentifier: AppRoute] = [:]
+    private var pending: [PendingTransition] = []
+    private var isApplying = false
+    private var theme: AppTheme?
     private var presentationObservation: ObservationToken?
+
+    private var navigations: [UINavigationController] {
+        [rootNavigation] + modalNavigations
+    }
 
     init(window: UIWindow, router: AppRouter, factory: ScreenFactory) {
         self.window = window
@@ -19,28 +35,141 @@ final class AppCoordinator: NSObject, RouteNavigator {
     }
 
     func start(presentationContext: PresentationContext) {
-        navigationController.delegate = self
-        navigationController.navigationBar.prefersLargeTitles = true
-        navigationController.viewControllers = [factory.makeChats()]
-        window.rootViewController = navigationController
+        setUp(rootNavigation)
+        rootNavigation.navigationBar.prefersLargeTitles = true
+        rootNavigation.viewControllers = [factory.makeChats()]
+        window.rootViewController = rootNavigation
         router.attach(self)
 
         presentationObservation = presentationContext.observe { [weak self] data in
-            self?.apply(data)
+            self?.apply(data.theme)
         }
     }
 
     func apply(_ transition: RouteTransition<AppRoute>, animated: Bool) {
-        var controllers = navigationController.viewControllers
-        controllers.removeLast(min(transition.popCount, controllers.count - 1))
-        controllers += transition.push.map(makeScreen(for:))
-        navigationController.setViewControllers(controllers, animated: animated)
+        pending.append(PendingTransition(transition: transition, animated: animated))
+        applyNext()
+    }
+
+    private func applyNext() {
+        guard !isApplying else {
+            return
+        }
+
+        guard !pending.isEmpty else {
+            syncRouter()
+
+            return
+        }
+
+        let next = pending.removeFirst()
+        isApplying = true
+        run(next.transition, animated: next.animated) { [weak self] in
+            self?.isApplying = false
+            self?.applyNext()
+        }
+    }
+
+    private func run(_ transition: RouteTransition<AppRoute>, animated: Bool, completion: @escaping Completion) {
+        dismissLayers(count: transition.dismissCount, animated: animated) { [weak self] in
+            guard let self else {
+                return
+            }
+
+            if let update = transition.update {
+                self.update(update, animated: animated && transition.present.isEmpty)
+            }
+            self.present(transition.present[...], animated: animated, completion: completion)
+        }
+    }
+
+    private func dismissLayers(count: Int, animated: Bool, completion: @escaping Completion) {
+        let count = min(count, modalNavigations.count)
+        guard count > 0 else {
+            completion()
+
+            return
+        }
+
+        let first = modalNavigations[modalNavigations.count - count]
+        modalNavigations.removeLast(count)
+        guard let presenting = first.presentingViewController else {
+            completion()
+
+            return
+        }
+
+        presenting.dismiss(animated: animated, completion: completion)
+    }
+
+    private func update(_ update: RouteLayerUpdate<AppRoute>, animated: Bool) {
+        guard update.index < navigations.count else {
+            return
+        }
+
+        let navigation = navigations[update.index]
+        var controllers = navigation.viewControllers
+        controllers.removeLast(min(update.popCount, controllers.count - 1))
+        controllers += update.push.map(makeScreen(for:))
+        navigation.setViewControllers(controllers, animated: animated)
+    }
+
+    private func present(
+        _ layers: ArraySlice<RouteLayer<AppRoute>>,
+        animated: Bool,
+        completion: @escaping Completion
+    ) {
+        guard let layer = layers.first, let presenting = navigations.last else {
+            completion()
+
+            return
+        }
+
+        let navigation = makeNavigation(for: layer)
+        modalNavigations.append(navigation)
+        presenting.present(navigation, animated: animated) { [weak self] in
+            self?.present(layers.dropFirst(), animated: animated, completion: completion)
+        }
+    }
+
+    private func makeNavigation(for layer: RouteLayer<AppRoute>) -> UINavigationController {
+        let navigation = UINavigationController()
+        setUp(navigation)
+        navigation.viewControllers = layer.routes.map(makeScreen(for:))
+        navigation.viewControllers.first?.navigationItem.leftBarButtonItem = makeCloseItem()
+
+        switch layer.presentation {
+        case .stack:
+            break
+        case .sheet:
+            navigation.modalPresentationStyle = .pageSheet
+            navigation.sheetPresentationController?.detents = [.medium(), .large()]
+            navigation.sheetPresentationController?.prefersGrabberVisible = true
+        case .fullScreen:
+            navigation.modalPresentationStyle = .fullScreen
+        }
+        navigation.presentationController?.delegate = self
+
+        return navigation
+    }
+
+    private func makeCloseItem() -> UIBarButtonItem {
+        UIBarButtonItem(
+            systemItem: .close,
+            primaryAction: UIAction { [router] _ in
+                router.dismiss()
+            }
+        )
     }
 
     private func makeScreen(for route: AppRoute) -> UIViewController {
         let controller = switch route {
         case .chat(let id):
             factory.makeChat(id: id)
+        case .media(let id):
+            factory.makeMedia(id: id)
+        case .newChat:
+            factory.makeNewChat()
         case .profile(let id):
             factory.makeProfile(id: id)
         case .settings:
@@ -51,23 +180,35 @@ final class AppCoordinator: NSObject, RouteNavigator {
         return controller
     }
 
-    private func apply(_ data: PresentationData) {
-        let colors = data.theme.colors
-        let fonts = data.theme.fonts
+    private func setUp(_ navigation: UINavigationController) {
+        navigation.delegate = self
+        if let theme {
+            navigation.apply(theme)
+        }
+    }
 
-        let appearance = UINavigationBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = colors.background
-        appearance.shadowColor = colors.separator
-        appearance.titleTextAttributes = [.foregroundColor: colors.textPrimary, .font: fonts.headline]
-        appearance.largeTitleTextAttributes = [.foregroundColor: colors.textPrimary, .font: fonts.largeTitle]
+    private func syncRouter() {
+        guard !isApplying, pending.isEmpty else {
+            return
+        }
 
-        let navigationBar = navigationController.navigationBar
-        navigationBar.standardAppearance = appearance
-        navigationBar.compactAppearance = appearance
-        navigationBar.scrollEdgeAppearance = appearance
-        navigationBar.tintColor = colors.accent
-        window.overrideUserInterfaceStyle = data.theme.appearance.userInterfaceStyle
+        let controllers = navigations.flatMap(\.viewControllers)
+        let identifiers = Set(controllers.map(ObjectIdentifier.init))
+        routes = routes.filter { identifier, _ in
+            identifiers.contains(identifier)
+        }
+
+        router.sync(controllers.compactMap { controller in
+            routes[ObjectIdentifier(controller)]
+        })
+    }
+
+    private func apply(_ theme: AppTheme) {
+        self.theme = theme
+        for navigation in navigations {
+            navigation.apply(theme)
+        }
+        window.overrideUserInterfaceStyle = theme.appearance.userInterfaceStyle
     }
 }
 
@@ -77,15 +218,20 @@ extension AppCoordinator: UINavigationControllerDelegate {
         didShow viewController: UIViewController,
         animated: Bool
     ) {
-        let identifiers = navigationController.viewControllers.map { controller in
-            ObjectIdentifier(controller)
+        syncRouter()
+    }
+}
+
+extension AppCoordinator: UIAdaptivePresentationControllerDelegate {
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        let index = modalNavigations.firstIndex { navigation in
+            navigation === presentationController.presentedViewController
         }
-        routes = routes.filter { identifier, _ in
-            identifiers.contains(identifier)
+        guard let index else {
+            return
         }
 
-        router.sync(identifiers.compactMap { identifier in
-            routes[identifier]
-        })
+        modalNavigations.removeSubrange(index...)
+        syncRouter()
     }
 }

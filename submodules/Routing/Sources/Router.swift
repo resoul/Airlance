@@ -11,6 +11,10 @@ public final class Router<RouteType: Route> {
         RoutePath(stack.map(\.segment))
     }
 
+    public var layers: [RouteLayer<RouteType>] {
+        RouteLayer.layers(of: stack)
+    }
+
     public init() {}
 
     public func attach(_ navigator: any RouteNavigator<RouteType>) {
@@ -40,6 +44,17 @@ public final class Router<RouteType: Route> {
 
     public func back(animated: Bool = true) {
         navigate(to: Array(stack.dropLast()), animated: animated)
+    }
+
+    public func dismiss(animated: Bool = true) {
+        let start = stack.lastIndex { route in
+            route.presentation != .stack
+        }
+        guard let start else {
+            return
+        }
+
+        navigate(to: Array(stack[..<start]), animated: animated)
     }
 
     public func navigate(to target: [RouteType], animated: Bool = true) {

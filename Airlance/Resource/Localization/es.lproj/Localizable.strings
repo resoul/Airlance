@@ -1,8 +1,14 @@
 "chats.title" = "Chats";
+"chats.newChat" = "Nuevo chat";
 "chats.settings" = "Ajustes";
 
 "chat.title" = "Chat %d";
+"chat.media" = "Multimedia";
 "chat.profile" = "Perfil";
+
+"newChat.title" = "Nuevo chat";
+
+"media.title" = "Multimedia del chat %d";
 
 "profile.title" = "Perfil %d";
 "profile.message" = "Escribir";

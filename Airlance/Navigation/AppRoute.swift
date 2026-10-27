@@ -4,6 +4,8 @@ typealias AppRouter = Router<AppRoute>
 
 enum AppRoute: Route {
     case chat(Int)
+    case media(Int)
+    case newChat
     case profile(Int)
     case settings
 
@@ -11,6 +13,10 @@ enum AppRoute: Route {
         switch self {
         case .chat(let id):
             RouteSegment("chat", argument: String(id))
+        case .media(let id):
+            RouteSegment("media", argument: String(id))
+        case .newChat:
+            RouteSegment("newChat")
         case .profile(let id):
             RouteSegment("profile", argument: String(id))
         case .settings:
@@ -20,21 +26,55 @@ enum AppRoute: Route {
 
     var anchor: [AppRoute] {
         switch self {
-        case .chat, .settings:
+        case .chat, .newChat, .settings:
             []
-        case .profile(let id):
+        case .media(let id), .profile(let id):
             [.chat(id)]
         }
     }
 
+    var presentation: RoutePresentation {
+        switch self {
+        case .chat, .profile, .settings:
+            .stack
+        case .media:
+            .fullScreen
+        case .newChat:
+            .sheet
+        }
+    }
+
     init?(segment: RouteSegment) {
-        switch (segment.name, segment.argument.flatMap(Int.init)) {
-        case ("chat", let id?):
-            self = .chat(id)
-        case ("profile", let id?):
-            self = .profile(id)
-        case ("settings", nil) where segment.argument == nil:
+        if let argument = segment.argument {
+            guard let id = Int(argument) else {
+                return nil
+            }
+
+            self.init(name: segment.name, id: id)
+        } else {
+            self.init(name: segment.name)
+        }
+    }
+
+    private init?(name: String) {
+        switch name {
+        case "newChat":
+            self = .newChat
+        case "settings":
             self = .settings
+        default:
+            return nil
+        }
+    }
+
+    private init?(name: String, id: Int) {
+        switch name {
+        case "chat":
+            self = .chat(id)
+        case "media":
+            self = .media(id)
+        case "profile":
+            self = .profile(id)
         default:
             return nil
         }

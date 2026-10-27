@@ -1,8 +1,14 @@
 "chats.title" = "Чати";
+"chats.newChat" = "Новий чат";
 "chats.settings" = "Налаштування";
 
 "chat.title" = "Чат %d";
+"chat.media" = "Медіа";
 "chat.profile" = "Профіль";
+
+"newChat.title" = "Новий чат";
+
+"media.title" = "Медіа чату %d";
 
 "profile.title" = "Профіль %d";
 "profile.message" = "Написати";
