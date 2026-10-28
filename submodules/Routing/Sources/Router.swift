@@ -2,10 +2,15 @@ import Observers
 
 @MainActor
 public final class Router<RouteType: Route> {
-    public private(set) var stack: [RouteType] = []
+    public private(set) var stack: [RouteType] {
+        didSet {
+            rememberTabStack()
+        }
+    }
 
     private let observers = ObserverList<RoutePath>()
     private weak var navigator: (any RouteNavigator<RouteType>)?
+    private var tabStacks: [RouteType: [RouteType]] = [:]
 
     public var path: RoutePath {
         RoutePath(stack.map(\.segment))
@@ -15,7 +20,16 @@ public final class Router<RouteType: Route> {
         RouteLayer.layers(of: stack)
     }
 
-    public init() {}
+    public var tab: RouteType? {
+        stack.first { route in
+            route.presentation == .tab
+        }
+    }
+
+    public init(root: [RouteType] = []) {
+        stack = root
+        rememberTabStack()
+    }
 
     public func attach(_ navigator: any RouteNavigator<RouteType>) {
         self.navigator = navigator
@@ -42,13 +56,23 @@ public final class Router<RouteType: Route> {
         navigate(to: Array(stack[...index]), animated: animated)
     }
 
+    public func selectTab(_ tab: RouteType, animated: Bool = true) {
+        guard tab != self.tab else {
+            navigate(to: [tab], animated: animated)
+
+            return
+        }
+
+        navigate(to: tabStacks[tab] ?? [tab], animated: animated)
+    }
+
     public func back(animated: Bool = true) {
         navigate(to: Array(stack.dropLast()), animated: animated)
     }
 
     public func dismiss(animated: Bool = true) {
         let start = stack.lastIndex { route in
-            route.presentation != .stack
+            route.presentation.isModal
         }
         guard let start else {
             return
@@ -58,6 +82,7 @@ public final class Router<RouteType: Route> {
     }
 
     public func navigate(to target: [RouteType], animated: Bool = true) {
+        let target = normalized(target)
         guard target != stack else {
             return
         }
@@ -91,5 +116,34 @@ public final class Router<RouteType: Route> {
 
         self.stack = stack
         observers.notify(path)
+    }
+
+    private func normalized(_ target: [RouteType]) -> [RouteType] {
+        guard let tab else {
+            return target
+        }
+
+        guard let first = target.first else {
+            return [tab]
+        }
+
+        guard first.presentation != .tab else {
+            return target
+        }
+
+        let anchor = first.anchor
+        if anchor.first?.presentation == .tab {
+            return anchor + target
+        }
+
+        return [tab] + target
+    }
+
+    private func rememberTabStack() {
+        guard let tab = stack.first, tab.presentation == .tab else {
+            return
+        }
+
+        tabStacks[tab] = layers.first?.routes ?? [tab]
     }
 }
