@@ -3,12 +3,16 @@ import UIKit
 
 @MainActor
 public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecognizerDelegate {
-    private static let preloadDistance: CGFloat = 240
-    private static let poolLimit = 24
+    static let preloadDistance: CGFloat = 240
+    static let poolLimit = 24
+    private static let layoutCacheLimit = 96
 
     public let scrollView = UIScrollView()
+    public let overlayView = UIView()
     public var onScroll: (@MainActor (ListView) -> Void)?
     public var onWillEndDragging: (@MainActor (ListView, CGFloat) -> CGFloat)?
+    public var onContentSizeChange: (@MainActor (ListView) -> Void)?
+    public var onLongPressMove: (@MainActor (UILongPressGestureRecognizer) -> Void)?
 
     public var theme: ListTheme {
         didSet {
@@ -25,9 +29,16 @@ public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecog
             }
 
             let wasAtTop = abs(scrollView.contentOffset.y + oldValue.top) < 0.5
+            let distance = distanceFromBottom(insets: oldValue)
             scrollView.contentInset = contentInsets
             scrollView.verticalScrollIndicatorInsets = contentInsets
-            restoreOffset(wasAtTop ? -contentInsets.top : scrollView.contentOffset.y)
+            guard anchorsToBottom else {
+                restoreOffset(wasAtTop ? -contentInsets.top : scrollView.contentOffset.y)
+
+                return
+            }
+
+            keepBottom(distance: distance)
         }
     }
 
@@ -49,6 +60,31 @@ public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecog
         }
     }
 
+    public var isSuspended = false {
+        didSet {
+            if isSuspended != oldValue, !isSuspended {
+                placedRange = nil
+                updateVisible()
+            }
+        }
+    }
+
+    public var anchorsToBottom = false {
+        didSet {
+            if anchorsToBottom != oldValue {
+                keepBottom(distance: 0)
+            }
+        }
+    }
+
+    public var isOnScreen = true {
+        didSet {
+            if isOnScreen != oldValue {
+                updateShown()
+            }
+        }
+    }
+
     public var allowsSwipeActions = false {
         didSet {
             swipe?.pan.isEnabled = allowsSwipeActions
@@ -61,11 +97,18 @@ public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecog
     let content = ASDisplayNode()
     var swipe: ListSwipeController?
     var items: [any ListItem] = []
-    private var itemIDs: [String] = []
-    private var frames: [CGRect] = []
+    var itemIDs: [String] = []
+    var entries: [ListEntry] = []
     var active: [String: ListItemNode] = [:]
-    private var pool: [String: [ListItemNode]] = [:]
-    private var layoutWidth: CGFloat = 0
+    var layoutWidth: CGFloat = 0
+    let layouts = ListLayoutCache(limit: ListView.layoutCacheLimit)
+    var frames: [CGRect] = []
+    var pool: [String: [ListItemNode]] = [:]
+    var placedRange: Range<Int>?
+    var prefetchedRange: Range<Int>?
+    var pendingAnchor: ListAnchor?
+    var preparations: [String: ListPreparation] = [:]
+    var shownRange: Range<Int>?
 
     public var contentOffset: CGFloat {
         scrollView.contentOffset.y
@@ -74,6 +117,7 @@ public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecog
     public init(theme: ListTheme) {
         self.theme = theme
         super.init()
+        scrollView.keyboardDismissMode = .onDrag
     }
 
     override public func didLoad() {
@@ -82,12 +126,13 @@ public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecog
         scrollView.alwaysBounceVertical = true
         scrollView.contentInsetAdjustmentBehavior = .never
         scrollView.automaticallyAdjustsScrollIndicatorInsets = false
-        scrollView.keyboardDismissMode = .onDrag
         scrollView.backgroundColor = theme.background
         scrollView.contentInset = contentInsets
         scrollView.verticalScrollIndicatorInsets = contentInsets
         view.addSubview(scrollView)
         scrollView.addSubview(content.view)
+        overlayView.isUserInteractionEnabled = false
+        scrollView.addSubview(overlayView)
         if let headerView {
             scrollView.addSubview(headerView)
         }
@@ -97,6 +142,7 @@ public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecog
         tap.cancelsTouchesInView = false
         scrollView.addGestureRecognizer(tap)
         setupSwipe()
+        setupLongPress()
     }
 
     public func apply(items next: [any ListItem], animated: Bool = true) {
@@ -104,37 +150,27 @@ public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecog
         let transaction = ListTransaction(previous: itemIDs, next: nextIDs)
         let anchor = topAnchor()
         let animated = animated && !itemIDs.isEmpty
+        let wasAtBottom = anchorsToBottom && (frames.isEmpty || distanceFromBottom(insets: contentInsets) < 8)
 
         items = next
         itemIDs = nextIDs
+        entries = next.map { item in
+            ListEntry(item)
+        }
+        placedRange = nil
         guard isNodeLoaded, layoutWidth > 0 else {
             setNeedsLayout()
 
             return
         }
 
+        let positions = screenPositions()
         rebuildFrames()
-        if let anchor, let index = itemIDs.firstIndex(of: anchor.id) {
-            restoreOffset(frames[index].minY - anchor.distance)
-        } else {
-            restoreOffset(scrollView.contentOffset.y)
-        }
+        restorePosition(wasAtBottom: wasAtBottom, anchor: anchor)
 
-        for id in transaction.deleted {
-            guard let node = active.removeValue(forKey: id) else {
-                continue
-            }
-
-            node.view.isUserInteractionEnabled = false
-            ListTransition.animate(animated) {
-                node.view.alpha = 0
-            } completion: { [weak self] _ in
-                self?.recycle(node)
-            }
-        }
-        ListTransition.animate(animated) { [weak self] in
-            self?.updateVisible(inserted: transaction.inserted, animated: animated)
-        }
+        keepOnScreen(transaction.deleted, positions: positions)
+        fadeOut(transaction.deleted, animated: animated)
+        settle(from: positions, inserted: transaction.inserted, animated: animated)
     }
 
     override public func layout() {
@@ -143,15 +179,23 @@ public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecog
             return
         }
 
+        let distance = distanceFromBottom(insets: contentInsets)
+        let heightChanged = scrollView.bounds.height != bounds.height
         scrollView.frame = bounds
         if bounds.width != layoutWidth {
             layoutWidth = bounds.width
+            resetLayouts()
             rebuildFrames()
+            if !applyPendingAnchor(), anchorsToBottom {
+                restoreOffset(maximumOffset(insets: contentInsets) - distance)
+            }
+        } else if anchorsToBottom, heightChanged {
+            keepBottom(distance: distance)
         }
         updateVisible()
     }
 
-    private func relayoutContent() {
+    func relayoutContent() {
         guard isNodeLoaded, layoutWidth > 0 else {
             return
         }
@@ -163,6 +207,8 @@ public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecog
     private func rebuildFrames() {
         headerView?.frame = CGRect(x: 0, y: 0, width: layoutWidth, height: headerView == nil ? 0 : headerHeight)
         var y: CGFloat = headerView == nil ? 0 : headerHeight
+        placedRange = nil
+        prefetchedRange = nil
         frames = items.map { item in
             let height = max(1, item.height(for: layoutWidth, theme: theme))
             let frame = CGRect(x: 0, y: y, width: layoutWidth, height: height)
@@ -170,113 +216,19 @@ public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecog
 
             return frame
         }
+        let fill = bottomFill(contentHeight: y)
+        if fill > 0 {
+            frames = frames.map { frame in
+                frame.offsetBy(dx: 0, dy: fill)
+            }
+            y += fill
+        }
         content.frame = CGRect(x: 0, y: 0, width: layoutWidth, height: y)
+        overlayView.frame = content.frame
+        let changed = scrollView.contentSize.height != y
         scrollView.contentSize = CGSize(width: layoutWidth, height: y)
-    }
-
-    private func restoreOffset(_ offset: CGFloat) {
-        let minimum = -contentInsets.top
-        let maximum = max(minimum, scrollView.contentSize.height + contentInsets.bottom - scrollView.bounds.height)
-        scrollView.contentOffset.y = min(max(minimum, offset), maximum)
-    }
-
-    private func updateVisible(inserted: Set<String> = [], animated: Bool = false) {
-        guard layoutWidth > 0, frames.count == items.count else {
-            return
-        }
-
-        let indices = visibleIndices()
-        let visibleIDs = Set(indices.map { index in
-            itemIDs[index]
-        })
-        for id in Array(active.keys) where !visibleIDs.contains(id) {
-            if let node = active.removeValue(forKey: id) {
-                recycle(node)
-            }
-        }
-
-        for index in indices {
-            place(items[index], at: index, fadeIn: animated && inserted.contains(itemIDs[index]))
-        }
-    }
-
-    private func place(_ item: any ListItem, at index: Int, fadeIn: Bool) {
-        let id = itemIDs[index]
-        if let existing = active[id], existing.reuseIdentifier == item.reuseIdentifier {
-            configure(existing, item: item)
-            if existing.frame != frames[index] {
-                existing.frame = frames[index]
-            }
-            existing.view.alpha = 1
-
-            return
-        }
-
-        if let old = active.removeValue(forKey: id) {
-            recycle(old)
-        }
-        let node = pool[item.reuseIdentifier]?.popLast() ?? item.makeNode()
-        node.reuseIdentifier = item.reuseIdentifier
-        node.itemID = id
-        node.view.isUserInteractionEnabled = true
-        active[id] = node
-        content.addSubnode(node)
-
-        UIView.performWithoutAnimation {
-            configure(node, item: item)
-            node.frame = frames[index]
-            node.view.alpha = fadeIn ? 0 : 1
-            node.view.layoutIfNeeded()
-        }
-        node.view.alpha = 1
-    }
-
-    private func configure(_ node: ListItemNode, item: any ListItem) {
-        guard node.appliedVersion != item.version || node.appliedWidth != layoutWidth else {
-            return
-        }
-
-        item.update(node: node, theme: theme)
-        node.appliedVersion = item.version
-        node.appliedWidth = layoutWidth
-        guard
-            let asyncItem = item as? any AsyncListItem,
-            node.preparedLayoutVersion != asyncItem.layoutVersion || node.preparedWidth != layoutWidth
-        else {
-            return
-        }
-
-        node.layoutGeneration += 1
-        node.preparedLayoutVersion = asyncItem.layoutVersion
-        node.preparedWidth = layoutWidth
-        prepare(asyncItem, node: node)
-    }
-
-    private func prepare(_ item: any AsyncListItem, node: ListItemNode) {
-        let generation = node.layoutGeneration
-        let width = layoutWidth
-        let theme = theme
-        let scale = view.traitCollection.displayScale
-
-        Task { [weak node] in
-            let layout = await Task.detached(priority: .userInitiated) {
-                item.prepareLayout(width: width, theme: theme, displayScale: scale)
-            }.value
-            guard let node, node.layoutGeneration == generation else {
-                return
-            }
-
-            item.apply(layout, to: node)
-        }
-    }
-
-    private func recycle(_ node: ListItemNode) {
-        swipe?.nodeWillRecycle(node)
-        node.removeFromSupernode()
-        let kind = node.reuseIdentifier
-        node.prepareForReuse()
-        if pool[kind, default: []].count < Self.poolLimit {
-            pool[kind, default: []].append(node)
+        if changed {
+            onContentSizeChange?(self)
         }
     }
 
@@ -286,6 +238,7 @@ public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecog
         }
 
         scrollView.backgroundColor = theme.background
+        resetLayouts()
         for node in active.values {
             node.appliedVersion = nil
             node.preparedLayoutVersion = nil
@@ -296,6 +249,20 @@ public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecog
 }
 
 extension ListView {
+    fileprivate func restorePosition(wasAtBottom: Bool, anchor: (id: String, distance: CGFloat)?) {
+        guard !applyPendingAnchor() else {
+            return
+        }
+
+        if wasAtBottom {
+            restoreOffset(.greatestFiniteMagnitude)
+        } else if let anchor, let index = itemIDs.firstIndex(of: anchor.id) {
+            restoreOffset(frames[index].minY - anchor.distance)
+        } else {
+            restoreOffset(scrollView.contentOffset.y)
+        }
+    }
+
     fileprivate func topAnchor() -> (id: String, distance: CGFloat)? {
         let offset = scrollView.contentOffset.y
         guard offset > -contentInsets.top else {
@@ -311,9 +278,25 @@ extension ListView {
         }
     }
 
-    fileprivate func visibleIndices() -> Range<Int> {
-        let top = scrollView.contentOffset.y - Self.preloadDistance
-        let bottom = scrollView.contentOffset.y + scrollView.bounds.height + Self.preloadDistance
+    func updateShown() {
+        let range = isOnScreen && isNodeLoaded ? visibleIndices(margin: 0) : 0..<0
+        guard range != shownRange else {
+            return
+        }
+
+        shownRange = range
+        guard let placedRange, placedRange.upperBound <= itemIDs.count else {
+            return
+        }
+
+        for index in placedRange {
+            active[itemIDs[index]]?.isOnScreen = range.contains(index)
+        }
+    }
+
+    func visibleIndices(margin: CGFloat) -> Range<Int> {
+        let top = scrollView.contentOffset.y - margin
+        let bottom = scrollView.contentOffset.y + scrollView.bounds.height + margin
 
         var low = 0
         var high = frames.count
@@ -377,17 +360,22 @@ extension ListView {
         let node = active.values.first { node in
             node.frame.contains(location)
         }
-        guard let id = node?.itemID, let item = items.first(where: { item in
+        guard let node, let id = node.itemID, let item = items.first(where: { item in
             item.id == id
         }) else {
             return
         }
 
-        item.selected()
+        item.tapped(node: node, at: CGPoint(x: location.x - node.frame.minX, y: location.y - node.frame.minY))
     }
 }
 
 extension ListView {
+    func restoreOffset(_ offset: CGFloat) {
+        let minimum = -contentInsets.top
+        scrollView.contentOffset.y = min(max(minimum, offset), maximumOffset(insets: contentInsets))
+    }
+
     public func scrollToTop(animated: Bool) {
         scrollView.setContentOffset(CGPoint(x: 0, y: -contentInsets.top), animated: animated)
     }

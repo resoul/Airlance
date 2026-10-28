@@ -10,6 +10,8 @@ public protocol ListItem {
     func makeNode() -> ListItemNode
     func update(node: ListItemNode, theme: ListTheme)
     func selected()
+    func tapped(node: ListItemNode, at point: CGPoint)
+    func longPressed(node: ListItemNode)
     func swipeActions() -> ListSwipeActions?
 }
 
@@ -23,6 +25,13 @@ extension ListItem {
     }
 
     public func selected() {
+    }
+
+    public func tapped(node: ListItemNode, at point: CGPoint) {
+        selected()
+    }
+
+    public func longPressed(node: ListItemNode) {
     }
 
     public func swipeActions() -> ListSwipeActions? {

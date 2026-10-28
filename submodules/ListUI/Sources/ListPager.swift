@@ -73,17 +73,22 @@ public final class ListPager: ASDisplayNode, UIScrollViewDelegate {
             }
         }
         selectedIndex = min(selectedIndex, max(count - 1, 0))
-        updateScrollsToTop()
+        updateSelection()
         setNeedsLayout()
     }
 
     public func select(_ index: Int, animated: Bool) {
         guard lists.indices.contains(index), pageWidth > 0 else {
             selectedIndex = index
+            updateSelection()
 
             return
         }
 
+        let passed = min(index, selectedIndex)...max(index, selectedIndex)
+        for page in passed {
+            lists[page].isSuspended = false
+        }
         scrollView.setContentOffset(CGPoint(x: CGFloat(index) * pageWidth, y: 0), animated: animated)
         if !animated {
             settle()
@@ -118,13 +123,15 @@ public final class ListPager: ASDisplayNode, UIScrollViewDelegate {
         }
 
         selectedIndex = index
-        updateScrollsToTop()
+        updateSelection()
         onSelect?(index)
     }
 
-    private func updateScrollsToTop() {
+    private func updateSelection() {
         for (index, list) in lists.enumerated() {
             list.scrollView.scrollsToTop = index == selectedIndex
+            list.isOnScreen = index == selectedIndex
+            list.isSuspended = abs(index - selectedIndex) > 1
         }
     }
 }

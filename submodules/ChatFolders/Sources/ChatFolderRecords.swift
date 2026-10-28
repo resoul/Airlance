@@ -22,45 +22,27 @@ enum ChatFolderRecords {
         return ChatFolderList(folders: folders, allChatsPosition: position?["value"].int ?? 0)
     }
 
-    static func insert(_ folder: ChatFolder, db: any SQLWriter) throws {
-        let position = try db.fetchOne("SELECT COALESCE(MAX(position), -1) + 1 AS next FROM chat_folders")
+    static func save(_ folder: ChatFolder, db: any SQLWriter) throws {
         try db.execute(
             """
             INSERT INTO chat_folders (id, title, emoji, color, position, categories, exclusions)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(position), -1) + 1 FROM chat_folders), ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                title = excluded.title,
+                emoji = excluded.emoji,
+                color = excluded.color,
+                categories = excluded.categories,
+                exclusions = excluded.exclusions
             """,
             [
                 .text(folder.id),
                 .text(folder.name),
                 SQLValue(folder.emoji),
                 SQLValue(folder.color),
-                SQLValue(position?["next"].int ?? 0),
                 SQLValue(mask(folder.categories)),
                 SQLValue(mask(folder.exclusions)),
             ]
         )
-        try replacePeers(of: folder, db: db)
-    }
-
-    static func update(_ folder: ChatFolder, db: any SQLWriter) throws {
-        try db.execute(
-            """
-            UPDATE chat_folders SET title = ?, emoji = ?, color = ?, categories = ?, exclusions = ?
-            WHERE id = ?
-            """,
-            [
-                .text(folder.name),
-                SQLValue(folder.emoji),
-                SQLValue(folder.color),
-                SQLValue(mask(folder.categories)),
-                SQLValue(mask(folder.exclusions)),
-                .text(folder.id),
-            ]
-        )
-        guard db.changes == 1 else {
-            throw ChatFolderError.unknownFolder
-        }
-
         try replacePeers(of: folder, db: db)
     }
 
@@ -134,6 +116,5 @@ enum ChatFolderRecords {
 
 public enum ChatFolderError: Error {
     case emptyName
-    case unknownFolder
     case invalidOrder
 }
