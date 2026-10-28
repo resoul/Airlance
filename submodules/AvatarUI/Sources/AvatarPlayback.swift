@@ -27,6 +27,7 @@ public final class AvatarPlayback {
     private var participants: [ObjectIdentifier: Entry] = [:]
     private var nextOrder = 0
     private var isActive = true
+    private var isUpdateScheduled = false
     private var observers: [any NSObjectProtocol] = []
 
     private init() {
@@ -67,6 +68,18 @@ public final class AvatarPlayback {
     }
 
     func update() {
+        guard !isUpdateScheduled else {
+            return
+        }
+
+        isUpdateScheduled = true
+        Task { @MainActor in
+            self.isUpdateScheduled = false
+            self.performUpdate()
+        }
+    }
+
+    private func performUpdate() {
         participants = participants.filter { _, entry in
             entry.value != nil
         }

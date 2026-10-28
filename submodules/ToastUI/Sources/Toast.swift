@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-public struct Toast {
+public struct Toast: Sendable {
     public enum Edge: Sendable {
         case top
         case bottom
@@ -19,7 +19,7 @@ public struct Toast {
     public let edge: Edge
     public let inset: CGFloat
     public let duration: TimeInterval
-    public let action: (@MainActor () -> Void)?
+    public let action: (@MainActor @Sendable () -> Void)?
 
     public init(
         _ text: String,
@@ -28,7 +28,7 @@ public struct Toast {
         edge: Edge = .top,
         inset: CGFloat = 0,
         duration: TimeInterval? = nil,
-        action: (@MainActor () -> Void)? = nil
+        action: (@MainActor @Sendable () -> Void)? = nil
     ) {
         self.text = text
         self.symbol = symbol

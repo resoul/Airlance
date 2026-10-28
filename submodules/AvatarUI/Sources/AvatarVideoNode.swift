@@ -17,6 +17,13 @@ final class AvatarVideoNode: ASDisplayNode {
     private var generation = 0
     private var allowed = false
     private(set) var failed = false
+    var contentCornerRadius: CGFloat? {
+        didSet {
+            if contentCornerRadius != oldValue {
+                setNeedsLayout()
+            }
+        }
+    }
 
     override func didLoad() {
         super.didLoad()
@@ -38,7 +45,7 @@ final class AvatarVideoNode: ASDisplayNode {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         playerLayer.frame = bounds
-        playerLayer.cornerRadius = min(bounds.width, bounds.height) / 2
+        playerLayer.cornerRadius = contentCornerRadius ?? min(bounds.width, bounds.height) / 2
         CATransaction.commit()
     }
 

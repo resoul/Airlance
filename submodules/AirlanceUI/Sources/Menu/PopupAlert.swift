@@ -31,7 +31,14 @@ public final class PopupAlert: UIView {
     private let cancel: PopupAlertAction?
     private var isClosing = false
 
-    private init(title: String?, message: String?, actions: [PopupAlertAction], theme: AppTheme, frame: CGRect) {
+    private init(
+        header: UIView?,
+        title: String?,
+        message: String?,
+        actions: [PopupAlertAction],
+        theme: AppTheme,
+        frame: CGRect
+    ) {
         cancel = actions.first { action in
             action.style == .cancel
         }
@@ -47,7 +54,8 @@ public final class PopupAlert: UIView {
         card.layer.cornerCurve = .continuous
         card.clipsToBounds = true
         addSubview(card)
-        let textHeight = addText(title: title, message: message, theme: theme)
+        let headerHeight = addHeader(header)
+        let textHeight = addText(title: title, message: message, theme: theme, top: headerHeight)
         let ordered = actions.filter { action in
             action.style != .cancel
         } + actions.filter { action in
@@ -68,6 +76,7 @@ public final class PopupAlert: UIView {
     }
 
     public static func show(
+        header: UIView? = nil,
         title: String?,
         message: String?,
         actions: [PopupAlertAction],
@@ -75,7 +84,14 @@ public final class PopupAlert: UIView {
         in view: UIView
     ) {
         let container: UIView = view.window ?? view
-        let alert = PopupAlert(title: title, message: message, actions: actions, theme: theme, frame: container.bounds)
+        let alert = PopupAlert(
+            header: header,
+            title: title,
+            message: message,
+            actions: actions,
+            theme: theme,
+            frame: container.bounds
+        )
         container.addSubview(alert)
         alert.present()
     }
@@ -94,12 +110,23 @@ public final class PopupAlert: UIView {
         }
     }
 
-    private func addText(title: String?, message: String?, theme: AppTheme) -> CGFloat {
-        guard title != nil || message != nil else {
+    private func addHeader(_ header: UIView?) -> CGFloat {
+        guard let header else {
             return 0
         }
 
-        var y = Self.padding
+        header.frame.origin = CGPoint(x: (Self.width - header.bounds.width) / 2, y: Self.padding)
+        card.addSubview(header)
+
+        return header.frame.maxY
+    }
+
+    private func addText(title: String?, message: String?, theme: AppTheme, top: CGFloat) -> CGFloat {
+        guard title != nil || message != nil else {
+            return top > 0 ? top + Self.padding : 0
+        }
+
+        var y = top + (top > 0 ? 12 : Self.padding)
         let width = Self.width - Self.padding * 2
         for (text, isTitle) in [(title, true), (message, false)] {
             guard let text else {

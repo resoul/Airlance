@@ -10,8 +10,8 @@ final class AvatarImageLoader: Sendable {
         cache.image(for: key)
     }
 
-    func placeholder(for descriptor: AvatarDescriptor, pixelSize: Int) async -> UIImage {
-        let key = Self.placeholderKey(descriptor, pixelSize: pixelSize)
+    func placeholder(for descriptor: AvatarDescriptor, pixelSize: Int, rounded: Bool) async -> UIImage {
+        let key = Self.placeholderKey(descriptor, pixelSize: pixelSize, rounded: rounded)
         if let cached = cache.image(for: key) {
             return cached
         }
@@ -19,15 +19,15 @@ final class AvatarImageLoader: Sendable {
         let initials = descriptor.initials
         let colors = descriptor.colors
         let image = await Task.detached(priority: .userInitiated) {
-            AvatarRenderer.placeholder(initials: initials, colors: colors, pixelSize: pixelSize)
+            AvatarRenderer.placeholder(initials: initials, colors: colors, pixelSize: pixelSize, rounded: rounded)
         }.value
         cache.store(image, for: key)
 
         return image
     }
 
-    func photo(_ image: AvatarImage, pixelSize: Int) async -> UIImage? {
-        let key = Self.photoKey(image, pixelSize: pixelSize)
+    func photo(_ image: AvatarImage, pixelSize: Int, rounded: Bool) async -> UIImage? {
+        let key = Self.photoKey(image, pixelSize: pixelSize, rounded: rounded)
         if let cached = cache.image(for: key) {
             return cached
         }
@@ -35,7 +35,7 @@ final class AvatarImageLoader: Sendable {
         let rendered = await Task.detached(priority: .userInitiated) {
             await image.load().flatMap { data in
                 Self.decode(data, pixelSize: pixelSize).map { decoded in
-                    AvatarRenderer.photo(decoded, pixelSize: pixelSize)
+                    AvatarRenderer.photo(decoded, pixelSize: pixelSize, rounded: rounded)
                 }
             }
         }.value
@@ -46,12 +46,12 @@ final class AvatarImageLoader: Sendable {
         return rendered
     }
 
-    static func placeholderKey(_ descriptor: AvatarDescriptor, pixelSize: Int) -> String {
-        "initials|\(descriptor.id)|\(descriptor.initials)|\(pixelSize)"
+    static func placeholderKey(_ descriptor: AvatarDescriptor, pixelSize: Int, rounded: Bool) -> String {
+        "initials|\(descriptor.id)|\(descriptor.initials)|\(pixelSize)|\(rounded ? "circle" : "square")"
     }
 
-    static func photoKey(_ image: AvatarImage, pixelSize: Int) -> String {
-        "photo|\(image.key)|\(pixelSize)"
+    static func photoKey(_ image: AvatarImage, pixelSize: Int, rounded: Bool) -> String {
+        "photo|\(image.key)|\(pixelSize)|\(rounded ? "circle" : "square")"
     }
 
     private static func decode(_ data: Data, pixelSize: Int) -> CGImage? {
