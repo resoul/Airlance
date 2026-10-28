@@ -1,13 +1,15 @@
 import UIKit
 
 enum AvatarRenderer {
-    static func placeholder(initials: String, colors: [UIColor], pixelSize: Int) -> UIImage {
+    static func placeholder(initials: String, colors: [UIColor], pixelSize: Int, rounded: Bool) -> UIImage {
         let side = CGFloat(pixelSize)
         let bounds = CGRect(x: 0, y: 0, width: side, height: side)
 
         return renderer(side: side).image { context in
             let cg = context.cgContext
-            UIBezierPath(ovalIn: bounds).addClip()
+            if rounded {
+                UIBezierPath(ovalIn: bounds).addClip()
+            }
 
             let cgColors = colors.map(\.cgColor) as CFArray
             if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: cgColors, locations: nil) {
@@ -26,7 +28,7 @@ enum AvatarRenderer {
         }
     }
 
-    static func photo(_ image: CGImage, pixelSize: Int) -> UIImage {
+    static func photo(_ image: CGImage, pixelSize: Int, rounded: Bool) -> UIImage {
         let side = CGFloat(pixelSize)
         let bounds = CGRect(x: 0, y: 0, width: side, height: side)
         let width = CGFloat(image.width)
@@ -36,7 +38,9 @@ enum AvatarRenderer {
         let origin = CGPoint(x: (side - drawSize.width) / 2, y: (side - drawSize.height) / 2)
 
         return renderer(side: side).image { _ in
-            UIBezierPath(ovalIn: bounds).addClip()
+            if rounded {
+                UIBezierPath(ovalIn: bounds).addClip()
+            }
             UIImage(cgImage: image).draw(in: CGRect(origin: origin, size: drawSize))
         }
     }

@@ -6,6 +6,21 @@ public final class AvatarNode: ASDisplayNode {
     private static let pixelSteps = [64, 96, 128, 192, 256, 384, 512, 1024]
 
     public private(set) var storyRing: AvatarStoryRing?
+    public var isOnScreen = true {
+        didSet {
+            if isOnScreen != oldValue {
+                AvatarPlayback.shared.update()
+            }
+        }
+    }
+    public var contentCornerRadius: CGFloat? {
+        didSet {
+            if (contentCornerRadius == nil) != (oldValue == nil) {
+                reset()
+            }
+            setNeedsLayout()
+        }
+    }
 
     let imageNode = ASImageNode()
     var videoNode: AvatarVideoNode?
@@ -98,12 +113,20 @@ public final class AvatarNode: ASDisplayNode {
     override public func layout() {
         super.layout()
         let content = contentFrame
+        let radius = contentCornerRadius ?? min(content.width, content.height) / 2
         imageNode.frame = content
-        imageNode.cornerRadius = min(content.width, content.height) / 2
+        imageNode.cornerRadius = radius
+        imageNode.clipsToBounds = !isRounded
+        imageNode.contentMode = isRounded ? .scaleToFill : .scaleAspectFill
         imageNode.backgroundColor = imageNode.image == nil ? descriptor?.colors.last : nil
         videoNode?.frame = content
+        videoNode?.contentCornerRadius = radius
         ringNode?.frame = bounds
         render()
+    }
+
+    private var isRounded: Bool {
+        contentCornerRadius == nil
     }
 
     private func reset() {
@@ -130,7 +153,7 @@ public final class AvatarNode: ASDisplayNode {
 
         renderedPixels = pixels
         if let image = descriptor.image, let cached = AvatarImageLoader.shared.cached(
-            AvatarImageLoader.photoKey(image, pixelSize: pixels)
+            AvatarImageLoader.photoKey(image, pixelSize: pixels, rounded: isRounded)
         ) {
             hasPhoto = true
             show(cached)
@@ -139,7 +162,7 @@ public final class AvatarNode: ASDisplayNode {
         }
 
         if !hasPhoto, let cached = AvatarImageLoader.shared.cached(
-            AvatarImageLoader.placeholderKey(descriptor, pixelSize: pixels)
+            AvatarImageLoader.placeholderKey(descriptor, pixelSize: pixels, rounded: isRounded)
         ) {
             show(cached)
         }
@@ -152,8 +175,9 @@ public final class AvatarNode: ASDisplayNode {
 
     private func load(_ descriptor: AvatarDescriptor, pixels: Int) async {
         let loader = AvatarImageLoader.shared
+        let rounded = isRounded
         if imageNode.image == nil {
-            let placeholder = await loader.placeholder(for: descriptor, pixelSize: pixels)
+            let placeholder = await loader.placeholder(for: descriptor, pixelSize: pixels, rounded: rounded)
             guard !Task.isCancelled, self.descriptor == descriptor, !hasPhoto else {
                 return
             }
@@ -161,11 +185,15 @@ public final class AvatarNode: ASDisplayNode {
             show(placeholder)
         }
 
-        guard let image = descriptor.image, let photo = await loader.photo(image, pixelSize: pixels) else {
+        guard let image = descriptor.image, let photo = await loader.photo(
+            image,
+            pixelSize: pixels,
+            rounded: rounded
+        ) else {
             return
         }
 
-        guard !Task.isCancelled, self.descriptor?.image == image else {
+        guard !Task.isCancelled, self.descriptor?.image == image, isRounded == rounded else {
             return
         }
 

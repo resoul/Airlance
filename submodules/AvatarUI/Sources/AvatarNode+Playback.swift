@@ -3,7 +3,11 @@ import UIKit
 
 extension AvatarNode: AvatarPlaybackParticipant {
     var wantsPlayback: Bool {
-        isInHierarchy && presentation.playbackPriority > 0 && descriptor?.video != nil && videoNode?.failed != true
+        guard isInHierarchy, isOnScreen, presentation.playbackPriority > 0 else {
+            return false
+        }
+
+        return descriptor?.video != nil && videoNode?.failed != true
     }
 
     var playbackPriority: Int {
