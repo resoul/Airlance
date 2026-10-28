@@ -1,0 +1,13 @@
+load("@rules_swift//swift:swift_library.bzl", "swift_library")
+
+swift_library(
+    name = "ChatFolders",
+    module_name = "ChatFolders",
+    srcs = glob(["Sources/**/*.swift"]),
+    copts = ["-swift-version", "6"],
+    deps = [
+        "//submodules/Database:DatabaseAPI",
+        "//submodules/Observers",
+    ],
+    visibility = ["//visibility:public"],
+)
