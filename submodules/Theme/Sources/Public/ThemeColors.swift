@@ -6,6 +6,7 @@ public struct ThemeColors: Sendable {
     public let textPrimary: UIColor
     public let textSecondary: UIColor
     public let accent: UIColor
+    public let onAccent: UIColor
     public let separator: UIColor
     public let destructive: UIColor
 }

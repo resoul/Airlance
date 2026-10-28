@@ -8,6 +8,7 @@ public final class ThemeStore {
 
     private let storage: any KeyValueStore
     private let observers = ObserverList<AppTheme>()
+    private let settingsObservers = ObserverList<ThemeSettings>()
     private var systemTraits: SystemTraits
     private var settingsObservation: ObservationToken?
 
@@ -29,6 +30,15 @@ public final class ThemeStore {
     public func observe(_ onChange: @escaping @MainActor @Sendable (AppTheme) -> Void) -> ObservationToken {
         let token = observers.add(onChange)
         onChange(theme)
+
+        return token
+    }
+
+    public func observeSettings(
+        _ onChange: @escaping @MainActor @Sendable (ThemeSettings) -> Void
+    ) -> ObservationToken {
+        let token = settingsObservers.add(onChange)
+        onChange(settings)
 
         return token
     }
@@ -66,6 +76,7 @@ public final class ThemeStore {
         }
 
         self.settings = settings
+        settingsObservers.notify(settings)
         rebuildTheme()
     }
 
