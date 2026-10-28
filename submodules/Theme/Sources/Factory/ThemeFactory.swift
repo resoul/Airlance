@@ -16,6 +16,7 @@ enum ThemeFactory {
             textPrimary: base.textPrimary,
             textSecondary: base.textSecondary,
             accent: AccentPalette.color(for: accent, appearance: appearance),
+            onAccent: .white,
             separator: base.separator,
             destructive: base.destructive
         )
