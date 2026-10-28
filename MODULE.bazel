@@ -22,6 +22,28 @@ exports_files(["GRDB/PrivacyInfo.xcprivacy", "LICENSE"])
 )
 
 http_archive(
+    name = "flatbuffers_sources",
+    urls = ["https://github.com/google/flatbuffers/archive/refs/tags/v25.12.19.tar.gz"],
+    sha256 = "f81c3162b1046fe8b84b9a0dbdd383e24fdbcf88583b9cb6028f90d04d90696a",
+    strip_prefix = "flatbuffers-25.12.19",
+)
+
+http_archive(
+    name = "flatbuffers_swift_sources",
+    urls = ["https://github.com/google/flatbuffers/archive/refs/tags/v25.12.19.tar.gz"],
+    sha256 = "f81c3162b1046fe8b84b9a0dbdd383e24fdbcf88583b9cb6028f90d04d90696a",
+    strip_prefix = "flatbuffers-25.12.19/swift",
+    build_file_content = """
+filegroup(
+    name = "swift_sources",
+    srcs = glob(["Sources/FlatBuffers/*.swift", "Sources/FlatBuffers/Vectors/*.swift", "Sources/Common/*.swift"]),
+    visibility = ["//visibility:public"],
+)
+exports_files(["LICENSE"])
+""",
+)
+
+http_archive(
     name = "codec_pkgconf",
     urls = ["https://distfiles.ariadne.space/pkgconf/pkgconf-2.5.1.tar.xz"],
     sha256 = "cd05c9589b9f86ecf044c10a2269822bc9eb001eced2582cfffd658b0a50c243",

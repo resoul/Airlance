@@ -5,8 +5,10 @@ SIMULATOR_CONFIG ?= simulator
 SIMULATOR ?=
 IOS_VERSION ?=
 DEVICE ?=
+SIMULATOR_MODE ?= dbg
+DEVICE_MODE ?= opt
 
-export BAZEL SIMULATOR_CONFIG SIMULATOR IOS_VERSION DEVICE
+export BAZEL SIMULATOR_CONFIG SIMULATOR IOS_VERSION DEVICE SIMULATOR_MODE DEVICE_MODE
 
 .PHONY: help simulator device build-simulator build-device lint clean clean-all list-simulators list-devices check-signing
 
@@ -23,10 +25,11 @@ help:
 	  'make list-devices      List connected devices' \
 	  '' \
 	  'Optional: SIMULATOR="iPhone 17" IOS_VERSION=27.0 DEVICE="device UDID"' \
+	  'Build mode: SIMULATOR_MODE=dbg (default) DEVICE_MODE=opt (default); dbg, opt or fastbuild' \
 	  'Override: BAZEL=bazel'
 
 simulator:
-	@set -- "$$BAZEL" run //:Airlance "--config=$$SIMULATOR_CONFIG"; \
+	@set -- "$$BAZEL" run //:Airlance "--config=$$SIMULATOR_CONFIG" "--compilation_mode=$$SIMULATOR_MODE"; \
 	if [ -n "$$SIMULATOR" ]; then \
 	  set -- "$$@" "--@rules_apple//apple/build_settings:ios_simulator_device=$$SIMULATOR"; \
 	fi; \
@@ -36,17 +39,17 @@ simulator:
 	exec env BAZEL_APPLE_PREFER_PERSISTENT_SIMS=1 "$$@"
 
 device: check-signing
-	@set -- "$$BAZEL" run //:Airlance --config=device; \
+	@set -- "$$BAZEL" run //:Airlance --config=device "--compilation_mode=$$DEVICE_MODE"; \
 	if [ -n "$$DEVICE" ]; then \
 	  set -- "$$@" "--@rules_apple//apple/build_settings:ios_device=$$DEVICE"; \
 	fi; \
 	exec "$$@"
 
 build-simulator:
-	@"$$BAZEL" build //:Airlance "--config=$$SIMULATOR_CONFIG"
+	@"$$BAZEL" build //:Airlance "--config=$$SIMULATOR_CONFIG" "--compilation_mode=$$SIMULATOR_MODE"
 
 build-device: check-signing
-	@"$$BAZEL" build //:Airlance --config=device
+	@"$$BAZEL" build //:Airlance --config=device "--compilation_mode=$$DEVICE_MODE"
 
 lint:
 	@bash tools/swiftlint.sh lint --config .swiftlint.yml --strict --cache-path cache/swiftlint/lint-cache

@@ -90,6 +90,7 @@ function_body_length:
 cyclomatic_complexity:
   warning: 10
   error: 10
+  ignores_case_statements: true
 
 multiline_arguments:
   only_enforce_after_first_closure_on_first_line: true
