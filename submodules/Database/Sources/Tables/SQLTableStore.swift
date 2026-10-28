@@ -23,6 +23,7 @@ final class SQLTableStore: TableStore {
                 }
             }
         }
+
         try migrator.migrate(database)
     }
 
@@ -48,6 +49,7 @@ final class SQLTableStore: TableStore {
 
     func observe<Value: Sendable & Equatable>(
         _ fetch: @escaping @Sendable (any SQLReader) throws -> Value,
+        onError: @escaping @MainActor (StorageError) -> Void,
         onChange: @escaping @MainActor (Value) -> Void
     ) -> ObservationToken {
         let observation = ValueObservation
@@ -60,6 +62,7 @@ final class SQLTableStore: TableStore {
             scheduling: .immediate,
             onError: { error in
                 Self.logger.error("Observation failed: \(String(describing: error), privacy: .public)")
+                onError(StorageError.readFailed(underlying: error))
             },
             onChange: onChange
         )

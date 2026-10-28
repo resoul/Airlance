@@ -60,6 +60,7 @@ public protocol TableStore: AnyObject {
 
     func observe<Value: Sendable & Equatable>(
         _ fetch: @escaping @Sendable (any SQLReader) throws -> Value,
+        onError: @escaping @MainActor (StorageError) -> Void,
         onChange: @escaping @MainActor (Value) -> Void
     ) -> ObservationToken
 }
