@@ -1,21 +1,22 @@
+import AirlanceUI
 import Localization
 import Observers
 import Theme
 
-struct PresentationData: Sendable {
+struct PresentationData: ThemedPresentation {
     let theme: AppTheme
     let strings: AppStrings
 }
 
 @MainActor
-final class PresentationContext {
-    private(set) var data: PresentationData
+final class PresentationContext: PresentationSource {
+    private(set) var presentation: PresentationData
 
     private let observers = ObserverList<PresentationData>()
     private var observations: [ObservationToken] = []
 
     init(themeStore: ThemeStore, localizationStore: LocalizationStore) {
-        data = PresentationData(theme: themeStore.theme, strings: AppStrings(pack: localizationStore.pack))
+        presentation = PresentationData(theme: themeStore.theme, strings: AppStrings(pack: localizationStore.pack))
 
         observations = [
             themeStore.observe { [weak self] theme in
@@ -29,29 +30,29 @@ final class PresentationContext {
 
     func observe(_ onChange: @escaping @MainActor @Sendable (PresentationData) -> Void) -> ObservationToken {
         let token = observers.add(onChange)
-        onChange(data)
+        onChange(presentation)
 
         return token
     }
 
     private func update(theme: AppTheme) {
-        guard theme !== data.theme else {
+        guard theme !== presentation.theme else {
             return
         }
 
-        publish(PresentationData(theme: theme, strings: data.strings))
+        publish(PresentationData(theme: theme, strings: presentation.strings))
     }
 
     private func update(pack: LanguagePack) {
-        guard pack !== data.strings.pack else {
+        guard pack !== presentation.strings.pack else {
             return
         }
 
-        publish(PresentationData(theme: data.theme, strings: AppStrings(pack: pack)))
+        publish(PresentationData(theme: presentation.theme, strings: AppStrings(pack: pack)))
     }
 
-    private func publish(_ data: PresentationData) {
-        self.data = data
-        observers.notify(data)
+    private func publish(_ presentation: PresentationData) {
+        self.presentation = presentation
+        observers.notify(presentation)
     }
 }

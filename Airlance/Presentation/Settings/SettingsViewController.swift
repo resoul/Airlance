@@ -1,3 +1,6 @@
+@preconcurrency import AsyncDisplayKit
+import LiquidUI
+import ListUI
 import Localization
 import Observers
 import Theme
@@ -9,186 +12,154 @@ struct SettingsDependencies {
     let localizationStore: LocalizationStore
 }
 
-final class SettingsViewController: UIViewController {
+final class SettingsViewController: ScreenViewController {
     private let dependencies: SettingsDependencies
-    private let languageSelections: [LanguageSelection]
+    private let router: AppRouter
+    private let listView = ListView(theme: ListTheme())
+    private let header = SettingsHeaderView()
+    private var observations: [ObservationToken] = []
 
-    private let appearanceLabel = UILabel()
-    private let accentLabel = UILabel()
-    private let fontLabel = UILabel()
-    private let languageLabel = UILabel()
-    private let modeControl: UISegmentedControl
-    private let accentControl: UISegmentedControl
-    private let fontControl: UISegmentedControl
-    private let languageControl: UISegmentedControl
-    private var presentationObservation: ObservationToken?
-
-    private var sectionLabels: [UILabel] {
-        [appearanceLabel, accentLabel, fontLabel, languageLabel]
-    }
-
-    private var controls: [UISegmentedControl] {
-        [modeControl, accentControl, fontControl, languageControl]
-    }
-
-    init(dependencies: SettingsDependencies) {
+    init(dependencies: SettingsDependencies, router: AppRouter) {
         self.dependencies = dependencies
-        languageSelections = [.system] + dependencies.localizationStore.languages.map(LanguageSelection.language)
-        modeControl = Self.makeControl(segments: ThemeMode.allCases.count)
-        accentControl = Self.makeControl(segments: ThemeAccent.allCases.count)
-        fontControl = Self.makeControl(segments: ThemeFont.allCases.count)
-        languageControl = Self.makeControl(segments: languageSelections.count)
-        super.init(nibName: nil, bundle: nil)
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) is not supported")
+        self.router = router
+        super.init(presentationSource: dependencies.presentationContext)
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         navigationItem.largeTitleDisplayMode = .never
-        setUpViews()
-        showSettings()
+        listView.headerView = header
+        listView.headerHeight = SettingsHeaderView.height
+        view.addSubnode(listView)
+        setContentScrollView(listView.scrollView, for: .bottom)
 
-        presentationObservation = dependencies.presentationContext.observe { [weak self] data in
-            self?.apply(data)
-        }
+        observations = [
+            dependencies.themeStore.observeSettings { [weak self] _ in
+                self?.render()
+            },
+            dependencies.localizationStore.observeSettings { [weak self] _ in
+                self?.render()
+            },
+        ]
     }
 
-    private static func makeControl(segments: Int) -> UISegmentedControl {
-        UISegmentedControl(items: Array(repeating: "", count: segments))
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        listView.frame = view.bounds
+        listView.contentInsets = view.safeAreaInsets
     }
 
-    private func setUpViews() {
-        modeControl.addTarget(self, action: #selector(modeChanged), for: .valueChanged)
-        accentControl.addTarget(self, action: #selector(accentChanged), for: .valueChanged)
-        fontControl.addTarget(self, action: #selector(fontChanged), for: .valueChanged)
-        languageControl.addTarget(self, action: #selector(languageChanged), for: .valueChanged)
+    override func apply(_ presentation: PresentationData) {
+        super.apply(presentation)
+        let theme = presentation.theme
 
-        let stack = UIStackView(arrangedSubviews: [
-            makeSection(label: appearanceLabel, control: modeControl),
-            makeSection(label: accentLabel, control: accentControl),
-            makeSection(label: fontLabel, control: fontControl),
-            makeSection(label: languageLabel, control: languageControl),
-        ])
-        stack.axis = .vertical
-        stack.spacing = 24
-        stack.alignment = .center
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
-
-        NSLayoutConstraint.activate([
-            stack.centerYAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerYAnchor),
-            stack.leadingAnchor.constraint(equalTo: view.layoutMarginsGuide.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: view.layoutMarginsGuide.trailingAnchor),
-        ])
+        navigationItem.title = presentation.strings.settingsTitle
+        header.apply(presentation)
+        listView.theme = ListTheme(
+            background: theme.colors.background,
+            rowBackground: theme.colors.surface,
+            primary: theme.colors.textPrimary,
+            secondary: theme.colors.textSecondary,
+            separator: theme.colors.separator,
+            accent: theme.colors.accent,
+            titleFont: theme.fonts.body,
+            subtitleFont: theme.fonts.subheadline
+        )
+        let isDark = theme.appearance == .dark
+        navigationItem.rightBarButtonItem = UIBarButtonItem(
+            image: UIImage(systemName: isDark ? "sun.max.fill" : "moon.fill"),
+            primaryAction: UIAction { [weak self] _ in
+                self?.toggleTheme(isDark: isDark)
+            }
+        )
+        render()
     }
 
-    private func makeSection(label: UILabel, control: UISegmentedControl) -> UIStackView {
-        let section = UIStackView(arrangedSubviews: [label, control])
-        section.axis = .vertical
-        section.spacing = 8
-        section.alignment = .center
-
-        return section
-    }
-
-    private func showSettings() {
-        let theme = dependencies.themeStore.settings
-        let language = dependencies.localizationStore.settings
-
-        modeControl.selectedSegmentIndex = ThemeMode.allCases.firstIndex(of: theme.mode) ?? 0
-        accentControl.selectedSegmentIndex = ThemeAccent.allCases.firstIndex(of: theme.accent) ?? 0
-        fontControl.selectedSegmentIndex = ThemeFont.allCases.firstIndex(of: theme.font) ?? 0
-        languageControl.selectedSegmentIndex = languageSelections.firstIndex(of: language.selection) ?? 0
-    }
-
-    private func apply(_ data: PresentationData) {
-        apply(data.theme)
-        apply(data.strings)
-    }
-
-    private func apply(_ theme: AppTheme) {
-        let colors = theme.colors
-        let fonts = theme.fonts
-
-        view.backgroundColor = colors.background
-
-        for label in sectionLabels {
-            label.font = fonts.subheadline
-            label.textColor = colors.textSecondary
+    private func toggleTheme(isDark: Bool) {
+        let store = dependencies.themeStore
+        let reveal = view.window.map { window in
+            LiquidThemeReveal.cover(window, from: themeTogglePoint(in: window))
         }
 
-        for control in controls {
-            control.selectedSegmentTintColor = colors.accent
-            control.setTitleTextAttributes([.font: fonts.subheadline], for: .normal)
-        }
-    }
-
-    private func apply(_ strings: AppStrings) {
-        navigationItem.title = strings.settingsTitle
-        appearanceLabel.text = strings.settingsAppearance
-        accentLabel.text = strings.settingsAccent
-        fontLabel.text = strings.settingsFont
-        languageLabel.text = strings.settingsLanguage
-
-        setTitles(ThemeMode.allCases.map(strings.title(for:)), of: modeControl)
-        setTitles(ThemeAccent.allCases.map(strings.title(for:)), of: accentControl)
-        setTitles(ThemeFont.allCases.map(strings.title(for:)), of: fontControl)
-        setTitles(languageSelections.map(strings.title(for:)), of: languageControl)
-    }
-
-    private func setTitles(_ titles: [String], of control: UISegmentedControl) {
-        for (index, title) in titles.enumerated() {
-            control.setTitle(title, forSegmentAt: index)
-        }
-    }
-
-    private func perform(_ change: @escaping @MainActor () async throws -> Void) {
         Task {
-            do {
-                try await change()
-            } catch {
-                showSettings()
+            try? await store.setMode(isDark ? .light : .dark)
+            reveal?.reveal()
+        }
+    }
+
+    private func themeTogglePoint(in window: UIWindow) -> CGPoint {
+        guard let bar = navigationController?.navigationBar else {
+            return CGPoint(x: window.bounds.maxX - 36, y: window.safeAreaInsets.top + 22)
+        }
+
+        return bar.convert(CGPoint(x: bar.bounds.maxX - 36, y: bar.bounds.midY), to: window)
+    }
+
+    private func render() {
+        guard isViewLoaded else {
+            return
+        }
+
+        let sections = Dictionary(grouping: SettingsEntry.allCases, by: \.section)
+        var items: [any ListItem] = []
+        for section in sections.keys.sorted() {
+            let entries = sections[section] ?? []
+            items.append(SpacerItem(id: "spacer-\(section)", height: section == 0 ? 8 : 28))
+            items += entries.enumerated().map { index, entry in
+                row(entry, position: position(index, count: entries.count))
             }
         }
+        items.append(SpacerItem(id: "spacer-bottom", height: 24))
+        listView.apply(items: items, animated: false)
     }
 
-    @objc
-    private func modeChanged() {
-        let mode = ThemeMode.allCases[modeControl.selectedSegmentIndex]
+    private func row(_ entry: SettingsEntry, position: CardPosition) -> SettingsRowItem {
+        let router = router
+        var action: (@MainActor () -> Void)?
+        if let route = entry.route {
+            action = {
+                router.open(route)
+            }
+        }
 
-        perform { [dependencies] in
-            try await dependencies.themeStore.setMode(mode)
+        return SettingsRowItem(
+            id: entry.rawValue,
+            title: entry.title(presentation.strings),
+            symbol: entry.symbol,
+            color: entry.color,
+            detail: detail(for: entry),
+            position: position,
+            onSelect: action
+        )
+    }
+
+    private func detail(for entry: SettingsEntry) -> String? {
+        let strings = presentation.strings
+
+        switch entry {
+        case .devices:
+            return "3"
+        case .passcode:
+            return strings.settingsOff
+        case .appearance:
+            return strings.title(for: dependencies.themeStore.settings.mode)
+        case .language:
+            return strings.title(for: dependencies.localizationStore.settings.selection)
+        default:
+            return nil
         }
     }
 
-    @objc
-    private func accentChanged() {
-        let accent = ThemeAccent.allCases[accentControl.selectedSegmentIndex]
-
-        perform { [dependencies] in
-            try await dependencies.themeStore.setAccent(accent)
-        }
-    }
-
-    @objc
-    private func fontChanged() {
-        let font = ThemeFont.allCases[fontControl.selectedSegmentIndex]
-
-        perform { [dependencies] in
-            try await dependencies.themeStore.setFont(font)
-        }
-    }
-
-    @objc
-    private func languageChanged() {
-        let selection = languageSelections[languageControl.selectedSegmentIndex]
-
-        perform { [dependencies] in
-            try await dependencies.localizationStore.select(selection)
+    private func position(_ index: Int, count: Int) -> CardPosition {
+        switch (index == 0, index == count - 1) {
+        case (true, true):
+            .single
+        case (true, false):
+            .first
+        case (false, true):
+            .last
+        case (false, false):
+            .middle
         }
     }
 }

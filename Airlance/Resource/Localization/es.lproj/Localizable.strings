@@ -145,6 +145,9 @@
 "chats.action.mute" = "Silenciar";
 "chats.action.unmute" = "Activar sonido";
 "chats.action.delete" = "Eliminar";
+"chats.toast.muted" = "Notificaciones desactivadas";
+"chats.toast.unmuted" = "Notificaciones activadas";
+"chats.toast.deleted" = "Chat eliminado";
 "chats.category.contacts" = "Contactos";
 "chats.category.nonContacts" = "No contactos";
 "chats.category.groups" = "Grupos";

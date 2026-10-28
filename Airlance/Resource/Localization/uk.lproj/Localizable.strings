@@ -145,6 +145,9 @@
 "chats.action.mute" = "Без звуку";
 "chats.action.unmute" = "Зі звуком";
 "chats.action.delete" = "Видалити";
+"chats.toast.muted" = "Сповіщення вимкнено";
+"chats.toast.unmuted" = "Сповіщення увімкнено";
+"chats.toast.deleted" = "Чат видалено";
 "chats.category.contacts" = "Контакти";
 "chats.category.nonContacts" = "Не контакти";
 "chats.category.groups" = "Групи";

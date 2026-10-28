@@ -31,10 +31,19 @@ swift_library(
     name = "AirlanceSources",
     srcs = glob(["Airlance/**/*.swift"]) + [":AppStringsSource"],
     module_name = "Airlance",
+    copts = ["-swift-version", "6"],
     deps = [
+        "//submodules/AirlanceUI",
         "//submodules/AsyncDisplayKit",
+        "//submodules/AvatarUI",
+        "//submodules/ChatFolders",
         "//submodules/Database",
         "//submodules/Database:DatabaseAPI",
+        "//submodules/DeviceContacts",
+        "//submodules/Haptics",
+        "//submodules/Keychain",
+        "//submodules/LiquidUI",
+        "//submodules/ListUI",
         "//submodules/Localization",
         "//submodules/Observers",
         "//submodules/Permissions",
@@ -46,7 +55,9 @@ swift_library(
         "//submodules/Permissions:PermissionsAPI",
         "//submodules/Permissions:PhotosPermission",
         "//submodules/Routing",
+        "//submodules/Stories",
         "//submodules/Theme",
+        "//submodules/ToastUI",
     ],
 )
 
@@ -55,7 +66,7 @@ ios_application(
     bundle_id = "org.airlance.Contact",
     families = ["iphone", "ipad"],
     infoplists = ["Airlance/Resource/Info.plist"],
-    resources = localization_files,
+    resources = localization_files + glob(["Airlance/Resource/Media/*"]),
     minimum_os_version = "16.0",
     entitlements = select({
         ":ios_device": ":AirlanceEntitlements",
