@@ -2,6 +2,7 @@ public struct RouteTransition<RouteType: Route>: Sendable {
     public let dismissCount: Int
     public let update: RouteLayerUpdate<RouteType>?
     public let present: [RouteLayer<RouteType>]
+    public let layers: [RouteLayer<RouteType>]
 
     static func between(_ current: [RouteType], _ target: [RouteType]) -> RouteTransition {
         let currentLayers = RouteLayer.layers(of: current)
@@ -19,14 +20,16 @@ public struct RouteTransition<RouteType: Route>: Sendable {
             return RouteTransition(
                 dismissCount: currentLayers.count - equal,
                 update: nil,
-                present: Array(targetLayers[equal...])
+                present: Array(targetLayers[equal...]),
+                layers: targetLayers
             )
         }
 
         return RouteTransition(
             dismissCount: currentLayers.count - equal - 1,
             update: RouteLayerUpdate(index: equal, current: currentLayers[equal], target: targetLayers[equal]),
-            present: Array(targetLayers[(equal + 1)...])
+            present: Array(targetLayers[(equal + 1)...]),
+            layers: targetLayers
         )
     }
 }

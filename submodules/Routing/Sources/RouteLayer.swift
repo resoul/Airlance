@@ -5,10 +5,10 @@ public struct RouteLayer<RouteType: Route>: Hashable, Sendable {
     static func layers(of stack: [RouteType]) -> [RouteLayer] {
         var layers = [RouteLayer(presentation: .stack, routes: [])]
         for route in stack {
-            if route.presentation == .stack {
-                layers[layers.count - 1].routes.append(route)
-            } else {
+            if route.presentation.isModal {
                 layers.append(RouteLayer(presentation: route.presentation, routes: [route]))
+            } else {
+                layers[layers.count - 1].routes.append(route)
             }
         }
 
