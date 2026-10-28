@@ -1,0 +1,14 @@
+namespace Airlance.Wire;
+
+table Ping {
+  ping_id: long;
+}
+
+table Pong {
+  ping_id: long;
+}
+
+table Error {
+  code: int;
+  message: string;
+}
