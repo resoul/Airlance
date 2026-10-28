@@ -9,6 +9,9 @@ public final class PermissionStore: NSObject {
     private let providers: [Permission: any PermissionProvider]
     private let observers = ObserverList<PermissionSnapshot>()
     private var requests: [Permission: Task<PermissionResult, Never>] = [:]
+    private var revisions: [Permission: Int] = [:]
+    private var refreshTask: Task<Void, Never>?
+    private var needsAnotherRefresh = false
 
     public init(providers: [any PermissionProvider]) {
         snapshot = PermissionSnapshot(permissions: providers.map(\.permission))
@@ -45,11 +48,43 @@ public final class PermissionStore: NSObject {
     }
 
     public func refresh() async {
-        var snapshot = snapshot
+        if let refreshTask {
+            needsAnotherRefresh = true
+            await refreshTask.value
+
+            return
+        }
+
+        let task = Task { [weak self] in
+            await self?.refreshUntilCurrent()
+            self?.refreshTask = nil
+        }
+        refreshTask = task
+        await task.value
+    }
+
+    private func refreshUntilCurrent() async {
+        repeat {
+            needsAnotherRefresh = false
+            await refreshOnce()
+        } while needsAnotherRefresh
+    }
+
+    private func refreshOnce() async {
+        var results: [(permission: Permission, status: PermissionStatus, revision: Int)] = []
         for permission in snapshot.permissions {
-            if let provider = providers[permission] {
-                snapshot.set(await provider.status(), for: permission)
+            guard let provider = providers[permission] else {
+                continue
             }
+
+            let revision = revisions[permission, default: 0]
+            results.append((permission, await provider.status(), revision))
+        }
+
+        var snapshot = snapshot
+        for result in results where revisions[result.permission, default: 0] == result.revision {
+            snapshot.set(result.status, for: result.permission)
+            revisions[result.permission] = result.revision + 1
         }
         publish(snapshot)
     }
@@ -79,6 +114,7 @@ public final class PermissionStore: NSObject {
 
         var snapshot = snapshot
         snapshot.set(result.status, for: permission)
+        revisions[permission, default: 0] += 1
         publish(snapshot)
 
         return result

@@ -10,6 +10,7 @@ public final class LocalizationStore {
     private let configuration: LocalizationConfiguration
     private let preferredLanguages: [String]
     private let observers = ObserverList<LanguagePack>()
+    private let settingsObservers = ObserverList<LanguageSettings>()
     private var settingsObservation: ObservationToken?
 
     public var languages: [LanguageCode] {
@@ -46,6 +47,15 @@ public final class LocalizationStore {
         return token
     }
 
+    public func observeSettings(
+        _ onChange: @escaping @MainActor @Sendable (LanguageSettings) -> Void
+    ) -> ObservationToken {
+        let token = settingsObservers.add(onChange)
+        onChange(settings)
+
+        return token
+    }
+
     public func select(_ selection: LanguageSelection) async throws {
         try await storage.update(.languageSettings) {
             $0.selection = selection
@@ -58,6 +68,7 @@ public final class LocalizationStore {
         }
 
         self.settings = settings
+        settingsObservers.notify(settings)
         rebuildPack()
     }
 
