@@ -53,3 +53,15 @@ enum AvatarRenderer {
         return UIGraphicsImageRenderer(size: CGSize(width: side, height: side), format: format)
     }
 }
+
+extension AvatarDescriptor {
+    public func placeholderImage(side: CGFloat, scale: CGFloat) -> UIImage {
+        let pixelSize = Int((side * scale).rounded())
+        let image = AvatarRenderer.placeholder(initials: initials, colors: colors, pixelSize: pixelSize, rounded: true)
+        guard let cgImage = image.cgImage else {
+            return image
+        }
+
+        return UIImage(cgImage: cgImage, scale: scale, orientation: .up)
+    }
+}

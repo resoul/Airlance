@@ -5,6 +5,7 @@ import UIKit
 public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecognizerDelegate {
     static let preloadDistance: CGFloat = 240
     static let poolLimit = 24
+    static let anchorSearch = 12
     private static let layoutCacheLimit = 96
 
     public let scrollView = UIScrollView()
@@ -77,6 +78,8 @@ public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecog
         }
     }
 
+    public var keepsBottomOnApply = true
+
     public var isOnScreen = true {
         didSet {
             if isOnScreen != oldValue {
@@ -148,9 +151,10 @@ public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecog
     public func apply(items next: [any ListItem], animated: Bool = true) {
         let nextIDs = next.map(\.id)
         let transaction = ListTransaction(previous: itemIDs, next: nextIDs)
-        let anchor = topAnchor()
+        let anchor = topAnchors()
         let animated = animated && !itemIDs.isEmpty
-        let wasAtBottom = anchorsToBottom && (frames.isEmpty || distanceFromBottom(insets: contentInsets) < 8)
+        let isAtBottom = frames.isEmpty || distanceFromBottom(insets: contentInsets) < 8
+        let wasAtBottom = anchorsToBottom && keepsBottomOnApply && isAtBottom
 
         items = next
         itemIDs = nextIDs
@@ -249,33 +253,44 @@ public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecog
 }
 
 extension ListView {
-    fileprivate func restorePosition(wasAtBottom: Bool, anchor: (id: String, distance: CGFloat)?) {
+    fileprivate func restorePosition(wasAtBottom: Bool, anchor anchors: [(id: String, distance: CGFloat)]) {
         guard !applyPendingAnchor() else {
             return
         }
 
         if wasAtBottom {
             restoreOffset(.greatestFiniteMagnitude)
-        } else if let anchor, let index = itemIDs.firstIndex(of: anchor.id) {
-            restoreOffset(frames[index].minY - anchor.distance)
+        } else if let (index, distance) = surviving(anchors) {
+            restoreOffset(frames[index].minY - distance)
         } else {
             restoreOffset(scrollView.contentOffset.y)
         }
     }
 
-    fileprivate func topAnchor() -> (id: String, distance: CGFloat)? {
+    fileprivate func topAnchors() -> [(id: String, distance: CGFloat)] {
         let offset = scrollView.contentOffset.y
-        guard offset > -contentInsets.top else {
-            return nil
-        }
-
-        let index = frames.firstIndex { frame in
+        guard offset > -contentInsets.top, let index = frames.firstIndex(where: { frame in
             frame.maxY > offset
+        }) else {
+            return []
         }
 
-        return index.map { index in
+        let below = Array(index..<min(frames.count, index + Self.anchorSearch))
+        let above = Array(stride(from: index - 1, through: max(0, index - Self.anchorSearch), by: -1))
+
+        return (below + above).map { index in
             (itemIDs[index], frames[index].minY - offset)
         }
+    }
+
+    fileprivate func surviving(_ anchors: [(id: String, distance: CGFloat)]) -> (index: Int, distance: CGFloat)? {
+        for anchor in anchors {
+            if let index = itemIDs.firstIndex(of: anchor.id), frames.indices.contains(index) {
+                return (index, anchor.distance)
+            }
+        }
+
+        return nil
     }
 
     func updateShown() {

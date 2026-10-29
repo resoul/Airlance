@@ -21,6 +21,7 @@ public final class TabBarView: UIView {
     var iconViews: [UIImageView] = []
     var theme: AppTheme?
     lazy var menuGesture = UILongPressGestureRecognizer(target: self, action: #selector(pressed(_:)))
+    weak var activeMenu: PopupMenu?
     private var layout: TabBarLayout?
     private var dragIndex: Int?
 
@@ -113,6 +114,10 @@ public final class TabBarView: UIView {
             count: items.count,
             compactProgress: compactAnimator.value
         )
+        guard layout != self.layout else {
+            return
+        }
+
         self.layout = layout
 
         background.frame = layout.barFrame
@@ -121,14 +126,28 @@ public final class TabBarView: UIView {
             roundedRect: background.bounds,
             cornerRadius: background.layer.cornerRadius
         ).cgPath
-        selection.frame = background.bounds
-        selection.slots = layout.itemFrames.map { frame in
-            frame.insetBy(dx: 2, dy: 0)
-        }
+        updateSelection(layout)
         for (view, frame) in zip(iconViews, layout.itemFrames) {
             view.bounds = CGRect(origin: .zero, size: frame.size)
             view.center = CGPoint(x: frame.midX, y: frame.midY)
             view.transform = CGAffineTransform(scaleX: layout.iconScale, y: layout.iconScale)
+        }
+    }
+
+    private func updateSelection(_ layout: TabBarLayout) {
+        let size = TabBarLayout.make(
+            bounds: bounds,
+            bottomInset: safeAreaInsets.bottom,
+            count: items.count,
+            compactProgress: 0
+        ).barFrame.size
+        let origin = CGPoint(
+            x: (background.bounds.width - size.width) / 2,
+            y: background.bounds.height - size.height
+        )
+        selection.frame = CGRect(origin: origin, size: size)
+        selection.slots = layout.itemFrames.map { frame in
+            frame.insetBy(dx: 2, dy: 0).offsetBy(dx: -origin.x, dy: -origin.y)
         }
     }
 

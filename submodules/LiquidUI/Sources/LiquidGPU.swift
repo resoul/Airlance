@@ -21,6 +21,11 @@ final class LiquidGPU {
         fragment: "theme_reveal_fragment"
     )
 
+    private(set) lazy var wavePipeline: (any MTLRenderPipelineState)? = makePipeline(
+        vertex: "liquid_wave_vertex",
+        fragment: "liquid_wave_fragment"
+    )
+
     private init?() {
         guard
             let device = MTLCreateSystemDefaultDevice(),
