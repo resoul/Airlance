@@ -56,16 +56,15 @@ extension FolderEditorViewController {
     func confirmDelete() {
         let strings = presentation.strings
         let store = dependencies.chatFolders
-        let router = router
         let id = draft.id
+        let failure = strings.foldersErrorDelete
         PopupAlert.show(
             title: strings.foldersDeleteTitle,
             message: strings.foldersDeleteMessage,
             actions: [
-                PopupAlertAction(title: strings.foldersDeleteConfirm, style: .destructive) {
-                    Task {
-                        try? await store.delete(id: id)
-                        router.back()
+                PopupAlertAction(title: strings.foldersDeleteConfirm, style: .destructive) { [weak self] in
+                    self?.perform(failure: failure) {
+                        try await store.delete(id: id)
                     }
                 },
                 PopupAlertAction(title: strings.foldersCancel, style: .cancel),

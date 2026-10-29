@@ -1,14 +1,10 @@
-import Routing
 import Theme
 import UIKit
 
 final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
-    private static let urlScheme = "airlance"
-
     var window: UIWindow?
 
-    private var environment: SceneEnvironment?
-    private var themeStore: ThemeStore?
+    private var context: SceneContext?
 
     func scene(
         _ scene: UIScene,
@@ -22,12 +18,13 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             return
         }
 
-        let app = appDelegate.environment
-        app.themeStore.updateSystemTraits(SystemTraits(windowScene.traitCollection))
-
         let window = UIWindow(windowScene: windowScene)
-        environment = SceneEnvironment(app: app, window: window)
-        themeStore = app.themeStore
+        context = SceneContext(
+            app: appDelegate.context,
+            window: window,
+            sceneSession: session,
+            traits: SystemTraits(windowScene.traitCollection)
+        )
         self.window = window
         window.makeKeyAndVisible()
 
@@ -38,24 +35,24 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         open(URLContexts, animated: true)
     }
 
+    func sceneDidDisconnect(_ scene: UIScene) {
+        context = nil
+    }
+
     func windowScene(
         _ windowScene: UIWindowScene,
         didUpdate previousCoordinateSpace: any UICoordinateSpace,
         interfaceOrientation previousInterfaceOrientation: UIInterfaceOrientation,
         traitCollection previousTraitCollection: UITraitCollection
     ) {
-        themeStore?.updateSystemTraits(SystemTraits(windowScene.traitCollection))
+        context?.updateTraits(SystemTraits(windowScene.traitCollection))
     }
 
     private func open(_ contexts: Set<UIOpenURLContext>, animated: Bool) {
-        guard
-            let url = contexts.first?.url,
-            url.scheme == Self.urlScheme,
-            let path = RoutePath(url: url)
-        else {
+        guard let url = contexts.first?.url, let route = ExternalRoute(url: url) else {
             return
         }
 
-        environment?.router.navigate(to: path, animated: animated)
+        context?.open(route, animated: animated)
     }
 }

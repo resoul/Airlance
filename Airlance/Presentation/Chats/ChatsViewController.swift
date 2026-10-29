@@ -4,11 +4,13 @@ import ChatFolders
 import ListUI
 import Observers
 import Stories
+import ToastUI
 import UIKit
 
 struct ChatsDependencies {
     let presentationContext: PresentationContext
     let chatsStore: ChatsStore
+    let historyStore: ChatHistoryStore
     let storiesStore: StoriesStore
     let chatFolders: ChatFolderStore
 }
@@ -36,9 +38,11 @@ final class ChatsViewController: ScreenViewController {
     let expansion = StoriesExpansion(rowHeight: StoriesHeaderView.rowHeight)
     var pages: [ChatsPage] = [.all]
     var dateFormatter = ListDateFormatter(locale: .current)
+    weak var activePeek: ChatPeekView?
 
     private let composeButton = UIButton(type: .system)
     private var observations: [ObservationToken] = []
+    private var folderStatus = ChatFolderStatus.loading
 
     var hasFolders: Bool {
         pages.count > 1
@@ -78,6 +82,7 @@ final class ChatsViewController: ScreenViewController {
             },
             dependencies.chatFolders.observe { [weak self] _ in
                 self?.render()
+                self?.reportFolderStatus()
             },
             dependencies.storiesStore.observe { [weak self] _ in
                 self?.renderStories()
@@ -175,6 +180,28 @@ final class ChatsViewController: ScreenViewController {
         tabs.onSelect = { [weak self] index in
             self?.pager.select(index, animated: true)
         }
+    }
+
+    private func reportFolderStatus() {
+        let status = dependencies.chatFolders.status
+        guard status != folderStatus else {
+            return
+        }
+
+        folderStatus = status
+        guard status == .failed else {
+            return
+        }
+
+        let store = dependencies.chatFolders
+        Toast(
+            presentation.strings.chatsErrorFolders,
+            symbol: "exclamationmark.circle.fill",
+            style: .error,
+            duration: 5
+        ) {
+            store.retry()
+        }.show(theme: presentation.theme, in: view)
     }
 
     private func bindStories() {

@@ -2,15 +2,16 @@ import UIKit
 
 struct MediaDependencies {
     let presentationContext: PresentationContext
+    let chatsStore: ChatsStore
 }
 
 final class MediaViewController: ScreenViewController {
-    private let id: Int
+    private let id: String
     private let dependencies: MediaDependencies
     private let profileButton: UIButton
     private let notificationButton: UIButton
 
-    init(id: Int, dependencies: MediaDependencies, router: AppRouter) {
+    init(id: String, dependencies: MediaDependencies, router: AppRouter) {
         self.id = id
         self.dependencies = dependencies
         profileButton = UIButton.action {
@@ -31,8 +32,11 @@ final class MediaViewController: ScreenViewController {
         super.apply(presentation)
         let strings = presentation.strings
 
-        navigationItem.title = strings.mediaTitle(id)
+        let store = dependencies.chatsStore
+        let next = DemoChats.next(after: id)
+        navigationItem.title = strings.mediaTitle(store.chat(id)?.name ?? id)
         profileButton.apply(title: strings.chatProfile, theme: presentation.theme)
-        notificationButton.apply(title: strings.notificationFrom(DemoChats.next(after: id)), theme: presentation.theme)
+        let sender = store.chat(next)?.name ?? next
+        notificationButton.apply(title: strings.notificationFrom(sender), theme: presentation.theme)
     }
 }

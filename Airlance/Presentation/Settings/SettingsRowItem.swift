@@ -15,7 +15,7 @@ struct SettingsRowItem: ListItem {
     let symbol: String
     let color: UIColor
     var detail: String?
-    let position: CardPosition
+    var position: CardPosition
     var onSelect: (@MainActor () -> Void)?
 
     var version: Int {

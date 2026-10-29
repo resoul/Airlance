@@ -6,11 +6,13 @@ struct ChatsEmptyItem: ListItem {
     let id: String
     let title: String
     let text: String
+    var symbol = "folder"
 
     var version: Int {
         var hasher = Hasher()
         hasher.combine(title)
         hasher.combine(text)
+        hasher.combine(symbol)
 
         return hasher.finalize()
     }
@@ -24,7 +26,7 @@ struct ChatsEmptyItem: ListItem {
     }
 
     func update(node: ListItemNode, theme: ListTheme) {
-        (node as? ChatsEmptyNode)?.update(title: title, text: text, theme: theme)
+        (node as? ChatsEmptyNode)?.update(title: title, text: text, symbol: symbol, theme: theme)
     }
 }
 
@@ -44,10 +46,10 @@ final class ChatsEmptyNode: ListItemNode {
         addSubnode(textNode)
     }
 
-    func update(title: String, text: String, theme: ListTheme) {
+    func update(title: String, text: String, symbol: String, theme: ListTheme) {
         backgroundColor = theme.background
-        let symbol = UIImage.SymbolConfiguration(pointSize: 44, weight: .regular)
-        icon.image = UIImage(systemName: "folder", withConfiguration: symbol)?
+        let configuration = UIImage.SymbolConfiguration(pointSize: 44, weight: .regular)
+        icon.image = UIImage(systemName: symbol, withConfiguration: configuration)?
             .withTintColor(theme.secondary, renderingMode: .alwaysOriginal)
         let center = NSMutableParagraphStyle()
         center.alignment = .center

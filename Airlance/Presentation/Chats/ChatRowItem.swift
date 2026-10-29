@@ -8,6 +8,9 @@ struct ChatRowItem: AsyncListItem {
     let timeText: String
     let story: StorySummary?
     var swipe: ListSwipeActions?
+    var onPeek: (@MainActor (ListItemNode) -> Void)?
+    var draft: ChatRowDraft?
+    let onSelect: @MainActor () -> Void
 
     var id: String {
         chat.id
@@ -17,6 +20,8 @@ struct ChatRowItem: AsyncListItem {
         var hasher = Hasher()
         hasher.combine(chat.name)
         hasher.combine(chat.message)
+        hasher.combine(chat.draft)
+        hasher.combine(draft)
         hasher.combine(timeText)
         hasher.combine(chat.unread)
         hasher.combine(chat.isMuted)
@@ -26,6 +31,14 @@ struct ChatRowItem: AsyncListItem {
         hasher.combine(story?.unseen)
 
         return hasher.finalize()
+    }
+
+    func selected() {
+        onSelect()
+    }
+
+    func longPressed(node: ListItemNode) {
+        onPeek?(node)
     }
 
     func swipeActions() -> ListSwipeActions? {
@@ -50,7 +63,7 @@ struct ChatRowItem: AsyncListItem {
     }
 
     nonisolated func prepareLayout(width: CGFloat, theme: ListTheme, displayScale: CGFloat) -> any ListPreparedLayout {
-        ChatRowLayout(chat: chat, timeText: timeText, width: width, theme: theme)
+        ChatRowLayout(chat: chat, timeText: timeText, width: width, theme: theme, draft: draft)
     }
 
     func apply(_ layout: any ListPreparedLayout, to node: ListItemNode) {

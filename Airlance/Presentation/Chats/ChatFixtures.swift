@@ -2,8 +2,28 @@ import Foundation
 
 enum ChatFixtures {
     private static let nonContacts: Set<String> = ["max", "lucia", "taras"]
+    private static let archived: Set<String> = ["music", "sport", "neighbors"]
 
-    static func make(now: Date) -> [ChatSummary] {
+    static func make(now: Date, variant: Int = 0) -> [ChatSummary] {
+        let chats = all(now: now)
+        guard variant > 0 else {
+            return chats
+        }
+
+        return chats.enumerated().compactMap { index, chat in
+            guard !ChatStressFixtures.isStress(chat.id), (index + variant) % 2 == 0 else {
+                return nil
+            }
+
+            var chat = chat
+            chat.unread = (chat.unread + variant * 3) % 9
+            chat.isPinned = false
+
+            return chat
+        }
+    }
+
+    private static func all(now: Date) -> [ChatSummary] {
         let minute: TimeInterval = 60
         let hour = 60 * minute
         let day = 24 * hour
@@ -11,6 +31,7 @@ enum ChatFixtures {
         let chats = [
             person("anna", "Анна", "Добре, тоді до завтра 👋", now - 5 * minute, unread: 2, online: true, pinned: true),
             group("team", "Airlance Team", "Віка: виклала новий білд, перевірте таббар", now - 12 * minute, unread: 14),
+            group("stress", "Стрес-тест · 30 000", "Анна: Ок", now - 20 * minute, unread: 40),
             person("boris", "Борис", "Скинь, будь ласка, фото з вихідних", now - 40 * minute, read: true),
             channel("news", "Airlance News", "Папки чатів уже в тестовій збірці", now - 2 * hour, unread: 3),
             person("vika", "Віка", "Голосове повідомлення", now - 3 * hour, online: true),
@@ -39,6 +60,7 @@ enum ChatFixtures {
         return chats.map { chat in
             var chat = chat
             chat.isContact = !nonContacts.contains(chat.id)
+            chat.isArchived = archived.contains(chat.id)
 
             return chat
         }

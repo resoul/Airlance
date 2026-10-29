@@ -3,19 +3,19 @@ import UIKit
 
 extension FoldersViewController: UITableViewDataSource, UITableViewDelegate {
     func numberOfSections(in tableView: UITableView) -> Int {
-        1
+        isFailed ? 2 : 1
     }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        slots.count + 1
+        section == 0 ? slots.count + 1 : 1
     }
 
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        presentation.strings.foldersSection
+        section == 0 ? presentation.strings.foldersSection : nil
     }
 
     func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        slots.count > 1 ? presentation.strings.foldersFooter : nil
+        section == 0 && slots.count > 1 ? presentation.strings.foldersFooter : nil
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -31,7 +31,12 @@ extension FoldersViewController: UITableViewDataSource, UITableViewDelegate {
         cell.selectionStyle = .default
         cell.backgroundColor = theme.colors.surface
 
-        if indexPath.row == 0 {
+        if indexPath.section == 1 {
+            content.text = presentation.strings.foldersRetry
+            content.textProperties.color = theme.colors.accent
+            content.image = UIImage(systemName: "arrow.clockwise")
+            content.imageProperties.tintColor = theme.colors.accent
+        } else if indexPath.row == 0 {
             content.text = presentation.strings.foldersCreate
             content.textProperties.color = theme.colors.accent
             content.image = UIImage(systemName: "folder.badge.plus")
@@ -47,6 +52,8 @@ extension FoldersViewController: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         guard indexPath.section == 0 else {
+            dependencies.chatFolders.retry()
+
             return
         }
 

@@ -17,13 +17,16 @@ final class AppCoordinator: NSObject, RouteNavigator {
     private let router: AppRouter
     private let factory: ScreenFactory
     private let presentationContext: PresentationContext
+    private let accounts: any AccountSwitching
     private let tabBarController: ScreenTabBarController
     private var tabNavigations: [ScreenNavigationController] = []
     private var modalNavigations: [ScreenNavigationController] = []
     private var routes: [ObjectIdentifier: AppRoute] = [:]
     private var pending: [PendingTransition] = []
     private var isApplying = false
+    private var isStopped = false
     private var presentationObservation: ObservationToken?
+    private var accountsObservation: ObservationToken?
 
     private var selectedNavigation: ScreenNavigationController? {
         let index = tabBarController.selectedIndex
@@ -31,11 +34,18 @@ final class AppCoordinator: NSObject, RouteNavigator {
         return tabNavigations.indices.contains(index) ? tabNavigations[index] : nil
     }
 
-    init(window: UIWindow, router: AppRouter, factory: ScreenFactory, presentationContext: PresentationContext) {
+    init(
+        window: UIWindow,
+        router: AppRouter,
+        factory: ScreenFactory,
+        presentationContext: PresentationContext,
+        accounts: any AccountSwitching
+    ) {
         self.window = window
         self.router = router
         self.factory = factory
         self.presentationContext = presentationContext
+        self.accounts = accounts
         tabBarController = ScreenTabBarController(presentationSource: presentationContext)
         super.init()
     }
@@ -50,7 +60,7 @@ final class AppCoordinator: NSObject, RouteNavigator {
         let selectedIndex = router.tab.flatMap(AppRoute.tabs.firstIndex(of:)) ?? 0
         tabBarController.setTabs(
             tabNavigations,
-            items: AppTabItems.make(presentationContext.presentation.strings),
+            items: AppTabItems.make(presentationContext.presentation, accounts: accounts),
             selectedIndex: selectedIndex
         )
         tabBarController.onSelect = { [weak self] index in
@@ -61,7 +71,12 @@ final class AppCoordinator: NSObject, RouteNavigator {
                 return nil
             }
 
-            return AppTabItems.menu(for: index, strings: presentationContext.presentation.strings, router: router)
+            return AppTabItems.menu(
+                for: index,
+                strings: presentationContext.presentation.strings,
+                router: router,
+                accounts: accounts
+            )
         }
         window.rootViewController = tabBarController
         router.attach(self)
@@ -69,9 +84,26 @@ final class AppCoordinator: NSObject, RouteNavigator {
         presentationObservation = presentationContext.observe { [weak self] presentation in
             self?.apply(presentation)
         }
+        accountsObservation = accounts.observeAccounts { [weak self] in
+            self?.updateTabItems()
+        }
+    }
+
+    func stop() {
+        isStopped = true
+        presentationObservation = nil
+        accountsObservation = nil
+        pending = []
+        modalNavigations = []
+        tabBarController.view.isUserInteractionEnabled = false
+        tabBarController.presentedViewController?.dismiss(animated: false)
     }
 
     func apply(_ transition: RouteTransition<AppRoute>, animated: Bool) {
+        guard !isStopped else {
+            return
+        }
+
         pending.append(PendingTransition(transition: transition, animated: animated))
         applyNext()
     }
@@ -88,7 +120,7 @@ final class AppCoordinator: NSObject, RouteNavigator {
     }
 
     private func applyNext() {
-        guard !isApplying else {
+        guard !isApplying, !isStopped else {
             return
         }
 
@@ -235,46 +267,6 @@ final class AppCoordinator: NSObject, RouteNavigator {
         return navigation
     }
 
-    private func makeScreen(for route: AppRoute) -> UIViewController {
-        let controller = switch route {
-        case .contacts:
-            factory.makeContacts()
-        case .chats:
-            factory.makeChats()
-        case .calls:
-            factory.makeCalls()
-        case .settings:
-            factory.makeSettings()
-        case .chat(let id):
-            factory.makeChat(id: id)
-        case .media(let id):
-            factory.makeMedia(id: id)
-        case .newChat:
-            factory.makeNewChat()
-        case .newContact:
-            factory.makeNewContact()
-        case .invite:
-            factory.makeInvite()
-        case .permissions:
-            factory.makePermissions()
-        case .appearance:
-            factory.makeAppearance()
-        case .profile(let id):
-            factory.makeProfile(id: id)
-        case .stories(let peerID):
-            factory.makeStories(peerID: peerID)
-        case .chatFolders:
-            factory.makeChatFolders()
-        case .newChatFolder:
-            factory.makeChatFolderEditor(id: nil)
-        case .chatFolder(let id):
-            factory.makeChatFolderEditor(id: id)
-        }
-        routes[ObjectIdentifier(controller)] = route
-
-        return controller
-    }
-
     private func syncRouter() {
         guard !isApplying, pending.isEmpty, let selectedNavigation else {
             return
@@ -342,12 +334,25 @@ extension AppCoordinator {
         }
 
         let isRoot = top == nil || top === navigation.viewControllers.first
-        let hidden = AppRoute.tabs[index] == .settings && !isRoot
+        let topRoute = top.flatMap { controller in
+            routes[ObjectIdentifier(controller)]
+        }
+        let hidesTabBar = AppRoute.tabs[index] == .settings || topRoute == .chatArchive || isFullScreenChat(topRoute)
+        let hidden = !isRoot && hidesTabBar
         tabBarController.setTabBarHidden(hidden, animated: coordinator != nil, alongside: coordinator)
     }
 }
 
 extension AppCoordinator {
+    fileprivate func isFullScreenChat(_ route: AppRoute?) -> Bool {
+        switch route {
+        case .chat, .profile:
+            true
+        default:
+            false
+        }
+    }
+
     fileprivate func makeCloseItem() -> UIBarButtonItem {
         UIBarButtonItem(
             systemItem: .close,
@@ -357,8 +362,60 @@ extension AppCoordinator {
         )
     }
 
+    fileprivate func updateTabItems() {
+        guard !isStopped else {
+            return
+        }
+
+        tabBarController.setItems(AppTabItems.make(presentationContext.presentation, accounts: accounts))
+    }
+
     fileprivate func apply(_ presentation: PresentationData) {
-        tabBarController.setItems(AppTabItems.make(presentation.strings))
+        tabBarController.setItems(AppTabItems.make(presentation, accounts: accounts))
         window.overrideUserInterfaceStyle = presentation.theme.appearance.userInterfaceStyle
+    }
+}
+
+extension AppCoordinator {
+    private func makeScreen(for route: AppRoute) -> UIViewController {
+        let controller = switch route {
+        case .contacts:
+            factory.makeContacts()
+        case .chats:
+            factory.makeChats()
+        case .calls:
+            factory.makeCalls()
+        case .settings:
+            factory.makeSettings()
+        case .chat(let id):
+            factory.makeChat(id: id)
+        case .media(let id):
+            factory.makeMedia(id: id)
+        case .newChat:
+            factory.makeNewChat()
+        case .newContact:
+            factory.makeNewContact()
+        case .invite:
+            factory.makeInvite()
+        case .permissions:
+            factory.makePermissions()
+        case .appearance:
+            factory.makeAppearance()
+        case .profile(let id):
+            factory.makeProfile(id: id)
+        case .stories(let peerID):
+            factory.makeStories(peerID: peerID)
+        case .chatFolders:
+            factory.makeChatFolders()
+        case .newChatFolder:
+            factory.makeChatFolderEditor(id: nil)
+        case .chatFolder(let id):
+            factory.makeChatFolderEditor(id: id)
+        case .chatArchive:
+            factory.makeChatArchive()
+        }
+        routes[ObjectIdentifier(controller)] = route
+
+        return controller
     }
 }

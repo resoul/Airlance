@@ -12,18 +12,21 @@ final class CallRowNode: ListItemNode {
     private let separator = ASDisplayNode()
     private let deleteButton = UIButton(type: .system)
     private let infoButton = UIButton(type: .system)
-    private var text: ASDisplayNode?
-    private var date: ASTextNode?
+    private let text = ListRowCanvas()
+    private let date = ListRowCanvas()
     private var isEditing = false
 
     override func didLoad() {
         super.didLoad()
+        avatar.isOnScreen = isOnScreen
         outgoingIcon.isLayerBacked = true
         outgoingIcon.contentMode = .center
         separator.isLayerBacked = true
         addSubnode(outgoingIcon)
         addSubnode(avatar)
         addSubnode(separator)
+        addSubnode(text)
+        addSubnode(date)
 
         let large = UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
         deleteButton.setImage(
@@ -79,16 +82,18 @@ final class CallRowNode: ListItemNode {
     }
 
     func apply(_ layout: CallRowLayout) {
-        text?.removeFromSupernode()
-        date?.removeFromSupernode()
-        text = layout.text
-        date = layout.date
-        addSubnode(layout.text)
-        addSubnode(layout.date)
+        text.frame.size = layout.text.size
+        text.apply(layout.text)
+        date.frame.size = layout.date.size
+        date.apply(layout.date)
         UIView.performWithoutAnimation {
             setNeedsLayout()
             view.layoutIfNeeded()
         }
+    }
+
+    override func visibilityChanged() {
+        avatar.isOnScreen = isOnScreen
     }
 
     override func prepareForReuse() {
@@ -96,10 +101,8 @@ final class CallRowNode: ListItemNode {
         avatar.prepareForReuse()
         onDelete = nil
         onInfo = nil
-        text?.removeFromSupernode()
-        date?.removeFromSupernode()
-        text = nil
-        date = nil
+        text.apply(nil)
+        date.apply(nil)
     }
 
     override func layout() {
@@ -115,15 +118,11 @@ final class CallRowNode: ListItemNode {
         infoButton.frame = CGRect(x: bounds.width - 52, y: midY - 22, width: 44, height: 44)
         infoButton.alpha = isEditing ? 0 : 1
 
-        if let date {
-            let right = isEditing ? bounds.width - 16 : infoButton.frame.minX - 4
-            date.frame.origin = CGPoint(x: right - date.frame.width, y: midY - date.frame.height / 2)
-        }
+        let right = isEditing ? bounds.width - 16 : infoButton.frame.minX - 4
+        date.frame.origin = CGPoint(x: right - date.frame.width, y: midY - date.frame.height / 2)
 
         let textX = avatar.frame.maxX + 12
-        if let text {
-            text.frame.origin = CGPoint(x: textX, y: midY - text.frame.height / 2)
-        }
+        text.frame.origin = CGPoint(x: textX, y: midY - text.frame.height / 2)
 
         let line = 1 / max(view.traitCollection.displayScale, 1)
         separator.frame = CGRect(x: textX, y: bounds.height - line, width: bounds.width - textX, height: line)

@@ -29,6 +29,15 @@ enum PeerAvatars {
         }
     }
 
+    static func gallery(id: String, name: String) -> [AvatarDescriptor] {
+        let initials = AvatarDescriptor.initials(from: name)
+        let photos = ["avatar-demo-photo", "avatar-demo-poster"].map { name in
+            AvatarDescriptor(id: "\(id).\(name)", initials: initials, image: image(name))
+        }
+
+        return [descriptor(id: id, name: name)] + photos
+    }
+
     static func storyRing(for story: StorySummary?, theme: ListTheme) -> AvatarStoryRing? {
         guard let story, !story.isSelf else {
             return nil

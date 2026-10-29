@@ -1,7 +1,6 @@
 import AirlanceUI
 import ChatFolders
 import ListUI
-import ToastUI
 import UIKit
 
 extension ChatsViewController {
@@ -11,12 +10,15 @@ extension ChatsViewController {
         }
 
         updatePages(Self.pages(for: dependencies.chatFolders.list))
-        let chats = dependencies.chatsStore.chats.sorted { lhs, rhs in
+        let visible = dependencies.chatsStore.chats.filter { chat in
+            !chat.isArchived
+        }
+        let chats = visible.sorted { lhs, rhs in
             if lhs.isPinned != rhs.isPinned {
                 return lhs.isPinned
             }
 
-            return lhs.date > rhs.date
+            return lhs.activityDate > rhs.activityDate
         }
 
         var tabItems: [LiquidTab] = []
@@ -26,7 +28,11 @@ extension ChatsViewController {
             }
             tabItems.append(tab(for: page, chats: pageChats))
             if pager.lists.indices.contains(index) {
-                pager.lists[index].apply(items: items(for: pageChats, page: page), animated: false)
+                let list = pager.lists[index]
+                list.onLongPressMove = { [weak self] gesture in
+                    self?.trackPeek(gesture)
+                }
+                list.apply(items: items(for: pageChats, page: page), animated: false)
             }
         }
         tabs.setTabs(tabItems)
@@ -84,66 +90,77 @@ extension ChatsViewController {
 
     private func items(for chats: [ChatSummary], page: ChatsPage) -> [any ListItem] {
         let strings = presentation.strings
-        guard !chats.isEmpty else {
+        let archived = page == .all ? dependencies.chatsStore.chats.filter(\.isArchived) : []
+        var items: [any ListItem] = []
+        if !archived.isEmpty {
+            items.append(ChatArchiveRowItem(title: strings.chatsArchiveTitle, chats: archived) { [router] in
+                router.open(.chatArchive)
+            })
+        }
+        guard !chats.isEmpty || !items.isEmpty else {
             return [ChatsEmptyItem(id: "empty", title: strings.chatsEmptyTitle, text: strings.chatsEmptyText)]
         }
 
         let now = Date()
         let stories = dependencies.storiesStore
-        let swipes = !hasFolders
+        let draft = ChatRowDraft(title: strings.chatsDraft, color: presentation.theme.colors.destructive)
+        let actions = hasFolders
+            ? nil
+            : ChatActions(store: dependencies.chatsStore, presentation: presentation, host: view)
 
-        return chats.map { chat in
+        return items + chats.map { chat in
             ChatRowItem(
                 chat: chat,
-                timeText: dateFormatter.string(for: chat.date, now: now),
+                timeText: dateFormatter.string(for: chat.activityDate, now: now),
                 story: stories.story(for: chat.id),
-                swipe: swipes ? swipeActions(for: chat) : nil
-            )
+                swipe: actions?.swipes(for: chat),
+                onPeek: { [weak self] node in
+                    self?.peek(chat, from: node)
+                },
+                draft: draft
+            ) { [router] in
+                router.open(.chat(chat.id))
+            }
         }
     }
+}
 
-    private func swipeActions(for chat: ChatSummary) -> ListSwipeActions {
-        let strings = presentation.strings
-        let store = dependencies.chatsStore
-        let id = chat.id
-        let read = ListSwipeAction(
-            title: chat.hasUnread ? strings.chatsActionRead : strings.chatsActionUnread,
-            symbol: chat.hasUnread ? "checkmark.message.fill" : "message.badge.fill",
-            color: presentation.theme.colors.accent
-        ) {
-            store.toggleRead(id)
-        }
-        let pin = ListSwipeAction(
-            title: chat.isPinned ? strings.chatsActionUnpin : strings.chatsActionPin,
-            symbol: chat.isPinned ? "pin.slash.fill" : "pin.fill",
-            color: .systemGreen
-        ) {
-            store.togglePin(id)
-        }
-        let muteToast = chat.isMuted ? strings.chatsToastUnmuted : strings.chatsToastMuted
-        let muteSymbol = chat.isMuted ? "bell.fill" : "bell.slash.fill"
-        let mute = ListSwipeAction(
-            title: chat.isMuted ? strings.chatsActionUnmute : strings.chatsActionMute,
-            symbol: muteSymbol,
-            color: .systemOrange
-        ) { [weak self] in
-            store.toggleMute(id)
-            self?.showToast(Toast(muteToast, symbol: muteSymbol))
-        }
-        let deleteToast = strings.chatsToastDeleted
-        let delete = ListSwipeAction(
-            title: strings.chatsActionDelete,
-            symbol: "trash.fill",
-            color: .systemRed
-        ) { [weak self] in
-            store.delete(id)
-            self?.showToast(Toast(deleteToast, symbol: "trash.fill", style: .success, edge: .bottom))
+extension ChatsViewController {
+    func peek(_ chat: ChatSummary, from node: ListItemNode) {
+        guard let host = view.window else {
+            return
         }
 
-        return ListSwipeActions(leading: [read, pin], trailing: [mute, delete])
+        let actions = ChatActions(store: dependencies.chatsStore, presentation: presentation, host: view)
+        let history = ChatHistoryController(store: dependencies.historyStore)
+        history.isReadOnly = true
+        let peek = ChatPeekView(
+            chat: chat,
+            history: history,
+            items: actions.menu(for: chat),
+            presentation: presentation,
+            source: node.view.convert(node.bounds, to: host),
+            host: host
+        )
+        peek.onOpen = { [router] in
+            router.open(.chat(chat.id))
+        }
+        activePeek = peek
+        peek.show()
     }
 
-    private func showToast(_ toast: Toast) {
-        toast.show(theme: presentation.theme, in: view)
+    private func trackPeek(_ gesture: UILongPressGestureRecognizer) {
+        guard let peek = activePeek else {
+            return
+        }
+
+        switch gesture.state {
+        case .changed:
+            peek.track(gesture.location(in: peek), ended: false)
+        case .ended:
+            peek.track(gesture.location(in: peek), ended: true)
+        default:
+            peek.track(CGPoint(x: -1, y: -1), ended: true)
+        }
     }
 }

@@ -3,8 +3,12 @@ import UIKit
 
 @MainActor
 enum AppTabItems {
-    static func make(_ strings: AppStrings) -> [TabBarItem] {
-        AppRoute.tabs.map { tab in
+    private static let avatarSide: CGFloat = 28
+
+    static func make(_ presentation: PresentationData, accounts: any AccountSwitching) -> [TabBarItem] {
+        let strings = presentation.strings
+
+        return AppRoute.tabs.map { tab in
             switch tab {
             case .contacts:
                 TabBarItem(
@@ -25,16 +29,17 @@ enum AppTabItems {
                     title: strings.tabCalls
                 )
             default:
-                TabBarItem(
-                    image: UIImage(systemName: "gearshape"),
-                    selectedImage: UIImage(systemName: "gearshape.fill"),
-                    title: strings.tabSettings
-                )
+                settingsItem(presentation, accounts: accounts)
             }
         }
     }
 
-    static func menu(for index: Int, strings: AppStrings, router: AppRouter) -> [PopupMenuItem]? {
+    static func menu(
+        for index: Int,
+        strings: AppStrings,
+        router: AppRouter,
+        accounts: any AccountSwitching
+    ) -> [PopupMenuItem]? {
         guard AppRoute.tabs.indices.contains(index) else {
             return nil
         }
@@ -47,8 +52,57 @@ enum AppTabItems {
             }
 
             return [addFolder]
+        case .settings:
+            return accountItems(strings: strings, accounts: accounts)
         default:
             return nil
         }
+    }
+
+    private static func settingsItem(_ presentation: PresentationData, accounts: any AccountSwitching) -> TabBarItem {
+        let strings = presentation.strings
+        let current = accounts.accountRecords.first { record in
+            record.id == accounts.currentAccountID
+        }
+        guard accounts.accountRecords.count > 1, let current else {
+            return TabBarItem(
+                image: UIImage(systemName: "gearshape"),
+                selectedImage: UIImage(systemName: "gearshape.fill"),
+                title: strings.tabSettings
+            )
+        }
+
+        return TabBarItem(
+            image: AccountAvatars.image(current, strings: strings, side: avatarSide),
+            selectedImage: AccountAvatars.ringed(
+                current,
+                strings: strings,
+                side: avatarSide + 4,
+                ring: presentation.theme.colors.onAccent
+            ),
+            title: strings.tabSettings
+        )
+    }
+
+    private static func accountItems(strings: AppStrings, accounts: any AccountSwitching) -> [PopupMenuItem] {
+        var items: [PopupMenuItem] = []
+        if accounts.accountRecords.count > 1 {
+            items = accounts.accountRecords.map { record in
+                let id = record.id
+
+                return PopupMenuItem(
+                    title: strings.accountName(record),
+                    image: AccountAvatars.image(record, strings: strings, side: avatarSide),
+                    isChecked: id == accounts.currentAccountID
+                ) {
+                    accounts.switchAccount(to: id)
+                }
+            }
+        }
+        items.append(PopupMenuItem(title: strings.accountAdd, symbol: "plus.circle") {
+            accounts.addDemoAccount()
+        })
+
+        return items
     }
 }

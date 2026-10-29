@@ -7,18 +7,19 @@ enum AppRoute: Route {
     case chats
     case calls
     case settings
-    case chat(Int)
-    case media(Int)
+    case chat(String)
+    case media(String)
     case newChat
     case newContact
     case invite
     case permissions
     case appearance
-    case profile(Int)
+    case profile(String)
     case stories(String)
     case chatFolders
     case newChatFolder
     case chatFolder(String)
+    case chatArchive
 
     static let tabs: [AppRoute] = [.contacts, .calls, .chats, .settings]
 
@@ -33,9 +34,9 @@ enum AppRoute: Route {
         case .settings:
             RouteSegment("settings")
         case .chat(let id):
-            RouteSegment("chat", argument: String(id))
+            RouteSegment("chat", argument: id)
         case .media(let id):
-            RouteSegment("media", argument: String(id))
+            RouteSegment("media", argument: id)
         case .newChat:
             RouteSegment("newChat")
         case .newContact:
@@ -47,7 +48,7 @@ enum AppRoute: Route {
         case .appearance:
             RouteSegment("appearance")
         case .profile(let id):
-            RouteSegment("profile", argument: String(id))
+            RouteSegment("profile", argument: id)
         case .stories(let peerID):
             RouteSegment("stories", argument: peerID)
         case .chatFolders:
@@ -56,6 +57,8 @@ enum AppRoute: Route {
             RouteSegment("newChatFolder")
         case .chatFolder(let id):
             RouteSegment("chatFolder", argument: id)
+        case .chatArchive:
+            RouteSegment("chatArchive")
         }
     }
 
@@ -63,7 +66,7 @@ enum AppRoute: Route {
         switch self {
         case .contacts, .calls, .chats, .settings:
             []
-        case .chat, .newChat, .stories:
+        case .chat, .newChat, .stories, .chatArchive:
             [.chats]
         case .newContact, .invite:
             [.contacts]
@@ -80,7 +83,7 @@ enum AppRoute: Route {
         switch self {
         case .contacts, .calls, .chats, .settings:
             .tab
-        case .chat, .permissions, .appearance, .profile, .chatFolders, .chatFolder:
+        case .chat, .permissions, .appearance, .profile, .chatFolders, .chatFolder, .chatArchive:
             .stack
         case .media, .stories:
             .fullScreen
@@ -95,11 +98,7 @@ enum AppRoute: Route {
         } else if segment.name == "chatFolder", let argument = segment.argument {
             self = .chatFolder(argument)
         } else if let argument = segment.argument {
-            guard let id = Int(argument) else {
-                return nil
-            }
-
-            self.init(name: segment.name, id: id)
+            self.init(name: segment.name, id: argument)
         } else {
             self.init(name: segment.name)
         }
@@ -129,12 +128,14 @@ enum AppRoute: Route {
             self = .chatFolders
         case "newChatFolder":
             self = .newChatFolder
+        case "chatArchive":
+            self = .chatArchive
         default:
             return nil
         }
     }
 
-    private init?(name: String, id: Int) {
+    private init?(name: String, id: String) {
         switch name {
         case "chat":
             self = .chat(id)

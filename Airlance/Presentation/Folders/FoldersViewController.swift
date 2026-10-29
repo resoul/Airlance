@@ -1,6 +1,7 @@
 import AirlanceUI
 import ChatFolders
 import Observers
+import ToastUI
 import UIKit
 
 final class FoldersViewController: ScreenViewController {
@@ -64,9 +65,7 @@ final class FoldersViewController: ScreenViewController {
         let strings = presentation.strings
 
         navigationItem.title = strings.settingsFolders
-        headerLabel.text = strings.foldersDescription
         headerLabel.font = theme.fonts.subheadline
-        headerLabel.textColor = theme.colors.textSecondary
         tableView.backgroundColor = theme.colors.background
         tableView.separatorColor = theme.colors.separator
         tableView.tintColor = theme.colors.accent
@@ -86,12 +85,22 @@ final class FoldersViewController: ScreenViewController {
         if list.folders.isEmpty, tableView.isEditing {
             tableView.setEditing(false, animated: false)
         }
+        let theme = presentation.theme
+        headerLabel.text = isFailed ? presentation.strings.foldersErrorLoad : presentation.strings.foldersDescription
+        headerLabel.textColor = isFailed ? theme.colors.destructive : theme.colors.textSecondary
+        view.setNeedsLayout()
         updateEditButton()
         tableView.reloadData()
     }
 
+    var isFailed: Bool {
+        dependencies.chatFolders.status == .failed
+    }
+
     func chatCount(for folder: ChatFolder) -> Int {
-        dependencies.chatsStore.chats.filter(folder.contains).count
+        dependencies.chatsStore.chats.filter { chat in
+            !chat.isArchived && folder.contains(chat)
+        }.count
     }
 
     func saveOrder() {
@@ -106,22 +115,37 @@ final class FoldersViewController: ScreenViewController {
             }
         }
         let store = dependencies.chatFolders
+        let failure = presentation.strings.foldersErrorReorder
 
-        Task {
-            try? await store.reorder(ids, allChatsPosition: allChatsPosition)
+        Task { [weak self] in
+            do {
+                try await store.reorder(ids, allChatsPosition: allChatsPosition)
+            } catch {
+                self?.reload()
+                self?.showError(failure)
+            }
         }
+    }
+
+    func showError(_ text: String) {
+        Toast(text, symbol: "exclamationmark.circle.fill", style: .error).show(theme: presentation.theme, in: view)
     }
 
     func confirmDelete(_ folder: ChatFolder) {
         let strings = presentation.strings
         let store = dependencies.chatFolders
+        let failure = strings.foldersErrorDelete
         PopupAlert.show(
             title: strings.foldersDeleteTitle,
             message: strings.foldersDeleteMessage,
             actions: [
-                PopupAlertAction(title: strings.foldersDeleteConfirm, style: .destructive) {
+                PopupAlertAction(title: strings.foldersDeleteConfirm, style: .destructive) { [weak self] in
                     Task {
-                        try? await store.delete(id: folder.id)
+                        do {
+                            try await store.delete(id: folder.id)
+                        } catch {
+                            self?.showError(failure)
+                        }
                     }
                 },
                 PopupAlertAction(title: strings.foldersCancel, style: .cancel),

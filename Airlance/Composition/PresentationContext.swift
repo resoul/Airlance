@@ -15,11 +15,11 @@ final class PresentationContext: PresentationSource {
     private let observers = ObserverList<PresentationData>()
     private var observations: [ObservationToken] = []
 
-    init(themeStore: ThemeStore, localizationStore: LocalizationStore) {
-        presentation = PresentationData(theme: themeStore.theme, strings: AppStrings(pack: localizationStore.pack))
+    init(theme: SceneTheme, localizationStore: LocalizationStore) {
+        presentation = PresentationData(theme: theme.theme, strings: AppStrings(pack: localizationStore.pack))
 
         observations = [
-            themeStore.observe { [weak self] theme in
+            theme.observe { [weak self] theme in
                 self?.update(theme: theme)
             },
             localizationStore.observe { [weak self] pack in

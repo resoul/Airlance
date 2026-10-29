@@ -3,40 +3,69 @@ import Database
 import DatabaseAPI
 import Foundation
 import Keychain
+import os
 
 @MainActor
 final class AccountContext {
     static let schemas = [ChatFolderSchema.schema]
+    private static let logger = Logger(subsystem: "Airlance", category: "Accounts")
 
-    let accountID: String
+    let record: AccountRecord
     let storage: any KeyValueStore
     let chatFolders: ChatFolderStore
     let chatsStore: ChatsStore
+    let historyStore: ChatHistoryStore
     let callsStore: CallsStore
     let storiesStore: StoriesStore
 
-    init(accountID: String, keychain: Keychain) throws {
-        let directory = try Self.directory(accountID: accountID)
-        let key = try AccountDatabaseKey.load(accountID: accountID, keychain: keychain)
+    private let database: AccountDatabase
+    private var isClosed = false
+
+    var accountID: AccountID {
+        record.id
+    }
+
+    init(record: AccountRecord, keychain: Keychain) throws {
+        let directory = try Self.directory(accountID: record.id)
+        let key = try AccountDatabaseKey.load(accountID: record.id.rawValue, keychain: keychain)
         if key.isNew {
             try AccountStorage.remove(directory: directory)
         }
         let database = try AccountStorage.open(directory: directory, key: key.data, schemas: Self.schemas)
+        let now = Date()
 
-        self.accountID = accountID
+        self.record = record
+        self.database = database
         storage = database.keyValue
         chatFolders = ChatFolderStore(tables: database.tables)
-        chatsStore = ChatsStore(chats: ChatFixtures.make(now: Date()))
-        callsStore = CallsStore(entries: CallFixtures.make(now: Date()))
+        chatsStore = ChatsStore(chats: ChatFixtures.make(now: now, variant: record.fixtureVariant))
+        historyStore = ChatHistoryStore(chatsStore: chatsStore, fixtureSalt: record.fixtureVariant)
+        callsStore = CallsStore(entries: CallFixtures.make(now: now))
         storiesStore = StoriesStore(stories: StoryFixtures.make())
+        historyStore.startFeed()
     }
 
-    static func remove(accountID: String, keychain: Keychain) throws {
+    func close() async {
+        guard !isClosed else {
+            return
+        }
+
+        isClosed = true
+        await historyStore.shutdown()
+        do {
+            try await database.close()
+        } catch {
+            Self.logger.error("Can't close the database of account \(self.record.id.rawValue): \(error)")
+        }
+    }
+
+    static func remove(accountID: AccountID, keychain: Keychain) throws {
         try AccountStorage.remove(directory: directory(accountID: accountID))
-        try AccountDatabaseKey.remove(accountID: accountID, keychain: keychain)
+        try? FileManager.default.removeItem(at: directory(accountID: accountID))
+        try AccountDatabaseKey.remove(accountID: accountID.rawValue, keychain: keychain)
     }
 
-    private static func directory(accountID: String) throws -> URL {
+    private static func directory(accountID: AccountID) throws -> URL {
         let applicationSupport = try FileManager.default.url(
             for: .applicationSupportDirectory,
             in: .userDomainMask,
@@ -46,6 +75,6 @@ final class AccountContext {
 
         return applicationSupport
             .appendingPathComponent("Accounts", isDirectory: true)
-            .appendingPathComponent(accountID, isDirectory: true)
+            .appendingPathComponent(accountID.rawValue, isDirectory: true)
     }
 }

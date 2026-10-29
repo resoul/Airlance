@@ -88,42 +88,38 @@ final class CallRowLayout: ListPreparedLayout, @unchecked Sendable {
     static let avatarX: CGFloat = 36
     static let avatarSize: CGFloat = 44
 
-    let text: ASDisplayNode
-    let date: ASTextNode
+    let text: ListRowContent
+    let date: ListRowContent
 
     init(name: String, subtitle: String, dateText: String, isMissed: Bool, width: CGFloat, theme: ListTheme) {
-        let date = Self.text(dateText, font: theme.subtitleFont, color: theme.secondary, width: 120)
+        let dateString = Self.text(dateText, font: theme.subtitleFont, color: theme.secondary)
+        let dateSize = ListRowContent.measure(dateString, width: 120, lines: 1)
         let textX = Self.avatarX + Self.editShift + Self.avatarSize + 12
-        let textWidth = max(1, width - 16 - date.frame.width - 8 - textX)
+        let textWidth = max(1, width - 16 - dateSize.width - 8 - textX)
 
         let titleColor = isMissed ? UIColor.systemRed : theme.primary
-        let title = Self.text(name, font: theme.titleFont, color: titleColor, width: textWidth)
-        let detail = Self.text(subtitle, font: theme.subtitleFont, color: theme.secondary, width: textWidth)
-        detail.frame.origin.y = title.frame.maxY + 2
+        let title = Self.text(name, font: theme.titleFont, color: titleColor)
+        let detail = Self.text(subtitle, font: theme.subtitleFont, color: theme.secondary)
+        let titleSize = ListRowContent.measure(title, width: textWidth, lines: 1)
+        let detailSize = ListRowContent.measure(detail, width: textWidth, lines: 1)
+        let detailFrame = CGRect(origin: CGPoint(x: 0, y: titleSize.height + 2), size: detailSize)
 
-        let text = ASDisplayNode()
-        text.isLayerBacked = true
-        text.frame = CGRect(x: 0, y: 0, width: textWidth, height: detail.frame.maxY)
-        text.addSubnode(title)
-        text.addSubnode(detail)
-
-        self.text = text
-        self.date = date
+        text = ListRowContent(
+            size: CGSize(width: textWidth, height: detailFrame.maxY),
+            elements: [
+                .text(title, lines: 1, frame: CGRect(origin: .zero, size: titleSize)),
+                .text(detail, lines: 1, frame: detailFrame),
+            ]
+        )
+        let dateFrame = CGRect(origin: .zero, size: dateSize)
+        date = ListRowContent(size: dateSize, elements: [.text(dateString, lines: 1, frame: dateFrame)])
     }
 
     static func height(theme: ListTheme) -> CGFloat {
         max(64, (theme.titleFont.lineHeight + 2 + theme.subtitleFont.lineHeight + 22).rounded(.up))
     }
 
-    private static func text(_ string: String, font: UIFont, color: UIColor, width: CGFloat) -> ASTextNode {
-        let node = ASTextNode()
-        node.isLayerBacked = true
-        node.maximumNumberOfLines = 1
-        node.truncationMode = .byTruncatingTail
-        node.attributedText = NSAttributedString(string: string, attributes: [.font: font, .foregroundColor: color])
-        let range = ASSizeRange(min: .zero, max: CGSize(width: width, height: .greatestFiniteMagnitude))
-        node.frame = CGRect(origin: .zero, size: node.layoutThatFits(range).size)
-
-        return node
+    private static func text(_ string: String, font: UIFont, color: UIColor) -> NSAttributedString {
+        NSAttributedString(string: string, attributes: [.font: font, .foregroundColor: color])
     }
 }

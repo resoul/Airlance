@@ -10,10 +10,16 @@ struct SettingsDependencies {
     let presentationContext: PresentationContext
     let themeStore: ThemeStore
     let localizationStore: LocalizationStore
+    let accounts: any AccountSwitching
 }
 
 final class SettingsViewController: ScreenViewController {
     private let dependencies: SettingsDependencies
+
+    var accounts: any AccountSwitching {
+        dependencies.accounts
+    }
+
     private let router: AppRouter
     private let listView = ListView(theme: ListTheme())
     private let header = SettingsHeaderView()
@@ -38,6 +44,9 @@ final class SettingsViewController: ScreenViewController {
                 self?.render()
             },
             dependencies.localizationStore.observeSettings { [weak self] _ in
+                self?.render()
+            },
+            dependencies.accounts.observeAccounts { [weak self] in
                 self?.render()
             },
         ]
@@ -101,10 +110,17 @@ final class SettingsViewController: ScreenViewController {
         }
 
         let sections = Dictionary(grouping: SettingsEntry.allCases, by: \.section)
-        var items: [any ListItem] = []
+        var items: [any ListItem] = [SpacerItem(id: "spacer-accounts", height: 8)]
+        let accounts = accountRows()
+        items += accounts.enumerated().map { index, row in
+            var row = row
+            row.position = position(index, count: accounts.count)
+
+            return row
+        }
         for section in sections.keys.sorted() {
             let entries = sections[section] ?? []
-            items.append(SpacerItem(id: "spacer-\(section)", height: section == 0 ? 8 : 28))
+            items.append(SpacerItem(id: "spacer-\(section)", height: 28))
             items += entries.enumerated().map { index, entry in
                 row(entry, position: position(index, count: entries.count))
             }

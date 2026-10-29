@@ -2,6 +2,7 @@ import UIKit
 
 struct NewChatDependencies {
     let presentationContext: PresentationContext
+    let chatsStore: ChatsStore
 }
 
 final class NewChatViewController: ScreenViewController {
@@ -28,7 +29,7 @@ final class NewChatViewController: ScreenViewController {
         navigationItem.title = presentation.strings.newChatTitle
 
         for (id, button) in zip(DemoChats.ids, contactButtons) {
-            button.apply(title: presentation.strings.profileTitle(id), theme: presentation.theme)
+            button.apply(title: dependencies.chatsStore.chat(id)?.name ?? id, theme: presentation.theme)
         }
     }
 }

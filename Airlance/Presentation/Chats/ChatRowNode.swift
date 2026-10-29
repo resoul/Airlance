@@ -7,15 +7,17 @@ final class ChatRowNode: ListItemNode {
     private let avatar = AvatarNode()
     private let onlineDot = ASDisplayNode()
     private let separator = ASDisplayNode()
-    private var content: ASDisplayNode?
+    private let content = ListRowCanvas()
 
     override func didLoad() {
         super.didLoad()
+        avatar.isOnScreen = isOnScreen
         onlineDot.isLayerBacked = true
         separator.isLayerBacked = true
         addSubnode(avatar)
         addSubnode(onlineDot)
         addSubnode(separator)
+        addSubnode(content)
     }
 
     func update(avatar descriptor: AvatarDescriptor, storyRing: AvatarStoryRing?, isOnline: Bool, theme: ListTheme) {
@@ -30,16 +32,18 @@ final class ChatRowNode: ListItemNode {
     }
 
     func apply(_ layout: ChatRowLayout) {
-        content?.removeFromSupernode()
-        content = layout.content
-        addSubnode(layout.content)
+        content.frame = CGRect(origin: .zero, size: layout.content.size)
+        content.apply(layout.content)
+    }
+
+    override func visibilityChanged() {
+        avatar.isOnScreen = isOnScreen
     }
 
     override func prepareForReuse() {
         super.prepareForReuse()
         avatar.prepareForReuse()
-        content?.removeFromSupernode()
-        content = nil
+        content.apply(nil)
     }
 
     override func layout() {

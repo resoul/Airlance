@@ -7,16 +7,18 @@ final class ContactRowNode: ListItemNode {
     private let avatar = AvatarNode()
     private let separator = ASDisplayNode()
     private let check = ASImageNode()
-    private var textNodes: [ASTextNode] = []
+    private let content = ListRowCanvas()
 
     override func didLoad() {
         super.didLoad()
+        avatar.isOnScreen = isOnScreen
         separator.isLayerBacked = true
         check.isLayerBacked = true
         check.contentMode = .center
         addSubnode(avatar)
         addSubnode(separator)
         addSubnode(check)
+        addSubnode(content)
     }
 
     func update(avatar descriptor: AvatarDescriptor, showsSeparator: Bool, isSelected: Bool?, theme: ListTheme) {
@@ -36,24 +38,18 @@ final class ContactRowNode: ListItemNode {
     }
 
     func apply(_ layout: ContactRowLayout) {
-        for node in textNodes {
-            node.removeFromSupernode()
-        }
-        textNodes = [layout.title] + (layout.subtitle.map { node in
-            [node]
-        } ?? [])
-        for node in textNodes {
-            addSubnode(node)
-        }
+        content.frame = CGRect(origin: .zero, size: layout.content.size)
+        content.apply(layout.content)
+    }
+
+    override func visibilityChanged() {
+        avatar.isOnScreen = isOnScreen
     }
 
     override func prepareForReuse() {
         super.prepareForReuse()
         avatar.prepareForReuse()
-        for node in textNodes {
-            node.removeFromSupernode()
-        }
-        textNodes = []
+        content.apply(nil)
     }
 
     override func layout() {

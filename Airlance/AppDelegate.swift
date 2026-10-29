@@ -1,9 +1,8 @@
-import Theme
 import UIKit
 
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
-    private(set) lazy var environment = makeEnvironment()
+    private(set) lazy var context = makeContext()
 
     func application(
         _ application: UIApplication,
@@ -12,11 +11,9 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         true
     }
 
-    private func makeEnvironment() -> AppEnvironment {
-        let systemTraits = SystemTraits(UITraitCollection.current)
-
+    private func makeContext() -> ApplicationContext {
         do {
-            return try AppEnvironment(systemTraits: systemTraits)
+            return try ApplicationContext()
         } catch {
             fatalError("Can't open the shared storage: \(error)")
         }

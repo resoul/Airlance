@@ -8,17 +8,26 @@ enum ChatKind: Sendable {
 }
 
 struct ChatSummary: Identifiable, Sendable, Equatable {
+    static let outgoingPrefix = "Ти: "
+
     let id: String
     let name: String
     let kind: ChatKind
-    let message: String
-    let date: Date
+    var message: String
+    var date: Date
     var unread = 0
     var isMuted = false
     var isPinned = false
+    var isArchived = false
     var outgoingRead: Bool?
     var isOnline = false
     var isContact = true
+    var draft: String?
+    var draftDate: Date?
+
+    var activityDate: Date {
+        max(date, draftDate ?? date)
+    }
 }
 
 extension ChatSummary: ChatFolderMember {

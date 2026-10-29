@@ -3,21 +3,33 @@ import UIKit
 
 @MainActor
 final class ScreenFactory {
-    private let app: AppEnvironment
+    private let app: ApplicationContext
+    private let scene: SceneContext
+    private let account: AccountContext
+    private let positions: ChatScrollPositions
     private let router: AppRouter
 
-    init(app: AppEnvironment, router: AppRouter) {
+    init(
+        app: ApplicationContext,
+        scene: SceneContext,
+        account: AccountContext,
+        positions: ChatScrollPositions,
+        router: AppRouter
+    ) {
         self.app = app
+        self.scene = scene
+        self.account = account
+        self.positions = positions
         self.router = router
     }
 
     func makeContacts() -> UIViewController {
         ContactsViewController(
             dependencies: ContactsDependencies(
-                presentationContext: app.presentationContext,
+                presentationContext: scene.presentationContext,
                 contactsSync: app.contactsSync,
                 permissionStore: app.permissionStore,
-                permissionFlow: app.permissionFlow
+                permissionFlow: scene.permissionFlow
             ),
             router: router
         )
@@ -26,7 +38,7 @@ final class ScreenFactory {
     func makeNewContact() -> UIViewController {
         NewContactViewController(
             dependencies: NewContactDependencies(
-                presentationContext: app.presentationContext,
+                presentationContext: scene.presentationContext,
                 contactsSync: app.contactsSync
             ),
             router: router
@@ -36,7 +48,7 @@ final class ScreenFactory {
     func makeInvite() -> UIViewController {
         InviteViewController(
             dependencies: InviteDependencies(
-                presentationContext: app.presentationContext,
+                presentationContext: scene.presentationContext,
                 contactsSync: app.contactsSync
             ),
             router: router
@@ -46,10 +58,22 @@ final class ScreenFactory {
     func makeChats() -> UIViewController {
         ChatsViewController(
             dependencies: ChatsDependencies(
-                presentationContext: app.presentationContext,
-                chatsStore: app.account.chatsStore,
-                storiesStore: app.account.storiesStore,
-                chatFolders: app.account.chatFolders
+                presentationContext: scene.presentationContext,
+                chatsStore: account.chatsStore,
+                historyStore: account.historyStore,
+                storiesStore: account.storiesStore,
+                chatFolders: account.chatFolders
+            ),
+            router: router
+        )
+    }
+
+    func makeChatArchive() -> UIViewController {
+        ChatArchiveViewController(
+            dependencies: ChatArchiveDependencies(
+                presentationContext: scene.presentationContext,
+                chatsStore: account.chatsStore,
+                storiesStore: account.storiesStore
             ),
             router: router
         )
@@ -58,36 +82,45 @@ final class ScreenFactory {
     func makeCalls() -> UIViewController {
         CallsViewController(
             dependencies: CallsDependencies(
-                presentationContext: app.presentationContext,
-                callsStore: app.account.callsStore,
-                storiesStore: app.account.storiesStore
+                presentationContext: scene.presentationContext,
+                callsStore: account.callsStore,
+                storiesStore: account.storiesStore
             ),
             router: router
         )
     }
 
-    func makeChat(id: Int) -> UIViewController {
+    func makeChat(id: String) -> UIViewController {
         ChatViewController(
             id: id,
             dependencies: ChatDependencies(
-                presentationContext: app.presentationContext,
-                permissionFlow: app.permissionFlow
+                presentationContext: scene.presentationContext,
+                chatsStore: account.chatsStore,
+                historyStore: account.historyStore,
+                chatPositions: positions,
+                permissionFlow: scene.permissionFlow
             ),
             router: router
         )
     }
 
-    func makeMedia(id: Int) -> UIViewController {
+    func makeMedia(id: String) -> UIViewController {
         MediaViewController(
             id: id,
-            dependencies: MediaDependencies(presentationContext: app.presentationContext),
+            dependencies: MediaDependencies(
+                presentationContext: scene.presentationContext,
+                chatsStore: account.chatsStore
+            ),
             router: router
         )
     }
 
     func makeNewChat() -> UIViewController {
         NewChatViewController(
-            dependencies: NewChatDependencies(presentationContext: app.presentationContext),
+            dependencies: NewChatDependencies(
+                presentationContext: scene.presentationContext,
+                chatsStore: account.chatsStore
+            ),
             router: router
         )
     }
@@ -95,23 +128,26 @@ final class ScreenFactory {
     func makePermissions() -> UIViewController {
         PermissionsViewController(
             dependencies: PermissionsDependencies(
-                presentationContext: app.presentationContext,
+                presentationContext: scene.presentationContext,
                 permissionStore: app.permissionStore
             )
         )
     }
 
-    func makeProfile(id: Int) -> UIViewController {
+    func makeProfile(id: String) -> UIViewController {
         ProfileViewController(
             id: id,
-            dependencies: ProfileDependencies(presentationContext: app.presentationContext),
+            dependencies: ProfileDependencies(
+                presentationContext: scene.presentationContext,
+                chatsStore: account.chatsStore
+            ),
             router: router
         )
     }
 
     func makeStories(peerID: String) -> UIViewController {
-        let store = app.account.storiesStore
-        let strings = app.presentationContext.presentation.strings
+        let store = account.storiesStore
+        let strings = scene.presentationContext.presentation.strings
         let now = Date()
         let viewer = StoryViewerController(
             authors: store.ordered.map { story in
@@ -139,18 +175,19 @@ final class ScreenFactory {
 
     private var folderDependencies: FoldersDependencies {
         FoldersDependencies(
-            presentationContext: app.presentationContext,
-            chatFolders: app.account.chatFolders,
-            chatsStore: app.account.chatsStore
+            presentationContext: scene.presentationContext,
+            chatFolders: account.chatFolders,
+            chatsStore: account.chatsStore
         )
     }
 
     func makeSettings() -> UIViewController {
         SettingsViewController(
             dependencies: SettingsDependencies(
-                presentationContext: app.presentationContext,
+                presentationContext: scene.presentationContext,
                 themeStore: app.themeStore,
-                localizationStore: app.localizationStore
+                localizationStore: app.localizationStore,
+                accounts: scene
             ),
             router: router
         )
@@ -159,7 +196,7 @@ final class ScreenFactory {
     func makeAppearance() -> UIViewController {
         AppearanceViewController(
             dependencies: AppearanceDependencies(
-                presentationContext: app.presentationContext,
+                presentationContext: scene.presentationContext,
                 themeStore: app.themeStore,
                 localizationStore: app.localizationStore
             )

@@ -91,39 +91,36 @@ final class ContactRowLayout: ListPreparedLayout, @unchecked Sendable {
     static let avatarSize: CGFloat = 44
     static let textX: CGFloat = inset + avatarSize + 12
 
-    let title: ASTextNode
-    let subtitle: ASTextNode?
+    let content: ListRowContent
 
     init(title: String, subtitle: String, width: CGFloat, height: CGFloat, theme: ListTheme) {
         let width = max(1, width)
-        let title = Self.text(title, font: theme.titleFont, color: theme.primary, width: width)
-        let subtitle = subtitle.isEmpty
-            ? nil
-            : Self.text(subtitle, font: theme.subtitleFont, color: theme.secondary, width: width)
-        let textHeight = title.frame.height + (subtitle.map { node in
-            2 + node.frame.height
+        let title = Self.text(title, font: theme.titleFont, color: theme.primary)
+        let subtitle = subtitle.isEmpty ? nil : Self.text(subtitle, font: theme.subtitleFont, color: theme.secondary)
+        let titleSize = ListRowContent.measure(title, width: width, lines: 1)
+        let subtitleSize = subtitle.map { subtitle in
+            ListRowContent.measure(subtitle, width: width, lines: 1)
+        }
+        let textHeight = titleSize.height + (subtitleSize.map { size in
+            2 + size.height
         } ?? 0)
         let top = ((height - textHeight) / 2).rounded()
 
-        title.frame.origin = CGPoint(x: Self.textX, y: top)
-        subtitle?.frame.origin = CGPoint(x: Self.textX, y: top + title.frame.height + 2)
-        self.title = title
-        self.subtitle = subtitle
+        var elements: [ListRowElement] = [
+            .text(title, lines: 1, frame: CGRect(origin: CGPoint(x: Self.textX, y: top), size: titleSize)),
+        ]
+        if let subtitle, let subtitleSize {
+            let origin = CGPoint(x: Self.textX, y: top + titleSize.height + 2)
+            elements.append(.text(subtitle, lines: 1, frame: CGRect(origin: origin, size: subtitleSize)))
+        }
+        content = ListRowContent(size: CGSize(width: Self.textX + width, height: height), elements: elements)
     }
 
     static func height(theme: ListTheme) -> CGFloat {
         max(60, (theme.titleFont.lineHeight + 2 + theme.subtitleFont.lineHeight + 20).rounded(.up))
     }
 
-    private static func text(_ string: String, font: UIFont, color: UIColor, width: CGFloat) -> ASTextNode {
-        let node = ASTextNode()
-        node.isLayerBacked = true
-        node.maximumNumberOfLines = 1
-        node.truncationMode = .byTruncatingTail
-        node.attributedText = NSAttributedString(string: string, attributes: [.font: font, .foregroundColor: color])
-        let range = ASSizeRange(min: .zero, max: CGSize(width: width, height: .greatestFiniteMagnitude))
-        node.frame = CGRect(origin: .zero, size: node.layoutThatFits(range).size)
-
-        return node
+    private static func text(_ string: String, font: UIFont, color: UIColor) -> NSAttributedString {
+        NSAttributedString(string: string, attributes: [.font: font, .foregroundColor: color])
     }
 }

@@ -1,4 +1,5 @@
 import ChatFolders
+import ToastUI
 import UIKit
 
 enum FolderEditorSection: Int, CaseIterable {
@@ -25,6 +26,7 @@ final class FolderEditorViewController: ScreenViewController {
     let colorCell = FolderColorCell()
     let iconView = FolderIconView()
     var draft: ChatFolder
+    var isSaving = false
 
     init(folderID: String?, dependencies: FoldersDependencies, router: AppRouter) {
         self.dependencies = dependencies
@@ -144,18 +146,53 @@ final class FolderEditorViewController: ScreenViewController {
 
     func updateSave() {
         let hasName = !draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        navigationItem.rightBarButtonItem?.isEnabled = hasName && !draft.isEmpty
+        navigationItem.rightBarButtonItem?.isEnabled = hasName && !draft.isEmpty && !isSaving
+    }
+
+    func perform(failure: String, _ operation: @escaping @MainActor @Sendable () async throws -> Void) {
+        guard !isSaving else {
+            return
+        }
+
+        view.endEditing(true)
+        setSaving(true)
+        Task { [weak self] in
+            do {
+                try await operation()
+                self?.close()
+            } catch {
+                self?.setSaving(false)
+                self?.showError(failure)
+            }
+        }
     }
 
     private func save() {
-        view.endEditing(true)
         let store = dependencies.chatFolders
         let folder = draft
-        let router = router
-
-        Task {
-            try? await store.save(folder)
-            router.back()
+        perform(failure: presentation.strings.foldersErrorSave) {
+            try await store.save(folder)
         }
+    }
+
+    private func setSaving(_ saving: Bool) {
+        isSaving = saving
+        tableView.isUserInteractionEnabled = !saving
+        navigationItem.hidesBackButton = saving
+        isModalInPresentation = saving
+        navigationController?.isModalInPresentation = saving
+        updateSave()
+    }
+
+    private func close() {
+        guard view.window != nil else {
+            return
+        }
+
+        router.back()
+    }
+
+    private func showError(_ text: String) {
+        Toast(text, symbol: "exclamationmark.circle.fill", style: .error).show(theme: presentation.theme, in: view)
     }
 }
