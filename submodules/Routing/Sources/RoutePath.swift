@@ -22,6 +22,12 @@ public struct RoutePath: Hashable, Sendable, CustomStringConvertible {
         self.init(components: [Substring(host)] + path)
     }
 
+    public init?(pathComponents: [String]) {
+        self.init(components: pathComponents.map { component in
+            Substring(component)
+        })
+    }
+
     private init?(components: [Substring]) {
         guard components.first == Substring(Self.rootName) else {
             return nil
