@@ -9,12 +9,17 @@ public struct HistoryBuilder: Sendable {
         self.joinInterval = joinInterval
     }
 
-    public func entries(for messages: [HistoryMessage], unreadFrom: String? = nil) -> [HistoryEntry] {
+    public func entries(
+        for messages: [HistoryMessage],
+        unreadFrom: String? = nil,
+        before: HistoryMessage? = nil,
+        after: HistoryMessage? = nil
+    ) -> [HistoryEntry] {
         var entries: [HistoryEntry] = []
         entries.reserveCapacity(messages.count + 8)
         for (index, message) in messages.enumerated() {
-            let previous = index > 0 ? messages[index - 1] : nil
-            let next = index + 1 < messages.count ? messages[index + 1] : nil
+            let previous = index > 0 ? messages[index - 1] : before
+            let next = index + 1 < messages.count ? messages[index + 1] : after
             if previous.map({ previous in
                 !calendar.isDate(previous.date, inSameDayAs: message.date)
             }) ?? true {
@@ -39,7 +44,9 @@ public struct HistoryBuilder: Sendable {
     }
 
     private func joins(_ first: HistoryMessage, _ second: HistoryMessage) -> Bool {
-        first.authorID == second.authorID
+        !first.content.isService
+            && !second.content.isService
+            && first.authorID == second.authorID
             && first.isOutgoing == second.isOutgoing
             && calendar.isDate(first.date, inSameDayAs: second.date)
             && second.date.timeIntervalSince(first.date) < joinInterval

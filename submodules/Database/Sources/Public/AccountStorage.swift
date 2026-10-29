@@ -1,10 +1,20 @@
 import DatabaseAPI
 import Foundation
+import GRDB
 
 @MainActor
 public struct AccountDatabase {
     public let keyValue: any KeyValueStore
     public let tables: any TableStore
+
+    let queue: DatabaseQueue
+
+    public func close() async throws {
+        let queue = queue
+        try await Task.detached {
+            try queue.close()
+        }.value
+    }
 }
 
 public enum AccountStorage {
@@ -19,7 +29,8 @@ public enum AccountStorage {
 
         return AccountDatabase(
             keyValue: try SQLKeyValueStore(database: database),
-            tables: SQLTableStore(database: database)
+            tables: SQLTableStore(database: database),
+            queue: database
         )
     }
 

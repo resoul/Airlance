@@ -5,5 +5,6 @@ swift_library(
     module_name = "ChatHistory",
     srcs = glob(["Sources/**/*.swift"]),
     copts = ["-swift-version", "6"],
+    deps = ["//submodules/Observers"],
     visibility = ["//visibility:public"],
 )
