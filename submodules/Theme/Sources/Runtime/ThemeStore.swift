@@ -4,34 +4,20 @@ import Observers
 @MainActor
 public final class ThemeStore {
     public private(set) var settings: ThemeSettings
-    public private(set) var theme: AppTheme
 
     private let storage: any KeyValueStore
-    private let observers = ObserverList<AppTheme>()
     private let settingsObservers = ObserverList<ThemeSettings>()
-    private var systemTraits: SystemTraits
     private var settingsObservation: ObservationToken?
 
-    public init(storage: any KeyValueStore, systemTraits: SystemTraits) {
+    public init(storage: any KeyValueStore) {
         FontRegistry.registerBundledFonts()
 
-        let settings = storage.value(for: .themeSettings)
-
         self.storage = storage
-        self.systemTraits = systemTraits
-        self.settings = settings
-        theme = ThemeFactory.makeTheme(ThemeInputs(settings: settings, system: systemTraits))
+        settings = storage.value(for: .themeSettings)
 
         settingsObservation = storage.observe(.themeSettings) { [weak self] settings in
             self?.apply(settings: settings)
         }
-    }
-
-    public func observe(_ onChange: @escaping @MainActor @Sendable (AppTheme) -> Void) -> ObservationToken {
-        let token = observers.add(onChange)
-        onChange(theme)
-
-        return token
     }
 
     public func observeSettings(
@@ -61,15 +47,6 @@ public final class ThemeStore {
         }
     }
 
-    public func updateSystemTraits(_ traits: SystemTraits) {
-        guard traits != systemTraits else {
-            return
-        }
-
-        systemTraits = traits
-        rebuildTheme()
-    }
-
     private func apply(settings: ThemeSettings) {
         guard settings != self.settings else {
             return
@@ -77,16 +54,5 @@ public final class ThemeStore {
 
         self.settings = settings
         settingsObservers.notify(settings)
-        rebuildTheme()
-    }
-
-    private func rebuildTheme() {
-        let inputs = ThemeInputs(settings: settings, system: systemTraits)
-        guard inputs != theme.inputs else {
-            return
-        }
-
-        theme = ThemeFactory.makeTheme(inputs)
-        observers.notify(theme)
     }
 }

@@ -6,6 +6,10 @@ public final class LiquidSelectionView: UIView {
 
     public var color = UIColor.systemBlue {
         didSet {
+            guard color != oldValue else {
+                return
+            }
+
             canvas.color = color
             fallback.backgroundColor = color
             refresh()
@@ -14,6 +18,10 @@ public final class LiquidSelectionView: UIView {
 
     public var slots: [CGRect] = [] {
         didSet {
+            guard slots != oldValue else {
+                return
+            }
+
             refresh()
         }
     }

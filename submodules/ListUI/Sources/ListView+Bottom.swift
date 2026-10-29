@@ -30,6 +30,22 @@ extension ListView {
         return ListAnchor(id: itemIDs[index], distance: frames[index].minY - top)
     }
 
+    public var visibleItemIDs: [String] {
+        guard isNodeLoaded else {
+            return []
+        }
+
+        let range = visibleIndices(margin: 0)
+
+        return range.upperBound <= itemIDs.count ? Array(itemIDs[range]) : []
+    }
+
+    public func anchor(for id: String) -> ListAnchor? {
+        frame(for: id).map { frame in
+            ListAnchor(id: id, distance: frame.minY - visibleContentRect.minY)
+        }
+    }
+
     public func scroll(to anchor: ListAnchor) {
         pendingAnchor = anchor
         if isNodeLoaded, layoutWidth > 0, frames.count == items.count, applyPendingAnchor() {
@@ -65,6 +81,39 @@ extension ListView {
 
     public func itemFrame(at index: Int) -> CGRect? {
         frames.indices.contains(index) ? frames[index] : nil
+    }
+
+    public func node(for id: String) -> ListItemNode? {
+        active[id]
+    }
+
+    public func node(atContentPoint point: CGPoint) -> ListItemNode? {
+        active.values.first { node in
+            node.frame.contains(point)
+        }
+    }
+
+    public func frame(for id: String) -> CGRect? {
+        itemIDs.firstIndex(of: id).flatMap { index in
+            frames.indices.contains(index) ? frames[index] : nil
+        }
+    }
+
+    public func contains(_ id: String) -> Bool {
+        itemIDs.contains(id)
+    }
+
+    public func scrollToItem(_ id: String, animated: Bool) {
+        guard let index = itemIDs.firstIndex(of: id), frames.indices.contains(index) else {
+            return
+        }
+
+        let visible = visibleContentRect.height
+        let frame = frames[index]
+        let target = frame.midY - contentInsets.top - visible / 2
+        let minimum = -contentInsets.top
+        let offset = min(max(minimum, target), maximumOffset(insets: contentInsets))
+        scrollView.setContentOffset(CGPoint(x: 0, y: offset), animated: animated)
     }
 
     public func scrollToBottom(animated: Bool) {

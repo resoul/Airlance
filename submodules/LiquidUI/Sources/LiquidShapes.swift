@@ -46,7 +46,7 @@ public struct LiquidBridge: Sendable {
     }
 }
 
-struct LiquidUniforms {
+struct LiquidUniforms: Sendable {
     var scale: Float
     var gloss: Float
     var rimWidth: Float

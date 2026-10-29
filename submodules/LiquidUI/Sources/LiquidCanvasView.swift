@@ -11,12 +11,19 @@ public final class LiquidCanvasView: UIView {
     public var bridges: [LiquidBridge] = []
     public var onFrame: (@MainActor (CFTimeInterval) -> Void)?
 
-    private let gpu = LiquidGPU.shared
+    private var renderer: LiquidCanvasRenderer?
     private lazy var driver = DisplayLinkDriver { [weak self] deltaTime in
-        self?.onFrame?(deltaTime)
-        self?.render()
+        self?.tick(deltaTime)
     }
+    private static let maxFramesInFlight = 2
+
     private var wantsFrames = false
+    private var needsRender = true
+    private var framesInFlight = 0
+
+    private var canSubmit: Bool {
+        framesInFlight < Self.maxFramesInFlight
+    }
 
     public static var isSupported: Bool {
         LiquidGPU.shared != nil
@@ -35,10 +42,14 @@ public final class LiquidCanvasView: UIView {
         isOpaque = false
         backgroundColor = .clear
         isUserInteractionEnabled = false
+        let gpu = LiquidGPU.shared
         metalLayer?.device = gpu?.device
         metalLayer?.pixelFormat = gpu?.pixelFormat ?? .bgra8Unorm
         metalLayer?.isOpaque = false
         metalLayer?.framebufferOnly = true
+        if let metalLayer, let gpu {
+            renderer = LiquidCanvasRenderer(layer: metalLayer, gpu: gpu)
+        }
     }
 
     @available(*, unavailable)
@@ -60,80 +71,90 @@ public final class LiquidCanvasView: UIView {
         super.didMoveToWindow()
         if let window {
             contentScaleFactor = window.screen.scale
+            metalLayer?.contentsScale = contentScaleFactor
+            needsRender = true
         }
         updateDriver()
     }
 
     override public func layoutSubviews() {
         super.layoutSubviews()
-        let size = CGSize(
-            width: (bounds.width * contentScaleFactor).rounded(),
-            height: (bounds.height * contentScaleFactor).rounded()
-        )
-        guard size.width > 0, size.height > 0, size != metalLayer?.drawableSize else {
-            return
-        }
-
-        metalLayer?.contentsScale = contentScaleFactor
-        metalLayer?.drawableSize = size
         render()
     }
 
     public func render() {
-        guard
-            let gpu,
-            let metalLayer,
-            metalLayer.drawableSize.width > 0,
-            let drawable = metalLayer.nextDrawable(),
-            let commandBuffer = gpu.queue.makeCommandBuffer()
-        else {
+        needsRender = true
+        updateDriver()
+    }
+
+    private func tick(_ deltaTime: CFTimeInterval) {
+        if wantsFrames {
+            onFrame?(deltaTime)
+            needsRender = true
+        }
+        superview?.layoutIfNeeded()
+        layoutIfNeeded()
+        submitFrame()
+        updateDriver()
+    }
+
+    private func submitFrame() {
+        guard needsRender, canSubmit else {
             return
         }
 
-        let pass = MTLRenderPassDescriptor()
-        pass.colorAttachments[0].texture = drawable.texture
-        pass.colorAttachments[0].loadAction = .clear
-        pass.colorAttachments[0].storeAction = .store
-        pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 0)
-
-        if let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) {
-            encode(into: encoder, gpu: gpu)
-            encoder.endEncoding()
+        needsRender = false
+        guard let renderer, let metalLayer else {
+            return
         }
-        commandBuffer.present(drawable)
-        commandBuffer.commit()
+
+        let frame = makeFrame()
+        if metalLayer.drawableSize != frame.size {
+            metalLayer.drawableSize = frame.size
+        }
+        framesInFlight += 1
+        renderer.render(frame) { [weak self] succeeded in
+            Task { @MainActor [weak self] in
+                guard let self else {
+                    return
+                }
+
+                self.framesInFlight -= 1
+                self.needsRender = self.needsRender || !succeeded
+                self.updateDriver()
+            }
+        }
     }
 
-    private func encode(into encoder: any MTLRenderCommandEncoder, gpu: LiquidGPU) {
+    private func makeFrame() -> LiquidCanvasFrame {
         let extent = (blobs.map(\.extent) + bridges.map(\.extent)).reduce(CGRect.null) { result, rect in
             result.union(rect)
         }
-        guard !extent.isNull else {
-            return
-        }
-
-        var uniforms = LiquidUniforms(
+        let rect = extent.isNull ? CGRect.zero : extent
+        let uniforms = LiquidUniforms(
             scale: Float(contentScaleFactor),
             gloss: Float(gloss),
             rimWidth: Float(rimWidth),
             color: color.liquidComponents(with: traitCollection),
-            bounds: SIMD4(Float(extent.minX), Float(extent.minY), Float(extent.maxX), Float(extent.maxY)),
+            bounds: SIMD4(Float(rect.minX), Float(rect.minY), Float(rect.maxX), Float(rect.maxY)),
             blobCount: UInt32(blobs.count),
             bridgeCount: UInt32(bridges.count)
         )
-        let blobData = blobs.isEmpty ? [LiquidBlob(frame: .zero, cornerRadius: 0, blend: 0)] : blobs
-        let zeroBridge = LiquidBridge(from: .zero, to: .zero, startRadius: 0, endRadius: 0, blend: 0)
-        let bridgeData = bridges.isEmpty ? [zeroBridge] : bridges
 
-        encoder.setRenderPipelineState(gpu.pipeline)
-        encoder.setFragmentBytes(&uniforms, length: MemoryLayout<LiquidUniforms>.stride, index: 0)
-        encoder.setFragmentBytes(blobData, length: MemoryLayout<LiquidBlob>.stride * blobData.count, index: 1)
-        encoder.setFragmentBytes(bridgeData, length: MemoryLayout<LiquidBridge>.stride * bridgeData.count, index: 2)
-        encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        return LiquidCanvasFrame(
+            size: CGSize(
+                width: (bounds.width * contentScaleFactor).rounded(),
+                height: (bounds.height * contentScaleFactor).rounded()
+            ),
+            uniforms: uniforms,
+            blobs: blobs,
+            bridges: bridges
+        )
     }
 
     private func updateDriver() {
-        if wantsFrames, window != nil {
+        let needsFrame = wantsFrames || (needsRender && canSubmit)
+        if needsFrame, window != nil, bounds.width > 0, bounds.height > 0 {
             driver.start()
         } else {
             driver.stop()
