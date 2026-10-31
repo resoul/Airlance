@@ -1,10 +1,11 @@
 import Foundation
+import MediaStore
 
 public struct MessageVideo: Sendable, Hashable {
-    public let source: String
+    public let source: MediaSource
     public let duration: TimeInterval
 
-    public init(source: String, duration: TimeInterval) {
+    public init(source: MediaSource, duration: TimeInterval) {
         self.source = source
         self.duration = duration
     }
@@ -14,10 +15,10 @@ public struct MessagePhoto: Sendable, Hashable {
     public let id: String
     public let width: Int
     public let height: Int
-    public let source: String
+    public let source: MediaSource
     public let video: MessageVideo?
 
-    public init(id: String, width: Int, height: Int, source: String, video: MessageVideo? = nil) {
+    public init(id: String, width: Int, height: Int, source: MediaSource, video: MessageVideo? = nil) {
         self.id = id
         self.width = width
         self.height = height
@@ -31,11 +32,11 @@ public struct MessagePhoto: Sendable, Hashable {
 }
 
 public struct MessageVoice: Sendable, Hashable {
-    public let source: String
+    public let source: MediaSource
     public let duration: TimeInterval
     public let waveform: [UInt8]
 
-    public init(source: String, duration: TimeInterval, waveform: [UInt8]) {
+    public init(source: MediaSource, duration: TimeInterval, waveform: [UInt8]) {
         self.source = source
         self.duration = duration
         self.waveform = waveform
@@ -49,6 +50,8 @@ public enum MessageContent: Sendable, Hashable {
     case file(MessageFile, caption: String)
     case location(MessageLocation)
     case service(MessageService)
+    case poll(MessagePoll)
+    case videoNote(MessageVideoNote)
 
     public var text: String {
         switch self {
@@ -56,7 +59,9 @@ public enum MessageContent: Sendable, Hashable {
             text
         case .photos(_, let caption), .file(_, let caption):
             caption
-        case .voice, .location, .service:
+        case .poll(let poll):
+            poll.question
+        case .voice, .location, .service, .videoNote:
             ""
         }
     }
@@ -73,7 +78,7 @@ public enum MessageContent: Sendable, Hashable {
         switch self {
         case .text, .photos, .file:
             true
-        case .voice, .location, .service:
+        case .voice, .location, .service, .poll, .videoNote:
             false
         }
     }
@@ -100,6 +105,13 @@ public struct HistoryMessage: Identifiable, Sendable, Hashable {
     public var reply: MessageReply?
     public var forward: MessageForward?
     public var link: MessageLink?
+    public var views: Int?
+    public var signature: String?
+    public var comments: MessageComments?
+    public var reactions: [MessageReaction] = []
+    public var entities: [MessageEntity] = []
+    public var isSilent = false
+    public var videoReactions: [MessageVideoReaction] = []
 
     public init(
         id: String,

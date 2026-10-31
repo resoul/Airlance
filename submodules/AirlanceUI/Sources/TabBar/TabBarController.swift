@@ -21,6 +21,7 @@ open class TabBarController<Presentation: ThemedPresentation>:
     private weak var trackedScrollView: UIScrollView?
     private var scrollObservation: NSKeyValueObservation?
     private var scrollDistance: CGFloat = 0
+    private var follower: TabBarTransitionFollower?
 
     public var selectedViewController: UIViewController? {
         viewControllers.indices.contains(selectedIndex) ? viewControllers[selectedIndex] : nil
@@ -86,7 +87,11 @@ open class TabBarController<Presentation: ThemedPresentation>:
         animated: Bool,
         alongside coordinator: (any UIViewControllerTransitionCoordinator)? = nil
     ) {
-        guard hidden != isTabBarHidden else {
+        guard hidden != isTabBarHidden, follower == nil else {
+            return
+        }
+
+        if animated, let coordinator, follow(coordinator, hiding: hidden) {
             return
         }
 
@@ -113,6 +118,32 @@ open class TabBarController<Presentation: ThemedPresentation>:
                 changes()
             }
         }
+    }
+
+    private func follow(_ coordinator: any UIViewControllerTransitionCoordinator, hiding: Bool) -> Bool {
+        guard
+            let cover = coordinator.view(forKey: hiding ? .to : .from),
+            let base = coordinator.view(forKey: hiding ? .from : .to)
+        else {
+            return false
+        }
+
+        let follower = TabBarTransitionFollower(bar: tabBarView, cover: cover, base: base, space: view)
+        self.follower = follower
+        tabBarView.transform = .identity
+        follower.start()
+        coordinator.animate(alongsideTransition: nil) { [weak self] context in
+            guard let self else {
+                return
+            }
+
+            follower.stop()
+            self.follower = nil
+            self.isTabBarHidden = context.isCancelled ? !hiding : hiding
+            self.applyTabBarVisibility()
+        }
+
+        return true
     }
 
     public func setTabBarCompact(_ compact: Bool, animated: Bool) {

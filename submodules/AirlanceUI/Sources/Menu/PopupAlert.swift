@@ -21,7 +21,7 @@ public struct PopupAlertAction {
 }
 
 @MainActor
-public final class PopupAlert: UIView {
+public final class PopupAlert: UIView, FocusOverlay {
     private static let width: CGFloat = 280
     private static let rowHeight: CGFloat = 46
     private static let padding: CGFloat = 20

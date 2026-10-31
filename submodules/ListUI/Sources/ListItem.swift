@@ -11,7 +11,7 @@ public protocol ListItem {
     func update(node: ListItemNode, theme: ListTheme)
     func selected()
     func tapped(node: ListItemNode, at point: CGPoint)
-    func longPressed(node: ListItemNode)
+    func longPressed(node: ListItemNode, at point: CGPoint)
     func swipeActions() -> ListSwipeActions?
 }
 
@@ -31,7 +31,7 @@ extension ListItem {
         selected()
     }
 
-    public func longPressed(node: ListItemNode) {
+    public func longPressed(node: ListItemNode, at point: CGPoint) {
     }
 
     public func swipeActions() -> ListSwipeActions? {
