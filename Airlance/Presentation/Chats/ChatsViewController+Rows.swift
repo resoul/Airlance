@@ -117,7 +117,10 @@ extension ChatsViewController {
                 onPeek: { [weak self] node in
                     self?.peek(chat, from: node)
                 },
-                draft: draft
+                draft: draft,
+                typing: chat.typing.map { name in
+                    strings.typing(name)
+                }
             ) { [router] in
                 router.open(.chat(chat.id))
             }

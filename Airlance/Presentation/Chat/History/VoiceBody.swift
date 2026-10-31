@@ -42,7 +42,7 @@ struct VoiceBody {
         }
         body.voice = parts(in: content, top: top, width: width, style: style)
         let size = CGSize(width: ceil(width), height: ceil(top + Self.height))
-        let meta = MessageMeta(time: input.timeText, delivery: outgoing ? message.delivery : nil, style: style)
+        let meta = MessageMeta(input, delivery: outgoing ? message.delivery : nil, style: style)
         meta.place(in: content, bottomRight: CGPoint(x: size.width - 11, y: size.height - 7))
         content.frame = CGRect(origin: .zero, size: size)
         body.size = size

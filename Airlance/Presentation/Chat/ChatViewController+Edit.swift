@@ -28,24 +28,24 @@ extension ChatViewController {
             text: snippet(of: message),
             closeLabel: strings.chatEditCancel
         ))
-        inputBar.setText(message.content.text, animated: true)
+        inputBar.setComposed(ComposedText(text: message.content.text, entities: message.entities), animated: true)
         inputBar.focus()
         let color = presentation.theme.colors.accent.withAlphaComponent(0.16)
         (history.listView.node(for: message.id) as? MessageBubbleNode)?.flash(color: color)
     }
 
-    func finishEdit(_ text: String) {
+    func finishEdit(_ composed: ComposedText) {
         guard let editTarget else {
             return
         }
 
-        if case .text = editTarget.content, text.isEmpty {
+        if case .text = editTarget.content, composed.text.isEmpty {
             Haptics.play(.warning)
 
             return
         }
 
-        history.edit(editTarget.id, text: text)
+        history.edit(editTarget.id, composed: composed)
         Haptics.play(.success)
         endEdit()
     }

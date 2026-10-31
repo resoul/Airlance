@@ -12,11 +12,27 @@ final class ChatHistoryController {
     var onMessageMenu: (@MainActor (HistoryMessage, MessageBubbleNode) -> Void)?
     var onPhotos: (@MainActor (HistoryMessage, Int, MessageBubbleNode) -> Void)?
     var onOpenURL: (@MainActor (URL) -> Void)?
+    var onLinkMenu: (@MainActor (URL, MessageBubbleNode, CGPoint) -> Void)?
+    var onOpenComments: (@MainActor (String) -> Void)?
     var onOpenFile: (@MainActor (MessageFile) -> Void)?
     var onUpdate: (@MainActor () -> Void)?
     var isReadOnly = false
     var window = HistoryWindow()
     var pendingReveal: String?
+    var pendingQuote: MessageQuote?
+    var lastBubbleTap: (id: String, time: CFTimeInterval)?
+    var selection: Set<String>?
+    var search: HistorySearch?
+    var searchRevision = 0
+    var pollDrafts: [String: Set<Int>] = [:]
+    var onPollResults: (@MainActor (String) -> Void)?
+    var onVideoReaction: (@MainActor (_ messageID: String, _ reactionID: String) -> Void)?
+    var onPollFeedback: (@MainActor (_ text: String, _ isCorrect: Bool?) -> Void)?
+    var onSearchChange: (@MainActor () -> Void)?
+    var pendingTextReveal: String?
+    var onSelectionChange: (@MainActor (Set<String>?) -> Void)?
+    var lastSnapshot: HistorySnapshot?
+    lazy var selectionPan = HistorySelectionPan(controller: self)
     var scrollsToBottom = false
     var unseen = 0
     var requestRevision = 0
@@ -56,12 +72,10 @@ final class ChatHistoryController {
         bindVoice()
     }
 
-    func load(_ id: String, chat: ChatSummary?) {
+    func load(_ id: String, kind: ChatKind?) {
         chatID = id
-        showsNames = chat?.kind == .group
-        showsAvatars = chat.map { chat in
-            chat.kind != .person
-        } ?? false
+        showsNames = kind == .group
+        showsAvatars = kind == .group
         observation = store.observeHistory { [weak self] event in
             if event.chatID == self?.chatID {
                 self?.historyChanged(event)
@@ -113,14 +127,19 @@ final class ChatHistoryController {
         }
     }
 
-    func send(_ text: String, replyTo: HistoryMessage?) {
+    func send(
+        _ text: String,
+        replyTo: HistoryMessage?,
+        quote: MessageQuote? = nil,
+        options: SendOptions = SendOptions()
+    ) {
         scrollsToBottom = true
-        store.send(text, to: chatID, replyTo: replyTo)
+        store.send(text, to: chatID, replyTo: replyTo, quote: quote, options: options)
     }
 
-    func sendVoice(_ voice: MessageVoice, replyTo: HistoryMessage?) {
+    func sendVoice(_ voice: MessageVoice, replyTo: HistoryMessage?, quote: MessageQuote? = nil) {
         scrollsToBottom = true
-        store.sendVoice(voice, to: chatID, replyTo: replyTo)
+        store.sendVoice(voice, to: chatID, replyTo: replyTo, quote: quote)
     }
 
     func forward(_ message: HistoryMessage, authorName: String, to target: String) {
@@ -180,7 +199,9 @@ final class ChatHistoryController {
             style: style,
             locale: locale,
             titles: titles,
-            previous: layouts.storage
+            previous: layouts.storage,
+            translations: translations,
+            pollDrafts: pollDrafts
         )
         isPreparing = true
         Task { [weak self] in
@@ -210,6 +231,7 @@ final class ChatHistoryController {
             metrics.recordSnapshot(built: snapshot.layouts.count - reused, reused: reused)
         }
         layouts.merge(snapshot.layouts)
+        lastSnapshot = snapshot
         listView.keepsBottomOnApply = window.isAtEnd
         let state = HistorySignpost.signposter.beginInterval("apply")
         let start = CACurrentMediaTime()
@@ -224,6 +246,7 @@ final class ChatHistoryController {
         )
         reportBottomState()
         revealPending()
+        revealTranslatedText()
         onUpdate?()
         if scrollsToBottom, window.isAtEnd {
             scrollsToBottom = false

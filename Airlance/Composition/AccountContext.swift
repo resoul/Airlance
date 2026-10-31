@@ -3,10 +3,12 @@ import Database
 import DatabaseAPI
 import Foundation
 import Keychain
+import MediaStore
 import os
 
 @MainActor
 final class AccountContext {
+    nonisolated static let mediaLimit: Int64 = 2 * 1024 * 1024 * 1024
     static let schemas = [ChatFolderSchema.schema]
     private static let logger = Logger(subsystem: "Airlance", category: "Accounts")
 
@@ -17,6 +19,8 @@ final class AccountContext {
     let historyStore: ChatHistoryStore
     let callsStore: CallsStore
     let storiesStore: StoriesStore
+    let videoNotes: VideoNoteSettings
+    let media: MediaStore
 
     private let database: AccountDatabase
     private var isClosed = false
@@ -42,6 +46,12 @@ final class AccountContext {
         historyStore = ChatHistoryStore(chatsStore: chatsStore, fixtureSalt: record.fixtureVariant)
         callsStore = CallsStore(entries: CallFixtures.make(now: now))
         storiesStore = StoriesStore(stories: StoryFixtures.make())
+        videoNotes = VideoNoteSettings(storage: database.keyValue)
+        let media = MediaStore(account: record.id.rawValue)
+        self.media = media
+        Task.detached(priority: .background) {
+            media.trim(to: Self.mediaLimit)
+        }
         historyStore.startFeed()
     }
 
@@ -62,6 +72,7 @@ final class AccountContext {
     static func remove(accountID: AccountID, keychain: Keychain) throws {
         try AccountStorage.remove(directory: directory(accountID: accountID))
         try? FileManager.default.removeItem(at: directory(accountID: accountID))
+        MediaStore(account: accountID.rawValue).removeAll()
         try AccountDatabaseKey.remove(accountID: accountID.rawValue, keychain: keychain)
     }
 

@@ -7,6 +7,8 @@ import UIKit
 final class StickyAvatars {
     private static let preload: CGFloat = 240
 
+    var shift: CGFloat = 0
+
     private var series: [AvatarSeries] = []
     private var visible: [String: AvatarNode] = [:]
     private var pool: [AvatarNode] = []
@@ -33,7 +35,7 @@ final class StickyAvatars {
 
             let node = node(for: item, in: list)
             let y = max(top, min(bottom, area.maxY) - size)
-            node.frame = CGRect(x: MessageBubbleLayout.sideInset, y: y, width: size, height: size)
+            node.frame = CGRect(x: MessageBubbleLayout.sideInset + shift, y: y, width: size, height: size)
             node.isOnScreen = bottom > area.minY && top < area.maxY
             used.insert(item.id)
         }

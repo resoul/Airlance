@@ -98,9 +98,20 @@ final class ScreenFactory {
                 chatsStore: account.chatsStore,
                 historyStore: account.historyStore,
                 chatPositions: positions,
-                permissionFlow: scene.permissionFlow
+                permissionFlow: scene.permissionFlow,
+                videoNotes: account.videoNotes,
+                media: account.media
             ),
             router: router
+        )
+    }
+
+    func makeVideoNotes() -> UIViewController {
+        VideoNoteSettingsController(
+            dependencies: VideoNoteSettingsDependencies(
+                presentationContext: scene.presentationContext,
+                settings: account.videoNotes
+            )
         )
     }
 
@@ -112,6 +123,16 @@ final class ScreenFactory {
                 chatsStore: account.chatsStore
             ),
             router: router
+        )
+    }
+
+    func makeBrowser(url: URL) -> UIViewController {
+        BrowserViewController(
+            url: url,
+            dependencies: BrowserDependencies(
+                presentationContext: scene.presentationContext,
+                dataStoreID: account.accountID.rawValue
+            )
         )
     }
 

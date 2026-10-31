@@ -1,10 +1,12 @@
 import Haptics
+import MediaLoader
+import MediaStore
 import UIKit
 
 struct PhotoViewerPage {
     let thumbnail: UIImage?
     let aspectRatio: CGFloat
-    let source: String
+    let source: MediaSource
     let video: URL?
 }
 

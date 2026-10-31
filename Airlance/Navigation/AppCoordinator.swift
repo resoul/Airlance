@@ -346,7 +346,7 @@ extension AppCoordinator {
 extension AppCoordinator {
     fileprivate func isFullScreenChat(_ route: AppRoute?) -> Bool {
         switch route {
-        case .chat, .profile:
+        case .chat, .profile, .comments:
             true
         default:
             false
@@ -387,7 +387,7 @@ extension AppCoordinator {
             factory.makeCalls()
         case .settings:
             factory.makeSettings()
-        case .chat(let id):
+        case .chat(let id), .comments(let id):
             factory.makeChat(id: id)
         case .media(let id):
             factory.makeMedia(id: id)
@@ -397,25 +397,36 @@ extension AppCoordinator {
             factory.makeNewContact()
         case .invite:
             factory.makeInvite()
-        case .permissions:
-            factory.makePermissions()
-        case .appearance:
-            factory.makeAppearance()
+        case .permissions, .appearance, .videoNotes, .chatFolders, .newChatFolder, .chatFolder:
+            settingsScreen(for: route)
         case .profile(let id):
             factory.makeProfile(id: id)
         case .stories(let peerID):
             factory.makeStories(peerID: peerID)
+        case .chatArchive:
+            factory.makeChatArchive()
+        case .browser(let url):
+            factory.makeBrowser(url: url)
+        }
+        routes[ObjectIdentifier(controller)] = route
+
+        return controller
+    }
+
+    private func settingsScreen(for route: AppRoute) -> UIViewController {
+        switch route {
+        case .permissions:
+            factory.makePermissions()
+        case .videoNotes:
+            factory.makeVideoNotes()
         case .chatFolders:
             factory.makeChatFolders()
         case .newChatFolder:
             factory.makeChatFolderEditor(id: nil)
         case .chatFolder(let id):
             factory.makeChatFolderEditor(id: id)
-        case .chatArchive:
-            factory.makeChatArchive()
+        default:
+            factory.makeAppearance()
         }
-        routes[ObjectIdentifier(controller)] = route
-
-        return controller
     }
 }

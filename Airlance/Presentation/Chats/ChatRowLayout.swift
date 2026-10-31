@@ -21,11 +21,12 @@ final class ChatRowLayout: ListPreparedLayout, @unchecked Sendable {
         width: CGFloat,
         theme: ListTheme,
         grayBadge: Bool = false,
-        draft: ChatRowDraft? = nil
+        draft: ChatRowDraft? = nil,
+        typing: String? = nil
     ) {
         let height = Self.height(theme: theme)
         var content = ListRowContent(size: CGSize(width: width, height: height))
-        let draftText = draft == nil ? nil : chat.draft
+        let draftText = draft == nil || typing != nil ? nil : chat.draft
         var topChat = chat
         if draftText != nil {
             topChat.outgoingRead = nil
@@ -40,8 +41,8 @@ final class ChatRowLayout: ListPreparedLayout, @unchecked Sendable {
             theme: theme
         )
         let message = NSMutableAttributedString(
-            string: draftText ?? chat.message,
-            attributes: [.font: theme.subtitleFont, .foregroundColor: theme.secondary]
+            string: typing ?? draftText ?? chat.message,
+            attributes: [.font: theme.subtitleFont, .foregroundColor: typing == nil ? theme.secondary : theme.accent]
         )
         if let draft, draftText != nil {
             let title = NSAttributedString(

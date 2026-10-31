@@ -15,6 +15,10 @@ final class ChatHistoryStore: HistorySource {
     var liveCount = 0
     var demoTasks: [String: Task<Void, Never>] = [:]
     var feedTask: Task<Void, Never>?
+    var scheduled: [String: [ScheduledMessage]] = [:]
+    var scheduleTasks: [String: Task<Void, Never>] = [:]
+    var translations: [String: [String: MessageTranslation]] = [:]
+    var revealedSpoilers: [String: Set<String>] = [:]
     private var viewers: [String: Set<UUID>] = [:]
     private(set) var isShutDown = false
 
@@ -33,7 +37,7 @@ final class ChatHistoryStore: HistorySource {
         }
 
         guard let chat = chatsStore.chat(id) else {
-            return nil
+            return threadHistory(id)
         }
 
         let history = ChatHistoryFixtures.history(for: chat, salt: fixtureSalt)
@@ -116,6 +120,7 @@ final class ChatHistoryStore: HistorySource {
     func view(_ id: String) -> ObservationToken {
         let token = UUID()
         viewers[id, default: []].insert(token)
+        watchPollDeadlines(in: id)
         if viewers[id]?.count == 1 {
             startDemo(for: id)
         }
@@ -129,6 +134,10 @@ final class ChatHistoryStore: HistorySource {
 
     func shutdown() async {
         isShutDown = true
+        scheduleTasks.values.forEach { task in
+            task.cancel()
+        }
+        scheduleTasks = [:]
         let tasks = Array(demoTasks.values) + (feedTask.map { task in
             [task]
         } ?? [])
@@ -155,20 +164,27 @@ final class ChatHistoryStore: HistorySource {
         incoming.add(onMessage)
     }
 
-    func send(_ text: String, to id: String, replyTo: HistoryMessage? = nil) {
+    func send(
+        _ text: String,
+        to id: String,
+        replyTo: HistoryMessage? = nil,
+        quote: MessageQuote? = nil,
+        options: SendOptions = SendOptions()
+    ) {
         let url = Self.firstLink(in: text)
         let link = url.map { url in
             MessageLink(url: url)
         }
-        let message = outgoing(.text(text), in: id, reply: replyTo.map(MessageReply.init), link: link)
+        let reply = replyTo.map { message in
+            MessageReply(message, quote: quote)
+        }
+        var message = outgoing(.text(text), in: id, reply: reply, link: link)
+        message.entities = MessageEntity.valid(options.entities, in: text)
+        message.isSilent = options.isSilent
         post(message, to: id)
         if let url {
             loadPreview(url, messageID: message.id, chatID: id)
         }
-    }
-
-    func sendVoice(_ voice: MessageVoice, to id: String, replyTo: HistoryMessage?) {
-        post(outgoing(.voice(voice), in: id, reply: replyTo.map(MessageReply.init), link: nil), to: id)
     }
 
     func forward(_ source: HistoryMessage, authorName: String, to id: String) {
@@ -182,7 +198,7 @@ final class ChatHistoryStore: HistorySource {
         post(message, to: id)
     }
 
-    private func outgoing(
+    func outgoing(
         _ content: MessageContent,
         in id: String,
         reply: MessageReply?,
@@ -203,13 +219,15 @@ final class ChatHistoryStore: HistorySource {
         )
     }
 
-    private func post(_ message: HistoryMessage, to id: String) {
+    func post(_ message: HistoryMessage, to id: String) {
         guard history(for: id) != nil else {
             return
         }
 
+        let message = channelPost(message, in: id)
         append(message, to: id)
-        let text = ChatsStore.preview(of: message.content)
+        countComment(message, in: id)
+        let text = ChatsStore.preview(of: message)
         chatsStore.recordOutgoing(text, date: message.date, in: id)
         deliver(message, in: id)
     }

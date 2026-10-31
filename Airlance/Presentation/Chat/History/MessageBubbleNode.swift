@@ -1,7 +1,9 @@
 @preconcurrency import AsyncDisplayKit
 import ChatHistory
+import EffectsUI
 import LiquidUI
 import ListUI
+import MediaLoader
 import UIKit
 
 final class MessageBubbleNode: ListItemNode {
@@ -12,6 +14,42 @@ final class MessageBubbleNode: ListItemNode {
     private weak var fading: ASDisplayNode?
     var waveView: LiquidWaveView?
     var downloadRing: CAShapeLayer?
+    var selectionCheck: UIImageView?
+    var selectionState: BubbleSelection?
+    let searchLayer = CALayer()
+    var spoilerView: InkSpoilerView?
+    var onSpoilerRevealed: (@MainActor () -> Void)?
+    var videoNoteView: VideoNoteView?
+
+    var messageID: String? {
+        layoutResult?.messageID
+    }
+
+    var textLayoutOrigin: CGPoint? {
+        layoutResult?.bubbleFrame.origin
+    }
+
+    func reactionFrame(_ emoji: String) -> CGRect? {
+        layoutResult?.actions.first { action in
+            if case .reaction(let value) = action.kind {
+                return value == emoji
+            }
+
+            return false
+        }?.frame
+    }
+
+    var textLayout: (node: ASTextNode, origin: CGPoint)? {
+        layoutResult.flatMap { layout in
+            layout.text.map { text in
+                (text, layout.bubbleFrame.origin)
+            }
+        }
+    }
+
+    var translationNote: ASTextNode? {
+        layoutResult?.translationNote
+    }
 
     var voiceLayout: (parts: VoiceParts, origin: CGPoint)? {
         layoutResult.flatMap { layout in
@@ -64,18 +102,31 @@ final class MessageBubbleNode: ListItemNode {
         layoutResult?.isOutgoing ?? false
     }
 
+    func linkURL(at point: CGPoint) -> URL? {
+        guard let layout = layoutResult, let text = layout.text, !text.linkAttributeNames.isEmpty else {
+            return nil
+        }
+
+        let local = CGPoint(x: point.x - layout.bubbleFrame.minX, y: point.y - layout.bubbleFrame.minY)
+        guard text.frame.contains(local) else {
+            return nil
+        }
+
+        let inText = CGPoint(x: local.x - text.frame.minX, y: local.y - text.frame.minY)
+
+        return text.linkAttributeValue(at: inText, attributeName: nil, range: nil) as? URL
+    }
+
     func action(at point: CGPoint) -> BubbleAction.Kind? {
         guard let layout = layoutResult else {
             return nil
         }
 
-        let local = CGPoint(x: point.x - layout.bubbleFrame.minX, y: point.y - layout.bubbleFrame.minY)
-        if let text = layout.linkText, text.frame.contains(local) {
-            let inText = CGPoint(x: local.x - text.frame.minX, y: local.y - text.frame.minY)
-            if let url = text.linkAttributeValue(at: inText, attributeName: nil, range: nil) as? URL {
-                return .url(url)
-            }
+        if let url = linkURL(at: point) {
+            return .url(url)
         }
+
+        let local = CGPoint(x: point.x - layout.bubbleFrame.minX, y: point.y - layout.bubbleFrame.minY)
 
         return layout.actions.first { action in
             action.frame.contains(local)
@@ -100,6 +151,12 @@ final class MessageBubbleNode: ListItemNode {
         if previous?.messageID != layout.messageID || layout.fileIcon == nil {
             removeDownload()
         }
+        if previous?.messageID != layout.messageID {
+            removeSpoiler()
+        }
+        if previous?.messageID == layout.messageID, previous?.pollBars.isEmpty == true {
+            growPollBars(layout.pollBars)
+        }
         if let previous, previous.content.supernode === self, previous.content !== layout.content {
             if Self.morphs(from: previous, to: layout) {
                 morphFrom = previous
@@ -114,6 +171,7 @@ final class MessageBubbleNode: ListItemNode {
         if layout.content.supernode !== self {
             addSubnode(layout.content)
         }
+        applyVideoNote(layout)
         loadImages(layout)
         setNeedsLayout()
     }

@@ -13,29 +13,27 @@ struct TextBody {
         let message = input.message
         let outgoing = message.isOutgoing
         let maxContent = maxBubble - padding.left - padding.right
-        let meta = MessageMeta(time: input.timeText, delivery: outgoing ? message.delivery : nil, style: style)
+        let meta = MessageMeta(input, delivery: outgoing ? message.delivery : nil, style: style)
         let header = BubbleHeader(input, style: style, maxWidth: maxContent, scale: scale)
         let card = card(style: style, maxWidth: maxContent)
         let textNode = MessageBubbleLayout.text(
             text,
+            entities: message.entities,
             outgoing: outgoing,
             metaWidth: card == nil ? meta.size.width : 0,
             style: style,
             width: maxContent
         )
-        let contentWidth = max(textNode.frame.width, header.size.width, card?.size.width ?? 0, meta.size.width)
+        let note = translationNote(style: style, width: maxContent)
+        let cardWidth = max(card?.size.width ?? 0, footerWidth(style: style))
+        let noteWidth = note?.frame.width ?? 0
+        let contentWidth = max(textNode.frame.width, header.size.width, cardWidth, meta.size.width, noteWidth)
         let width = ceil(contentWidth + padding.left + padding.right)
         let content = ASDisplayNode()
         content.isLayerBacked = true
         var body = BubbleBody(size: .zero, content: content)
-        if !textNode.linkAttributeNames.isEmpty {
-            body.linkText = textNode
-        }
-        var y = padding.top
-        if !header.isEmpty {
-            body.add(header.place(in: content, at: CGPoint(x: padding.left, y: y), width: contentWidth))
-            y += header.size.height + 4
-        }
+        body.text = textNode
+        var y = placeTop(header, note: note, in: &body, width: contentWidth)
         textNode.frame.origin = CGPoint(x: padding.left, y: y)
         content.addSubnode(textNode)
         y = textNode.frame.maxY
@@ -49,6 +47,44 @@ struct TextBody {
         body.size = size
 
         return body
+    }
+
+    private func translationNote(style: HistoryStyle, width: CGFloat) -> ASTextNode? {
+        input.translationNote.map { note in
+            let color = style.meta(outgoing: input.message.isOutgoing)
+
+            return MessageBubbleLayout.label(note, font: style.metaFont, color: color, width: width)
+        }
+    }
+
+    private func placeTop(
+        _ header: BubbleHeader,
+        note: ASTextNode?,
+        in body: inout BubbleBody,
+        width: CGFloat
+    ) -> CGFloat {
+        let padding = MessageBubbleLayout.padding
+        var y = padding.top
+        if !header.isEmpty {
+            body.add(header.place(in: body.content, at: CGPoint(x: padding.left, y: y), width: width))
+            y += header.size.height + 4
+        }
+        if let note {
+            note.frame.origin = CGPoint(x: padding.left, y: y)
+            body.content.addSubnode(note)
+            body.translationNote = note
+            y += note.frame.height + 2
+        }
+
+        return y
+    }
+
+    private func footerWidth(style: HistoryStyle) -> CGFloat {
+        let comments = input.channel?.comments == nil ? 0 : CommentsFooter.minWidth
+        let reactions = ReactionsFooter.preferredWidth(input.reactions, style: style)
+        let padding = MessageBubbleLayout.padding
+
+        return max(0, min(max(comments, reactions), maxBubble) - padding.left - padding.right)
     }
 
     private func card(style: HistoryStyle, maxWidth: CGFloat) -> LinkCard? {

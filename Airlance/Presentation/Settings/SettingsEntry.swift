@@ -11,6 +11,7 @@ enum SettingsEntry: String, CaseIterable {
     case permissions
     case passcode
     case appearance
+    case videoNotes
     case language
     case about
 
@@ -18,7 +19,7 @@ enum SettingsEntry: String, CaseIterable {
         switch self {
         case .profile, .saved, .calls, .devices, .folders:
             0
-        case .notifications, .privacy, .permissions, .passcode, .appearance, .language:
+        case .notifications, .privacy, .permissions, .passcode, .appearance, .videoNotes, .language:
             1
         case .about:
             2
@@ -47,6 +48,8 @@ enum SettingsEntry: String, CaseIterable {
             "lock.shield.fill"
         case .appearance:
             "paintbrush.fill"
+        case .videoNotes:
+            "video.bubble.fill"
         case .language:
             "globe"
         case .about:
@@ -62,7 +65,7 @@ enum SettingsEntry: String, CaseIterable {
             .systemBlue
         case .calls, .passcode:
             .systemGreen
-        case .devices:
+        case .devices, .videoNotes:
             .systemOrange
         case .folders:
             .systemTeal
@@ -81,6 +84,8 @@ enum SettingsEntry: String, CaseIterable {
             .appearance
         case .folders:
             .chatFolders
+        case .videoNotes:
+            .videoNotes
         default:
             nil
         }
@@ -108,6 +113,8 @@ enum SettingsEntry: String, CaseIterable {
             strings.settingsPasscode
         case .appearance:
             strings.settingsAppearance
+        case .videoNotes:
+            strings.videoNotesTitle
         case .language:
             strings.settingsLanguage
         case .about:

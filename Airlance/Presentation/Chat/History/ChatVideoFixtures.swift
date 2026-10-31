@@ -1,5 +1,6 @@
 import ChatHistory
 import Foundation
+import MediaStore
 
 enum ChatVideoFixtures {
     private struct Clip {
@@ -15,9 +16,13 @@ enum ChatVideoFixtures {
         Clip(name: "message-video-square", width: 640, height: 640, duration: 5),
     ]
 
+    static func photo(id: String, size: (Int, Int), seed: Int) -> MessagePhoto {
+        MessagePhoto(id: id, width: size.0, height: size.1, source: .generated(seed: seed))
+    }
+
     static func video(id: String, pick: Int) -> MessagePhoto {
         let clip = clips[pick % clips.count]
-        let source = "bundle-video:\(clip.name)"
+        let source = MediaSource.bundle(name: clip.name, ext: "mp4")
 
         return MessagePhoto(
             id: id,

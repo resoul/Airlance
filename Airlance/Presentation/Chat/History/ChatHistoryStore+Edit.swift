@@ -2,7 +2,7 @@ import ChatHistory
 import Foundation
 
 extension ChatHistoryStore {
-    func edit(_ messageID: String, text: String, in id: String) {
+    func edit(_ messageID: String, text: String, entities: [MessageEntity] = [], in id: String) {
         guard let messages = histories[id]?.messages, let index = messages.firstIndex(where: { message in
             message.id == messageID
         }) else {
@@ -17,9 +17,10 @@ extension ChatHistoryStore {
             message.content = .photos(photos, caption: text)
         case .file(let file, _):
             message.content = .file(file, caption: text)
-        case .voice, .location, .service:
+        case .voice, .location, .service, .poll, .videoNote:
             return
         }
+        message.entities = MessageEntity.valid(entities, in: text)
         guard message != messages[index] else {
             return
         }
@@ -63,8 +64,9 @@ extension ChatHistoryStore {
 
         let quote = MessageReply(message)
         for (index, item) in messages.enumerated() {
-            if item.reply?.messageID == message.id {
-                histories[id]?.messages[index].reply = quote
+            if let reply = item.reply, reply.messageID == message.id {
+                let fragment = reply.quote?.moved(to: message.content.text)
+                histories[id]?.messages[index].reply = MessageReply(message, quote: fragment)
             }
             if case .service(.pinned(let reply)) = item.content, reply.messageID == message.id {
                 histories[id]?.messages[index].content = .service(.pinned(quote))

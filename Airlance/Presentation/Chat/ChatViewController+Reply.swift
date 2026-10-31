@@ -10,12 +10,12 @@ extension ChatViewController {
         inputBar.replyPanel.onClose = { [weak self] in
             self?.closePanel()
         }
-        inputBar.onSend = { [weak self] text in
-            self?.send(text)
+        inputBar.onSend = { [weak self] composed in
+            self?.send(composed)
         }
     }
 
-    func startReply(_ messageID: String) {
+    func startReply(_ messageID: String, quote: MessageQuote? = nil) {
         guard let message = history.message(messageID) else {
             return
         }
@@ -24,10 +24,11 @@ extension ChatViewController {
             endEdit()
         }
         replyTarget = message
+        replyQuote = quote
         inputBar.showPanel(ChatPanelContent(
-            symbol: "arrowshape.turn.up.left",
+            symbol: quote == nil ? "arrowshape.turn.up.left" : "text.quote",
             title: authorName(of: message),
-            text: snippet(of: message),
+            text: quote?.text ?? snippet(of: message),
             closeLabel: presentation.strings.chatReplyCancel
         ))
         inputBar.focus()
@@ -35,7 +36,7 @@ extension ChatViewController {
         (history.listView.node(for: messageID) as? MessageBubbleNode)?.flash(color: color)
     }
 
-    func showForward(_ message: HistoryMessage) {
+    func showForward(_ messages: [HistoryMessage]) {
         inputBar.dismissKeyboard()
         let chats = dependencies.chatsStore.chats
             .filter { chat in
@@ -51,7 +52,9 @@ extension ChatViewController {
                 return
             }
 
-            self.history.forward(message, authorName: self.authorName(of: message), to: chat.id)
+            for message in messages {
+                self.history.forward(message, authorName: self.authorName(of: message), to: chat.id)
+            }
             Toast(strings.chatForwardedTo(chat.name), symbol: "arrowshape.turn.up.right.fill")
                 .show(theme: self.presentation.theme, in: self.view)
         }
@@ -59,18 +62,19 @@ extension ChatViewController {
     }
 
     func sendVoice(_ voice: MessageVoice) {
-        history.sendVoice(voice, replyTo: replyTarget)
+        history.sendVoice(voice, replyTo: replyTarget, quote: replyQuote)
         cancelReply()
     }
 
-    private func send(_ text: String) {
+    func send(_ composed: ComposedText, isSilent: Bool = false) {
         guard editTarget == nil else {
-            finishEdit(text)
+            finishEdit(composed)
 
             return
         }
 
-        history.send(text, replyTo: replyTarget)
+        let options = SendOptions(entities: composed.entities, isSilent: isSilent)
+        history.send(composed.text, replyTo: replyTarget, quote: replyQuote, options: options)
         cancelReply()
         inputBar.clear()
     }
@@ -85,10 +89,11 @@ extension ChatViewController {
 
     func cancelReply() {
         replyTarget = nil
+        replyQuote = nil
         inputBar.hidePanel()
     }
 
-    private func authorName(of message: HistoryMessage) -> String {
+    func authorName(of message: HistoryMessage) -> String {
         if message.isOutgoing {
             return presentation.strings.chatYou
         }
@@ -97,7 +102,11 @@ extension ChatViewController {
     }
 
     func snippet(of message: HistoryMessage) -> String {
-        MessageSnippet.text(message.content, strings: presentation.strings)
+        if case .text(let text) = message.content, message.entities.contains(where: \.isSpoiler) {
+            return MessageEntity.masked(text, entities: message.entities)
+        }
+
+        return MessageSnippet.text(message.content, strings: presentation.strings)
     }
 }
 
@@ -110,6 +119,10 @@ enum MessageSnippet {
             return location.title ?? strings.chatLocation
         case .file(let file, let caption):
             return caption.isEmpty ? file.name : caption
+        case .poll(let poll):
+            return "📊 " + poll.question
+        case .videoNote:
+            return strings.videoNotesPreview
         case .text, .photos, .service:
             break
         }

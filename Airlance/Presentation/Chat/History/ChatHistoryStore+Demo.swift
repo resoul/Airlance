@@ -22,7 +22,7 @@ extension ChatHistoryStore {
                     return
                 }
 
-                self?.deliverDemo(to: id)
+                await self?.deliverDemo(to: id)
             }
         }
     }
@@ -31,7 +31,7 @@ extension ChatHistoryStore {
         demoTasks.removeValue(forKey: id)?.cancel()
     }
 
-    private func deliverDemo(to id: String) {
+    private func deliverDemo(to id: String) async {
         guard let chat = chatsStore.chat(id) else {
             return
         }
@@ -43,6 +43,10 @@ extension ChatHistoryStore {
             date: Date(),
             replyTo: histories[id]?.messages.last
         )
+        guard await type(message, in: chat) else {
+            return
+        }
+
         receive(message, in: id)
         if let link = message.link, link.preview == nil {
             loadPreview(link.url, messageID: message.id, chatID: id)
@@ -103,12 +107,12 @@ extension ChatHistoryStore {
                     return
                 }
 
-                self?.deliverFeed()
+                await self?.deliverFeed()
             }
         }
     }
 
-    private func deliverFeed() {
+    private func deliverFeed() async {
         let candidates = chatsStore.chats.filter { chat in
             chat.kind != .channel && !chat.isArchived && !chat.isMuted && !isViewed(chat.id)
         }
@@ -121,6 +125,22 @@ extension ChatHistoryStore {
         while message.link != nil {
             message = ChatHistoryFixtures.incoming(for: chat, index: liveCount, date: Date(), replyTo: nil)
         }
+        guard await type(message, in: chat) else {
+            return
+        }
+
         receive(message, in: chat.id)
+    }
+
+    private func type(_ message: HistoryMessage, in chat: ChatSummary) async -> Bool {
+        guard chat.kind != .channel else {
+            return !Task.isCancelled
+        }
+
+        chatsStore.setTyping(chat.kind == .group ? message.authorName : "", in: chat.id)
+        try? await Task.sleep(nanoseconds: UInt64(Double.random(in: 1.5...3) * 1_000_000_000))
+        chatsStore.setTyping(nil, in: chat.id)
+
+        return !Task.isCancelled && !isShutDown
     }
 }

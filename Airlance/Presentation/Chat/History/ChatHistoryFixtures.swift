@@ -93,6 +93,7 @@ enum ChatHistoryFixtures {
         let unreadFrom = chat.unread > 0 ? messages[max(0, count - chat.unread)].id : nil
         let pinnedIDs = pins(in: messages, random: &random)
         ChatServiceFixtures.decorate(&messages, chat: chat, pinnedIDs: pinnedIDs, random: &random)
+        ChatReactionFixtures.decorate(&messages, chat: chat, random: &random)
 
         return History(messages: messages, unreadFrom: unreadFrom, pinnedIDs: pinnedIDs)
     }
@@ -223,7 +224,7 @@ enum ChatHistoryFixtures {
 
             let size = photoSizes[Int(random.next() % UInt64(photoSizes.count))]
 
-            return MessagePhoto(id: id, width: size.0, height: size.1, source: "demo:\(Int(random.next() % 1000))")
+            return ChatVideoFixtures.photo(id: id, size: size, seed: Int(random.next() % 1000))
         }
         let caption = random.next() % 2 == 0 ? captions[Int(random.next() % UInt64(captions.count))] : ""
 
@@ -281,7 +282,7 @@ enum ChatHistoryFixtures {
         return 6 * 3600 + unit * 14 * 3600
     }
 
-    private static func seed(_ id: String) -> UInt64 {
+    static func seed(_ id: String) -> UInt64 {
         id.unicodeScalars.reduce(UInt64(14_695_981_039_346_656_037)) { hash, scalar in
             (hash ^ UInt64(scalar.value)) &* 1_099_511_628_211
         }

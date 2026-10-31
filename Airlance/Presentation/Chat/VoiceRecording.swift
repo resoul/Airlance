@@ -1,6 +1,7 @@
 import AVFoundation
 import ChatHistory
 import Foundation
+import MediaStore
 
 @MainActor
 final class VoiceRecording {
@@ -22,14 +23,13 @@ final class VoiceRecording {
         recorder.currentTime
     }
 
-    init?() {
+    private let media: LocalMedia
+
+    init?(store: MediaStore) {
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playAndRecord, mode: .spokenAudio, options: [.defaultToSpeaker])
         try? session.setActive(true)
-        let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Voice", isDirectory: true)
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let url = directory.appendingPathComponent("\(UUID().uuidString).m4a")
+        let (media, url) = store.reserve(.voice, extension: "m4a")
         let settings: [String: Any] = [
             AVFormatIDKey: kAudioFormatMPEG4AAC,
             AVSampleRateKey: 22_050,
@@ -46,13 +46,14 @@ final class VoiceRecording {
         }
 
         self.recorder = recorder
+        self.media = media
     }
 
     func finish() -> MessageVoice {
         let duration = recorder.currentTime
         recorder.stop()
 
-        return MessageVoice(source: recorder.url.absoluteString, duration: duration, waveform: waveform())
+        return MessageVoice(source: .local(media), duration: duration, waveform: waveform())
     }
 
     func cancel() {

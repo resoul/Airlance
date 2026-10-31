@@ -1,4 +1,5 @@
 import ChatHistory
+import MediaLoader
 import UIKit
 
 extension ChatViewController {
@@ -15,7 +16,7 @@ extension ChatViewController {
                 aspectRatio: CGFloat(photo.aspectRatio),
                 source: photo.source,
                 video: photo.video.flatMap { video in
-                    VideoFrames.url(for: video.source)
+                    video.source.url
                 }
             )
         }
@@ -31,7 +32,7 @@ extension ChatViewController {
             pages: pages,
             sources: sources,
             start: index,
-            clipArea: view.convert(photoClipArea, to: host),
+            clipArea: view.convert(visibleHistoryFrame, to: host),
             title: name,
             counterText: { current, total in
                 guard total == 1 else {
@@ -43,12 +44,6 @@ extension ChatViewController {
             host: host
         )
         viewer.open()
-    }
-
-    private var photoClipArea: CGRect {
-        let top = view.safeAreaInsets.top
-
-        return CGRect(x: 0, y: top, width: view.bounds.width, height: max(0, inputBar.frame.minY - top))
     }
 
     private func photoSources(

@@ -3,6 +3,8 @@ import DatabaseAPI
 import Foundation
 import Keychain
 import Localization
+import MediaLoader
+import MediaStore
 import Permissions
 import Theme
 
@@ -17,6 +19,12 @@ final class ApplicationContext {
     let accounts: AccountManager
 
     init() throws {
+        MediaRenderer.generatedArt = { seed, size in
+            StoryArt.render(seed: seed, size: size)
+        }
+        Task.detached(priority: .background) {
+            MediaStore.removeLegacyFolders()
+        }
         sharedStorage = try SharedStorage.open(directory: Self.sharedDirectory())
         keychain = Keychain(service: Bundle.main.bundleIdentifier ?? "org.airlance")
         KeychainInstallation.prepare(keychain, storage: sharedStorage)

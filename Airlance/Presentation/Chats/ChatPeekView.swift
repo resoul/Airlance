@@ -1,10 +1,11 @@
+import AirlanceUI
 @preconcurrency import AsyncDisplayKit
 import AvatarUI
 import Haptics
 import ListUI
 import UIKit
 
-final class ChatPeekView: UIView {
+final class ChatPeekView: UIView, FocusOverlay {
     struct Item {
         let action: ListSwipeAction
         let isDestructive: Bool
@@ -25,6 +26,7 @@ final class ChatPeekView: UIView {
     private let history: ChatHistoryController
     private let source: CGRect
     private var target = CGRect.zero
+    private var gate = MenuGestureGate()
 
     init(
         chat: ChatSummary,
@@ -68,6 +70,8 @@ final class ChatPeekView: UIView {
         UIView.animate(withDuration: 0.45, delay: 0.08, usingSpringWithDamping: 0.7, initialSpringVelocity: 0) {
             self.menu.alpha = 1
             self.menu.transform = .identity
+        } completion: { _ in
+            self.gate.isReady = true
         }
     }
 
@@ -108,7 +112,7 @@ final class ChatPeekView: UIView {
         )
         list.contentInsets = UIEdgeInsets(top: 6, left: 0, bottom: 6, right: 0)
         card.insertSubview(list.view, belowSubview: header)
-        history.load(chat.id, chat: chat)
+        history.load(chat.id, kind: chat.kind)
         history.apply(presentation)
         history.setWidth(target.width)
     }
@@ -129,7 +133,8 @@ final class ChatPeekView: UIView {
             return
         }
 
-        menu.track(convert(point, to: menu), ended: ended)
+        let target = gate.allows(point) ? convert(point, to: menu) : CGPoint(x: -1, y: -1)
+        menu.track(target, ended: ended)
     }
 
     private func buildMenu(_ items: [Item], height: CGFloat) {

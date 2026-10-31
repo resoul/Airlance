@@ -16,14 +16,49 @@ extension ChatViewController {
             outgoing: node.isOutgoing,
             items: menuItems(for: message, node: node),
             presentation: presentation,
+            visible: view.convert(visibleHistoryFrame, to: host),
+            extras: MessageMenuExtras(
+                selection: textSelection(for: message, node: node),
+                reactions: MessageMenuReactions(chosen: message.chosenReaction) { [weak self] emoji in
+                    self?.history.react(emoji, messageID: message.id)
+                },
+                receipts: menuReceipts(for: message)
+            ),
             host: host
         )
         activeMenu = menu
         menu.show()
     }
 
+    private func textSelection(for message: HistoryMessage, node: MessageBubbleNode) -> MessageMenuSelection? {
+        node.selectableText(message.content.text).map { text in
+            MessageMenuSelection(text: text) { [weak self] selected, range in
+                self?.selectionItems(selected, range: range, message: message) ?? []
+            }
+        }
+    }
+
+    private func selectionItems(_ text: String, range: NSRange, message: HistoryMessage) -> [MenuItem] {
+        let quote = MenuItem(
+            title: presentation.strings.chatReplyQuote,
+            symbol: "text.quote",
+            isDestructive: false,
+            action: .run { [weak self] in
+                self?.startReply(message.id, quote: MessageQuote(text: text, offset: range.location))
+            }
+        )
+
+        return canWrite ? [quote, copyItem(text)] : [copyItem(text)]
+    }
+
+    var visibleHistoryFrame: CGRect {
+        let top = view.safeAreaInsets.top + pinnedHeight
+
+        return CGRect(x: 0, y: top, width: view.bounds.width, height: max(0, bottomBarTop - top))
+    }
+
     func trackMenu(_ gesture: UILongPressGestureRecognizer) {
-        guard let menu = activeMenu else {
+        guard !trackLinkMenu(gesture), let menu = activeMenu else {
             return
         }
 
@@ -47,10 +82,12 @@ extension ChatViewController {
                 self?.startReply(message.id)
             }
         )
-        var items = [reply]
+        var items = canWrite ? [reply] : []
         let text = message.content.text
         if !text.isEmpty {
             items.append(copyItem(text))
+            items.append(contentsOf: translateItems(for: message))
+            items.append(contentsOf: pollItems(for: message))
         }
         if message.isOutgoing, message.content.isEditable {
             items.append(editItem(for: message))
@@ -60,11 +97,12 @@ extension ChatViewController {
             symbol: "arrowshape.turn.up.right",
             isDestructive: false,
             action: .run { [weak self] in
-                self?.showForward(message)
+                self?.showForward([message])
             }
         )
-        items.append(forward)
+        items.append(contentsOf: [forward] + videoReactionItems(for: message))
         items.append(pinItem(for: message))
+        items.append(selectItem(for: message))
         let delete = MenuItem(
             title: strings.chatDelete,
             symbol: "trash",
@@ -74,6 +112,17 @@ extension ChatViewController {
         items.append(delete)
 
         return items
+    }
+
+    private func selectItem(for message: HistoryMessage) -> MenuItem {
+        MenuItem(
+            title: presentation.strings.chatSelect,
+            symbol: "checkmark.circle",
+            isDestructive: false,
+            action: .run { [weak self] in
+                self?.startSelecting(message.id)
+            }
+        )
     }
 
     private func copyItem(_ text: String) -> MenuItem {
@@ -116,7 +165,7 @@ extension ChatViewController {
         })
     }
 
-    private func delete(_ message: HistoryMessage, node: MessageBubbleNode?, effect: ViewEffects.Kind) {
+    func delete(_ message: HistoryMessage, node: MessageBubbleNode?, effect: ViewEffects.Kind) {
         guard let node, node.itemID == message.id, let frame = node.bubbleFrame,
               ViewEffects.play(effect, on: node.view, rect: frame) else {
             history.deleteMessage(message.id)
@@ -131,7 +180,7 @@ extension ChatViewController {
         }
     }
 
-    private func showToast(_ text: String, symbol: String) {
+    func showToast(_ text: String, symbol: String) {
         Toast(text, symbol: symbol).show(theme: presentation.theme, in: view)
     }
 }

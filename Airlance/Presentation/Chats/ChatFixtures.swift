@@ -98,7 +98,7 @@ enum ChatFixtures {
         muted: Bool = false,
         read: Bool? = nil
     ) -> ChatSummary {
-        ChatSummary(
+        var chat = ChatSummary(
             id: id,
             name: name,
             kind: .group,
@@ -108,6 +108,9 @@ enum ChatFixtures {
             isMuted: muted,
             outgoingRead: read
         )
+        chat.memberCount = id == "stress" ? 30_000 : 4 + members(of: id) % 40
+
+        return chat
     }
 
     private static func channel(
@@ -118,6 +121,26 @@ enum ChatFixtures {
         unread: Int = 0,
         muted: Bool = false
     ) -> ChatSummary {
-        ChatSummary(id: id, name: name, kind: .channel, message: message, date: date, unread: unread, isMuted: muted)
+        var chat = ChatSummary(
+            id: id,
+            name: name,
+            kind: .channel,
+            message: message,
+            date: date,
+            unread: unread,
+            isMuted: muted
+        )
+        chat.memberCount = 800 + members(of: id) % 60_000
+        chat.canPost = ownChannels.contains(id)
+
+        return chat
+    }
+
+    static let ownChannels: Set<String> = ["news"]
+
+    private static func members(of id: String) -> Int {
+        Int(id.unicodeScalars.reduce(UInt32(7)) { hash, scalar in
+            hash &* 31 &+ scalar.value
+        } % 100_000)
     }
 }

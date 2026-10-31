@@ -2,7 +2,6 @@ import ChatHistory
 import Foundation
 
 enum ChatFileFixtures {
-    private static let prefix = "bundle-file:"
     private static let files = [
         (name: "Звіт за жовтень.pdf", resource: "file-report.pdf"),
         (name: "Бриф — екран профілю.docx", resource: "file-brief.docx"),
@@ -37,7 +36,10 @@ enum ChatFileFixtures {
         let file = MessageFile(
             name: entry.name,
             size: size,
-            source: prefix + entry.resource,
+            source: .bundle(
+                name: (entry.resource as NSString).deletingPathExtension,
+                ext: (entry.resource as NSString).pathExtension
+            ),
             isDownloaded: isOutgoing || pick % 3 == 0
         )
         let caption = pick % 4 == 1 ? captions[pick / 4 % captions.count] : ""
@@ -50,10 +52,11 @@ enum ChatFileFixtures {
     }
 
     static func localCopy(of file: MessageFile) -> URL? {
-        guard
-            file.source.hasPrefix(prefix),
-            let source = Bundle.main.url(forResource: String(file.source.dropFirst(prefix.count)), withExtension: nil)
-        else {
+        if case .local = file.source {
+            return file.source.url
+        }
+
+        guard let source = file.source.url else {
             return nil
         }
 

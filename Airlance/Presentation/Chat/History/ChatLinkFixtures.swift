@@ -86,6 +86,6 @@ enum ChatLinkFixtures {
     }
 
     private static func photo(_ id: String, seed: Int, width: Int, height: Int) -> MessagePhoto {
-        MessagePhoto(id: "link-\(id)", width: width, height: height, source: "demo:\(seed)")
+        MessagePhoto(id: "link-\(id)", width: width, height: height, source: .generated(seed: seed))
     }
 }

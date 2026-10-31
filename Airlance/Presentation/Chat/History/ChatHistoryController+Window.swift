@@ -83,14 +83,15 @@ extension ChatHistoryController {
         fetch(window.latestRequest, focus: nil, keepsEnd: true)
     }
 
-    func reveal(_ id: String) {
+    func reveal(_ id: String, quote: MessageQuote? = nil) {
         guard !listView.contains(id) else {
-            scrollAndFlash(id)
+            scrollAndFlash(id, quote: quote)
 
             return
         }
 
         pendingReveal = id
+        pendingQuote = quote
         if window.focus(id) {
             reload()
         } else {

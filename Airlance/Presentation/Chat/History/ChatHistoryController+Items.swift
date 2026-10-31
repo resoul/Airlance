@@ -14,8 +14,8 @@ extension ChatHistoryController {
         }
     }
 
-    func edit(_ messageID: String, text: String) {
-        store.edit(messageID, text: text, in: chatID)
+    func edit(_ messageID: String, composed: ComposedText) {
+        store.edit(messageID, text: composed.text, entities: composed.entities, in: chatID)
     }
 
     private func service(
@@ -40,11 +40,12 @@ extension ChatHistoryController {
         }
 
         pendingReveal = nil
-        scrollAndFlash(id)
+        scrollAndFlash(id, quote: pendingQuote)
+        pendingQuote = nil
     }
 
     private func message(_ id: String, layout: MessageBubbleLayout, style: HistoryStyle) -> MessageBubbleItem {
-        let color = style.bubble(outgoing: layout.isOutgoing)
+        let color = layout.videoNote == nil ? style.bubble(outgoing: layout.isOutgoing) : .clear
         guard !isReadOnly else {
             return MessageBubbleItem(layout: layout, color: color, messageID: id)
         }
@@ -56,11 +57,30 @@ extension ChatHistoryController {
             onLongPress: { [weak self] node in
                 self?.longPressed(id, node: node)
             },
+            onLinkLongPress: { [weak self] node, url, point in
+                self?.onLinkMenu?(url, node, point)
+            },
             onPhotoTap: { [weak self] node, index in
                 self?.photoTapped(id, index: index, node: node)
             },
             onAction: { [weak self] action in
                 self?.perform(action, messageID: id)
+            },
+            onBubbleTap: { [weak self] in
+                self?.bubbleTapped(id)
+            },
+            selection: selection.map { selection in
+                selection.contains(id) ? .selected : .unselected
+            },
+            selectionTint: style.tint(outgoing: false),
+            search: searchHighlight(for: id),
+            onToggleSelection: { [weak self] in
+                self?.toggleSelection(id)
+            },
+            spoilersRevealed: revealedSpoilers.contains(id),
+            spoilerInk: style.text(outgoing: layout.isOutgoing),
+            onRevealSpoiler: { [weak self] in
+                self?.revealedSpoilers.insert(id)
             }
         )
     }
@@ -69,12 +89,28 @@ extension ChatHistoryController {
         switch action {
         case .url(let url):
             onOpenURL?(url)
-        case .reply(let id):
-            reveal(id)
+        case .reply(let id, let quote):
+            reveal(id, quote: quote)
         case .voice:
             toggleVoice(messageID)
         case .file:
             toggleFile(messageID)
+        case .comments:
+            onOpenComments?(messageID)
+        case .reaction(let emoji):
+            react(emoji, messageID: messageID)
+        case .pollOption(let index):
+            pollOptionTapped(index, messageID: messageID)
+        case .pollVote:
+            submitPollDraft(messageID)
+        case .pollResults:
+            onPollResults?(messageID)
+        case .pollExplanation:
+            showExplanation(messageID)
+        case .videoNote:
+            (listView.node(for: messageID) as? MessageBubbleNode)?.toggleVideoNote()
+        case .videoReaction(let reactionID):
+            onVideoReaction?(messageID, reactionID)
         }
     }
 
@@ -126,7 +162,7 @@ extension ChatHistoryController {
         guard
             let message = message(messageID),
             case .voice(let voice) = message.content,
-            let url = ChatVoiceFixtures.url(for: voice.source)
+            let url = voice.source.url
         else {
             return
         }
@@ -137,12 +173,21 @@ extension ChatHistoryController {
         }
     }
 
-    func scrollAndFlash(_ id: String) {
+    func scrollAndFlash(_ id: String, quote: MessageQuote? = nil) {
         listView.scrollToItem(id, animated: true)
-        let color = (style?.name ?? .systemBlue).withAlphaComponent(0.16)
+        let tint = style?.name ?? .systemBlue
+        let text = message(id)?.content.text ?? ""
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: 350_000_000)
-            (self?.listView.node(for: id) as? MessageBubbleNode)?.flash(color: color)
+            guard let node = self?.listView.node(for: id) as? MessageBubbleNode else {
+                return
+            }
+
+            if let range = quote?.range(in: text), node.flashText(range, color: tint.withAlphaComponent(0.3)) {
+                return
+            }
+
+            node.flash(color: tint.withAlphaComponent(0.16))
         }
     }
 }

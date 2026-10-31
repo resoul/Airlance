@@ -1,5 +1,6 @@
 @preconcurrency import AsyncDisplayKit
 import ChatHistory
+import MediaLoader
 import UIKit
 
 struct LinkCard {

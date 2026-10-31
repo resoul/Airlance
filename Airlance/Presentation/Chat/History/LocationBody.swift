@@ -1,5 +1,6 @@
 @preconcurrency import AsyncDisplayKit
 import ChatHistory
+import MediaLoader
 import UIKit
 
 struct LocationBody {
@@ -34,7 +35,7 @@ struct LocationBody {
         )
         body.images.append(MediaTile(node: map, request: request))
         let meta = MessageMeta(
-            time: input.timeText,
+            input,
             delivery: outgoing ? message.delivery : nil,
             style: style,
             onMedia: !hasText

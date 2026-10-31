@@ -1,3 +1,4 @@
+import AirlanceUI
 import ChatHistory
 import Observers
 import UIKit
@@ -54,6 +55,7 @@ final class QuickReplyPresenter {
             !isClosed,
             let window,
             UIApplication.shared.applicationState == .active,
+            !window.hasFocusOverlay,
             let chat = historyStore.chatsStore.chat(incoming.chatID)
         else {
             return
@@ -146,7 +148,7 @@ final class QuickReplyPresenter {
         let controller = ChatHistoryController(store: historyStore)
         controller.isReadOnly = true
         controller.listView.contentInsets = UIEdgeInsets(top: 6, left: 0, bottom: 6, right: 0)
-        controller.load(chatID, chat: chat)
+        controller.load(chatID, kind: chat.kind)
         controller.apply(presentationContext.presentation)
         controller.setWidth(min(430, window.bounds.width - 28))
         history = controller

@@ -20,6 +20,8 @@ struct HistorySnapshot: Sendable {
         let locale: Locale
         let titles: Titles
         let previous: [String: MessageBubbleLayout]
+        var translations: [String: MessageTranslation] = [:]
+        var pollDrafts: [String: Set<Int>] = [:]
     }
 
     struct Titles: Sendable {
@@ -31,12 +33,18 @@ struct HistorySnapshot: Sendable {
         let video: String
         let voice: String
         let location: String
+        let videoNote: String
         let forwarded: String
         let edited: String
+        let discussionStarted: String
+        let leaveComment: String
+        let views: @Sendable (Int) -> String
+        let comments: @Sendable (Int) -> String
         let created: @Sendable (String) -> String
         let joined: @Sendable (String) -> String
         let renamed: @Sendable (String) -> String
         let pinned: @Sendable (String) -> String
+        let poll: PollTitles
     }
 
     let rows: [Row]
@@ -60,17 +68,10 @@ struct HistorySnapshot: Sendable {
                 rows.append(.service(id: entry.id, kind: .unread, title: request.titles.unread))
             case .message(let message, _) where message.content.isService:
                 rows.append(Self.serviceRow(message, titles: request.titles))
-            case .message(let message, let grouping):
+            case .message(let message, let joined):
+                let grouping = message.views == nil ? joined : HistoryGrouping()
                 let time = formatter.time.string(from: message.date)
-                let input = MessageBubbleInput(
-                    message: message,
-                    grouping: grouping,
-                    showsName: request.showsNames && !message.isOutgoing && !grouping.joinedTop,
-                    reservesAvatar: request.showsAvatars && !message.isOutgoing,
-                    timeText: message.isEdited ? "\(request.titles.edited) \(time)" : time,
-                    reply: Self.quote(message.reply, titles: request.titles),
-                    forwardTitle: message.forward == nil ? nil : request.titles.forwarded
-                )
+                let input = Self.input(message, grouping: grouping, time: time, request: request)
                 let layout = Self.layout(input, request: request)
                 layouts[message.id] = layout
                 if input.reservesAvatar {
@@ -84,13 +85,73 @@ struct HistorySnapshot: Sendable {
         self.series = series.result
     }
 
+    private static func input(
+        _ message: HistoryMessage,
+        grouping: HistoryGrouping,
+        time: String,
+        request: Request
+    ) -> MessageBubbleInput {
+        let titles = request.titles
+        let translation = request.translations[message.id].flatMap { translation in
+            message.content == .text(translation.original) ? translation : nil
+        }
+        var message = message
+        if let translation {
+            message.content = .text(translation.text)
+            message.entities = []
+        }
+
+        return MessageBubbleInput(
+            message: message,
+            grouping: grouping,
+            showsName: request.showsNames && !message.isOutgoing && !grouping.joinedTop,
+            reservesAvatar: request.showsAvatars && !message.isOutgoing,
+            timeText: message.isEdited ? "\(titles.edited) \(time)" : time,
+            reply: quote(message.reply, titles: titles),
+            forwardTitle: message.forward == nil ? nil : titles.forwarded,
+            channel: channelParts(message, titles: titles),
+            reactions: reactionChips(message, titles: titles),
+            translationNote: translation?.note,
+            pollDraft: request.pollDrafts[message.id] ?? []
+        )
+    }
+
+    private static func reactionChips(_ message: HistoryMessage, titles: Titles) -> [ReactionChip] {
+        message.reactions.map { reaction in
+            let showsAvatars = message.views == nil && reaction.total <= 3 && reaction.recent.count == reaction.total
+
+            return ReactionChip(
+                emoji: reaction.emoji,
+                count: showsAvatars ? nil : titles.views(reaction.total),
+                avatars: showsAvatars ? reaction.recent : [],
+                isChosen: reaction.isChosen
+            )
+        }
+    }
+
+    private static func channelParts(_ message: HistoryMessage, titles: Titles) -> ChannelPostParts? {
+        guard message.views != nil || message.comments != nil else {
+            return nil
+        }
+
+        return ChannelPostParts(
+            views: message.views.map(titles.views),
+            signature: message.signature,
+            comments: message.comments.map { comments in
+                comments.total == 0 ? titles.leaveComment : titles.comments(comments.total)
+            },
+            commenters: message.comments?.recent ?? []
+        )
+    }
+
     private static func quote(_ reply: MessageReply?, titles: Titles) -> ReplyQuote? {
         reply.map { reply in
             ReplyQuote(
                 messageID: reply.messageID,
                 title: reply.isOutgoing ? titles.you : reply.authorName,
-                text: quoteText(reply, titles: titles),
-                photo: reply.photo
+                text: reply.quote?.text ?? quoteText(reply, titles: titles),
+                photo: reply.photo,
+                quote: reply.quote
             )
         }
     }
@@ -124,6 +185,8 @@ struct HistorySnapshot: Sendable {
             return titles.joined(name)
         case .renamed(let title):
             return titles.renamed(title)
+        case .discussionStarted:
+            return titles.discussionStarted
         case .pinned(let reply):
             let text = quoteText(reply, titles: titles).replacingOccurrences(of: "\n", with: " ")
 
@@ -138,6 +201,10 @@ struct HistorySnapshot: Sendable {
 
         if reply.isLocation {
             return titles.location
+        }
+
+        if reply.isVideoNote {
+            return titles.videoNote
         }
 
         if let name = reply.fileName, reply.text.isEmpty {
@@ -157,7 +224,13 @@ struct HistorySnapshot: Sendable {
             return previous
         }
 
-        return MessageBubbleLayout(input, width: request.width, scale: request.scale, style: request.style)
+        return MessageBubbleLayout(
+            input,
+            width: request.width,
+            scale: request.scale,
+            style: request.style,
+            poll: request.titles.poll
+        )
     }
 }
 
@@ -172,8 +245,22 @@ extension HistorySnapshot.Titles {
             video: strings.chatVideo,
             voice: strings.chatVoiceMessage,
             location: strings.chatLocation,
+            videoNote: strings.videoNotesPreview,
             forwarded: strings.chatForwardedFrom,
             edited: strings.chatEdited,
+            discussionStarted: strings.chatCommentsStarted,
+            leaveComment: strings.chatCommentsLeave,
+            views: { count in
+                strings.compactCount(count)
+            },
+            comments: { count in
+                strings.count(
+                    count,
+                    one: strings.chatCommentsOne,
+                    few: strings.chatCommentsFew,
+                    many: strings.chatCommentsMany
+                )
+            },
             created: { title in
                 strings.chatServiceCreated(title)
             },
@@ -185,7 +272,8 @@ extension HistorySnapshot.Titles {
             },
             pinned: { text in
                 strings.chatServicePinned(text)
-            }
+            },
+            poll: PollTitles(strings: strings)
         )
     }
 }

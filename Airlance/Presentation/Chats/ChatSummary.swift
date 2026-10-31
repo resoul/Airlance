@@ -24,6 +24,9 @@ struct ChatSummary: Identifiable, Sendable, Equatable {
     var isContact = true
     var draft: String?
     var draftDate: Date?
+    var memberCount = 0
+    var typing: String?
+    var canPost = true
 
     var activityDate: Date {
         max(date, draftDate ?? date)

@@ -1,5 +1,6 @@
 @preconcurrency import AsyncDisplayKit
 import ChatHistory
+import MediaLoader
 import UIKit
 
 struct MediaBody {
@@ -25,7 +26,7 @@ struct MediaBody {
         let mediaFrame = CGRect(origin: CGPoint(x: Self.inset, y: mediaTop), size: mosaic.size)
         let hasCaption = !caption.isEmpty
         let meta = MessageMeta(
-            time: input.timeText,
+            input,
             delivery: message.isOutgoing ? message.delivery : nil,
             style: style,
             onMedia: !hasCaption
@@ -93,6 +94,7 @@ struct MediaBody {
         let padding = MessageBubbleLayout.padding
         let text = MessageBubbleLayout.text(
             caption,
+            entities: input.message.entities,
             outgoing: input.message.isOutgoing,
             metaWidth: meta.size.width,
             style: style,
@@ -100,9 +102,7 @@ struct MediaBody {
         )
         text.frame.origin = CGPoint(x: padding.left, y: media.maxY + 6)
         body.content.addSubnode(text)
-        if !text.linkAttributeNames.isEmpty {
-            body.linkText = text
-        }
+        body.text = text
         meta.place(in: body.content, bottomRight: CGPoint(x: width - padding.right, y: text.frame.maxY))
 
         return text.frame.maxY + padding.bottom

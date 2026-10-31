@@ -45,6 +45,10 @@ extension ChatInputBar {
     @objc
     func held(_ gesture: UILongPressGestureRecognizer) {
         guard !hasText, !isEditingMessage else {
+            if hasText, !isEditingMessage {
+                onSendMenu?(gesture)
+            }
+
             return
         }
 

@@ -14,6 +14,7 @@ struct HistoryStyle: Sendable, Hashable {
     let outgoingMeta: UIColor
     let name: UIColor
     let failed: UIColor
+    let success: UIColor
     let mediaPlaceholder: UIColor
     let serviceBackground: UIColor
     let serviceText: UIColor
@@ -33,6 +34,7 @@ struct HistoryStyle: Sendable, Hashable {
         outgoingMeta = colors.onAccent.withAlphaComponent(0.72)
         name = colors.accent
         failed = colors.destructive
+        success = .systemGreen
         mediaPlaceholder = colors.separator
         serviceBackground = colors.surface
         serviceText = colors.textSecondary
@@ -55,7 +57,7 @@ struct HistoryStyle: Sendable, Hashable {
         outgoing ? outgoingText : name
     }
 
-    private static func bold(_ font: UIFont) -> UIFont {
+    static func bold(_ font: UIFont) -> UIFont {
         guard let descriptor = font.fontDescriptor.withSymbolicTraits(.traitBold) else {
             return font
         }

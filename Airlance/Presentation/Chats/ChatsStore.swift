@@ -53,7 +53,7 @@ final class ChatsStore {
 
     func recordIncoming(_ message: HistoryMessage, in id: String, countsUnread: Bool) {
         mutate(id) { chat in
-            let text = ChatsStore.preview(of: message.content)
+            let text = ChatsStore.preview(of: message)
             chat.message = chat.kind == .group ? "\(message.authorName): \(text)" : text
             chat.date = message.date
             chat.outgoingRead = nil
@@ -61,6 +61,14 @@ final class ChatsStore {
                 chat.unread += 1
             }
         }
+    }
+
+    static func preview(of message: HistoryMessage) -> String {
+        guard message.entities.contains(where: \.isSpoiler), case .text(let text) = message.content else {
+            return preview(of: message.content)
+        }
+
+        return MessageEntity.masked(text, entities: message.entities)
     }
 
     static func preview(of content: MessageContent) -> String {
@@ -73,6 +81,10 @@ final class ChatsStore {
             location.title.map { title in
                 "📍 \(title)"
             } ?? "📍"
+        case .videoNote:
+            "🎥"
+        case .poll(let poll):
+            "📊 \(poll.question)"
         case .voice:
             "🎤"
         case .photos(_, let caption):
@@ -88,7 +100,7 @@ final class ChatsStore {
                 return
             }
 
-            let text = ChatsStore.preview(of: message.content)
+            let text = ChatsStore.preview(of: message)
             if message.isOutgoing {
                 chat.message = ChatSummary.outgoingPrefix + text
             } else {
@@ -130,6 +142,16 @@ final class ChatsStore {
         onChange(chats)
 
         return token
+    }
+
+    func setTyping(_ name: String?, in id: String) {
+        guard chat(id)?.typing != name else {
+            return
+        }
+
+        mutate(id) { chat in
+            chat.typing = name
+        }
     }
 
     private func mutate(_ id: String, _ change: (inout ChatSummary) -> Void) {

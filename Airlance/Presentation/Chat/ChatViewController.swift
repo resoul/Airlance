@@ -1,4 +1,6 @@
+import AirlanceUI
 import ChatHistory
+import MediaStore
 import Observers
 import UIKit
 
@@ -8,23 +10,37 @@ struct ChatDependencies {
     let historyStore: ChatHistoryStore
     let chatPositions: ChatScrollPositions
     let permissionFlow: PermissionFlow
+    let videoNotes: VideoNoteSettings
+    let media: MediaStore
 }
 
 final class ChatViewController: ScreenViewController {
     let id: String
     let dependencies: ChatDependencies
-    private let router: AppRouter
-    private let titleView = ChatTitleView()
-    private let avatarButton = ChatAvatarButton()
+    let router: AppRouter
+    let titleView = ChatTitleView()
+    let avatarButton = ChatAvatarButton()
+    let selectionBar = MessageSelectionBar()
+    let selectionTitle = UILabel()
+    let searchBar = ChatSearchBar()
+    let searchField = UITextField()
+    var searchDebounce: Task<Void, Never>?
     let inputBar = ChatInputBar()
+    let mentions = MentionSuggestionsView()
+    let channelBar = UIButton(type: .system)
     let history: ChatHistoryController
+    let translator = MessageTranslator()
     weak var activeMenu: MessageMenuView?
+    weak var activeLinkMenu: PopupMenu?
+    weak var activeSendMenu: PopupMenu?
     var replyTarget: HistoryMessage?
+    var replyQuote: MessageQuote?
     var editTarget: HistoryMessage?
     var draftBeforeEdit: String?
     let pinnedBar = PinnedMessageBar()
     var isJumpingToPin = false
     weak var recorder: VoiceRecorderView?
+    weak var videoNoteRecorder: VideoNoteRecorderView?
     var recorderStart = CGPoint.zero
     var filePreviewSource: FilePreviewSource?
     weak var metricsView: HistoryMetricsView?
@@ -44,7 +60,7 @@ final class ChatViewController: ScreenViewController {
         super.viewDidLoad()
         navigationItem.largeTitleDisplayMode = .never
         navigationItem.titleView = titleView
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: avatarButton)
+        navigationItem.rightBarButtonItems = defaultRightItems
         for control in [titleView, avatarButton] as [UIControl] {
             control.addAction(
                 UIAction { [weak self] _ in
@@ -54,8 +70,10 @@ final class ChatViewController: ScreenViewController {
             )
         }
         view.addSubview(history.listView.view)
-        history.load(id, chat: dependencies.chatsStore.chat(id))
+        translator.attach(to: self)
+        history.load(id, kind: thread == nil ? dependencies.chatsStore.chat(id)?.kind : .group)
         placeInputBar()
+        placeChannelBar()
         placeScrollDown()
         placePinnedBar()
         placeMetrics()
@@ -87,23 +105,26 @@ final class ChatViewController: ScreenViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        layoutChannelBar()
+        layoutSelectionBar()
         let list = history.listView
         list.frame = view.bounds
         list.contentInsets = UIEdgeInsets(
             top: view.safeAreaInsets.top + pinnedHeight + 4,
             left: 0,
-            bottom: max(0, view.bounds.height - inputBar.frame.minY) + 4,
+            bottom: max(0, view.bounds.height - bottomBarTop) + 4,
             right: 0
         )
         history.setWidth(view.bounds.width)
         history.layoutChanged()
         layoutPinnedBar()
+        layoutMentions()
         let metricsOrigin = CGPoint(x: 8, y: view.safeAreaInsets.top + pinnedHeight + 8)
         metricsView?.place(at: metricsOrigin, maxWidth: view.bounds.width - 16)
         let size = ChatScrollDownButton.size
         scrollDown.frame = CGRect(
             x: view.bounds.width - 12 - size,
-            y: inputBar.frame.minY - 14 - size,
+            y: bottomBarTop - 14 - size,
             width: size,
             height: size
         )
@@ -143,12 +164,24 @@ final class ChatViewController: ScreenViewController {
             self?.showPhotos(of: message, at: index, node: node)
         }
         bindReply()
+        bindSelection()
+        bindSearch()
+        bindSend()
+        bindMentions()
+        bindPolls()
+        bindVideoNotes()
         bindVoice()
-        history.onOpenURL = { url in
-            UIApplication.shared.open(url)
+        history.onOpenURL = { [weak self] url in
+            self?.openLink(url)
+        }
+        history.onLinkMenu = { [weak self] url, node, point in
+            self?.showLinkMenu(url, node: node, point: point)
         }
         history.onOpenFile = { [weak self] file in
             self?.openFile(file)
+        }
+        history.onOpenComments = { [weak self] postID in
+            self?.openComments(postID)
         }
         history.listView.onLongPressMove = { [weak self] gesture in
             self?.trackMenu(gesture)
@@ -182,16 +215,23 @@ final class ChatViewController: ScreenViewController {
 
     private func render(_ presentation: PresentationData) {
         let strings = presentation.strings
-        let chat = dependencies.chatsStore.chat(id)
-        let name = chat?.name ?? id
+        let peer = dependencies.chatsStore.chat(peerID)
+        let chat = thread == nil ? peer : nil
+        let name = thread == nil ? peer?.name ?? id : strings.chatCommentsTitle
         let isOnline = chat?.isOnline ?? false
-        var status: String?
-        if chat?.kind == .person {
-            status = isOnline ? strings.profileOnline : strings.profileLastSeen
+        let typing = chat?.typing.map { name in
+            strings.typing(name)
         }
-        titleView.apply(name: name, status: status, isOnline: isOnline, theme: presentation.theme)
+        let status = typing ?? chat.map { chat in
+            Self.status(of: chat, strings: strings)
+        } ?? peer?.name
+        let theme = presentation.theme
+        titleView.apply(name: name, status: status, isOnline: isOnline, isTyping: typing != nil, theme: theme)
+        renderChannelBar(chat, presentation: presentation)
+        renderSelection(presentation)
+        renderSearch(presentation)
         titleView.sizeToFit()
-        avatarButton.apply(PeerAvatars.descriptor(id: id, name: name), label: strings.chatProfile)
+        avatarButton.apply(PeerAvatars.descriptor(id: peerID, name: peer?.name ?? name), label: strings.chatProfile)
     }
 
     @objc
@@ -212,6 +252,6 @@ final class ChatViewController: ScreenViewController {
     }
 
     private func openProfile() {
-        router.open(.profile(id))
+        router.open(.profile(peerID))
     }
 }

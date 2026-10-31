@@ -1,5 +1,6 @@
 @preconcurrency import AsyncDisplayKit
 import ChatHistory
+import MediaLoader
 import UIKit
 
 struct ReplyQuote: Sendable, Hashable {
@@ -7,14 +8,23 @@ struct ReplyQuote: Sendable, Hashable {
     let title: String
     let text: String
     let photo: MessagePhoto?
+    let quote: MessageQuote?
 }
 
 struct BubbleAction {
     enum Kind {
-        case reply(String)
+        case reply(String, MessageQuote?)
         case url(URL)
         case voice
         case file
+        case comments
+        case reaction(String)
+        case pollOption(Int)
+        case pollVote
+        case pollResults
+        case pollExplanation
+        case videoNote
+        case videoReaction(String)
     }
 
     let frame: CGRect
@@ -94,7 +104,7 @@ struct BubbleHeader {
         content.addSubnode(quote.title)
         content.addSubnode(quote.text)
 
-        return (tile, BubbleAction(frame: frame, kind: .reply(reply.messageID)))
+        return (tile, BubbleAction(frame: frame, kind: .reply(reply.messageID, reply.quote)))
     }
 
     private func thumbnail(_ photo: MessagePhoto, at origin: CGPoint, in content: ASDisplayNode) -> MediaTile {

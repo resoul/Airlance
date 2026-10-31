@@ -1,3 +1,4 @@
+import Foundation
 import Routing
 
 typealias AppRouter = Router<AppRoute>
@@ -20,6 +21,9 @@ enum AppRoute: Route {
     case newChatFolder
     case chatFolder(String)
     case chatArchive
+    case browser(URL)
+    case comments(String)
+    case videoNotes
 
     static let tabs: [AppRoute] = [.contacts, .calls, .chats, .settings]
 
@@ -59,6 +63,12 @@ enum AppRoute: Route {
             RouteSegment("chatFolder", argument: id)
         case .chatArchive:
             RouteSegment("chatArchive")
+        case .browser(let url):
+            RouteSegment("browser", argument: Self.encode(url))
+        case .comments(let id):
+            RouteSegment("comments", argument: id)
+        case .videoNotes:
+            RouteSegment("videoNotes")
         }
     }
 
@@ -66,13 +76,17 @@ enum AppRoute: Route {
         switch self {
         case .contacts, .calls, .chats, .settings:
             []
-        case .chat, .newChat, .stories, .chatArchive:
+        case .chat, .newChat, .stories, .chatArchive, .browser:
             [.chats]
         case .newContact, .invite:
             [.contacts]
         case .media(let id), .profile(let id):
             [.chats, .chat(id)]
-        case .permissions, .appearance, .chatFolders:
+        case .comments(let id):
+            [.chats] + (CommentThread(id: id).map { thread in
+                [.chat(thread.channelID)]
+            } ?? [])
+        case .permissions, .appearance, .chatFolders, .videoNotes:
             [.settings]
         case .newChatFolder, .chatFolder:
             [.settings, .chatFolders]
@@ -83,11 +97,12 @@ enum AppRoute: Route {
         switch self {
         case .contacts, .calls, .chats, .settings:
             .tab
-        case .chat, .permissions, .appearance, .profile, .chatFolders, .chatFolder, .chatArchive:
+        case .chat, .permissions, .appearance, .profile, .chatFolders, .chatFolder, .chatArchive, .comments,
+             .videoNotes:
             .stack
         case .media, .stories:
             .fullScreen
-        case .newChat, .newContact, .invite, .newChatFolder:
+        case .newChat, .newContact, .invite, .newChatFolder, .browser:
             .sheet
         }
     }
@@ -97,6 +112,12 @@ enum AppRoute: Route {
             self = .stories(argument)
         } else if segment.name == "chatFolder", let argument = segment.argument {
             self = .chatFolder(argument)
+        } else if segment.name == "browser", let argument = segment.argument {
+            guard let url = Self.decode(argument) else {
+                return nil
+            }
+
+            self = .browser(url)
         } else if let argument = segment.argument {
             self.init(name: segment.name, id: argument)
         } else {
@@ -130,6 +151,8 @@ enum AppRoute: Route {
             self = .newChatFolder
         case "chatArchive":
             self = .chatArchive
+        case "videoNotes":
+            self = .videoNotes
         default:
             return nil
         }
@@ -143,8 +166,27 @@ enum AppRoute: Route {
             self = .media(id)
         case "profile":
             self = .profile(id)
+        case "comments":
+            self = .comments(id)
         default:
             return nil
         }
+    }
+
+    private static func encode(_ url: URL) -> String {
+        Data(url.absoluteString.utf8).base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
+
+    private static func decode(_ text: String) -> URL? {
+        var base64 = text.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        base64 += String(repeating: "=", count: (4 - base64.count % 4) % 4)
+        guard let data = Data(base64Encoded: base64), let string = String(data: data, encoding: .utf8) else {
+            return nil
+        }
+
+        return URL(string: string)
     }
 }

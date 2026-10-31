@@ -1,3 +1,4 @@
+import BrowserUI
 import DatabaseAPI
 import Foundation
 import Keychain
@@ -155,6 +156,7 @@ final class AccountManager {
         if let context = contexts.removeValue(forKey: id) {
             await context.close()
         }
+        await BrowserDataStore.remove(identifier: id.rawValue)
         finishRemoval(id)
         observers.notify(.changed)
     }

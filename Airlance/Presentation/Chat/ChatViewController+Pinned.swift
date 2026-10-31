@@ -17,6 +17,7 @@ extension ChatViewController {
         view.addSubview(pinnedBar)
         history.onUpdate = { [weak self] in
             self?.updatePinned()
+            self?.updateScheduled()
         }
     }
 

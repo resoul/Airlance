@@ -31,7 +31,7 @@ struct FileBody {
         let iconFrame = CGRect(x: 9, y: top + 8, width: Self.iconSize, height: Self.iconSize)
         let details = addRow(to: content, icon: iconFrame, width: width, style: style)
         var height = max(top + Self.rowHeight, details.maxY + padding.bottom)
-        let meta = MessageMeta(time: input.timeText, delivery: outgoing ? message.delivery : nil, style: style)
+        let meta = MessageMeta(input, delivery: outgoing ? message.delivery : nil, style: style)
         if caption.isEmpty {
             height = max(height, details.maxY + meta.size.height + padding.bottom)
             meta.place(in: content, bottomRight: CGPoint(x: width - 11, y: height - 7))
@@ -84,6 +84,7 @@ struct FileBody {
         let padding = MessageBubbleLayout.padding
         let text = MessageBubbleLayout.text(
             caption,
+            entities: input.message.entities,
             outgoing: input.message.isOutgoing,
             metaWidth: meta.size.width,
             style: style,
@@ -91,9 +92,7 @@ struct FileBody {
         )
         text.frame.origin = CGPoint(x: padding.left, y: top)
         body.content.addSubnode(text)
-        if !text.linkAttributeNames.isEmpty {
-            body.linkText = text
-        }
+        body.text = text
         meta.place(in: body.content, bottomRight: CGPoint(x: width - padding.right, y: text.frame.maxY))
 
         return text.frame.maxY + padding.bottom

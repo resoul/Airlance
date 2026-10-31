@@ -3,7 +3,10 @@ import Theme
 import UIKit
 
 final class ChatInputBar: UIView, UITextViewDelegate {
-    var onSend: (@MainActor (String) -> Void)?
+    var onSend: (@MainActor (ComposedText) -> Void)?
+    var onSendMenu: (@MainActor (UILongPressGestureRecognizer) -> Void)?
+    var onScheduled: (@MainActor () -> Void)?
+    var onMentionQuery: (@MainActor (String?) -> Void)?
     var onAttach: (@MainActor () -> Void)?
     var onHold: (@MainActor (UILongPressGestureRecognizer) -> Void)?
     var includesBottomSafeArea = true
@@ -13,11 +16,13 @@ final class ChatInputBar: UIView, UITextViewDelegate {
     private let separator = UIView()
     let attachButton = UIButton(type: .system)
     let fieldBox = UIView()
-    private let textView = UITextView()
+    let textView = UITextView()
+    let scheduledButton = UIButton(type: .system)
+    var composerStyle = ComposerStyle(accent: .systemBlue, spoilerFill: .systemGray5)
     private let placeholder = UILabel()
     let actionIcon = UIImageView()
     private let actionButton = UIButton(type: .custom)
-    private var strings: AppStrings?
+    var strings: AppStrings?
     private var theme: AppTheme?
     var isVideoMode = false
     private var textHeight: CGFloat = 36
@@ -81,6 +86,7 @@ final class ChatInputBar: UIView, UITextViewDelegate {
         fieldBox.addSubview(textView)
         placeholder.isUserInteractionEnabled = false
         fieldBox.addSubview(placeholder)
+        setupScheduledButton()
         actionIcon.contentMode = .center
         addSubview(actionIcon)
         actionButton.addTarget(self, action: #selector(actionTapped), for: .touchUpInside)
@@ -109,6 +115,10 @@ final class ChatInputBar: UIView, UITextViewDelegate {
         textView.font = theme.fonts.body
         textView.textColor = theme.colors.textPrimary
         textView.tintColor = theme.colors.accent
+        composerStyle = ComposerStyle(
+            accent: theme.colors.accent,
+            spoilerFill: theme.colors.textSecondary.withAlphaComponent(0.25)
+        )
         textView.accessibilityLabel = presentation.strings.chatMessage
         placeholder.text = presentation.strings.chatMessage
         placeholder.font = theme.fonts.body
@@ -150,7 +160,7 @@ final class ChatInputBar: UIView, UITextViewDelegate {
         separator.frame = CGRect(x: 0, y: 0, width: width, height: 0.5)
         attachButton.frame = CGRect(x: 4, y: rowBottom - 48, width: 44, height: 44)
         fieldBox.frame = CGRect(x: 50, y: top + 8, width: width - 100, height: textHeight)
-        textView.frame = fieldBox.bounds
+        layoutField()
         let placeholderHeight = ceil(placeholder.font?.lineHeight ?? 20)
         placeholder.frame = CGRect(
             x: 14,
@@ -164,6 +174,11 @@ final class ChatInputBar: UIView, UITextViewDelegate {
 
     func textViewDidChange(_ textView: UITextView) {
         textChanged(animated: true)
+        reportMention()
+    }
+
+    func textViewDidChangeSelection(_ textView: UITextView) {
+        reportMention()
     }
 
     func textViewDidBeginEditing(_ textView: UITextView) {
@@ -242,7 +257,7 @@ final class ChatInputBar: UIView, UITextViewDelegate {
     private func actionTapped() {
         guard !hasText, !isEditingMessage else {
             Haptics.play(.tap)
-            onSend?(text.trimmingCharacters(in: .whitespacesAndNewlines))
+            onSend?(ComposedText(attributed: textView.attributedText))
 
             return
         }

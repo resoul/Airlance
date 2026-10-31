@@ -10,6 +10,12 @@ extension ChatViewController {
     }
 
     private func recordGesture(_ gesture: UILongPressGestureRecognizer) {
+        if gesture.state != .began, let videoRecorder = videoNoteRecorder {
+            trackVideoNote(gesture, recorder: videoRecorder)
+
+            return
+        }
+
         switch gesture.state {
         case .began:
             beginRecording(at: gesture.location(in: view))
@@ -28,7 +34,7 @@ extension ChatViewController {
     private func beginRecording(at point: CGPoint) {
         let strings = presentation.strings
         guard !inputBar.isVideoMessage else {
-            showRecordToast(strings.chatVideoSoon, symbol: "video.fill")
+            beginVideoNote(at: point)
 
             return
         }
@@ -46,7 +52,7 @@ extension ChatViewController {
             return
         }
 
-        guard let recording = VoiceRecording() else {
+        guard let recording = VoiceRecording(store: dependencies.media) else {
             return
         }
 
@@ -73,7 +79,7 @@ extension ChatViewController {
         recorderStart = point
     }
 
-    private func showRecordToast(_ text: String, symbol: String) {
+    func showRecordToast(_ text: String, symbol: String) {
         Toast(text, symbol: symbol).show(theme: presentation.theme, in: view)
     }
 }

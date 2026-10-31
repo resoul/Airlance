@@ -6,6 +6,7 @@ import UIKit
 final class ChatTitleView: UIControl {
     private let nameLabel = UILabel()
     private let statusLabel = UILabel()
+    private let dots = TypingDotsView()
 
     override var isHighlighted: Bool {
         didSet {
@@ -19,6 +20,7 @@ final class ChatTitleView: UIControl {
         statusLabel.textAlignment = .center
         addSubview(nameLabel)
         addSubview(statusLabel)
+        addSubview(dots)
         isAccessibilityElement = true
         accessibilityTraits = .button
     }
@@ -29,7 +31,8 @@ final class ChatTitleView: UIControl {
     }
 
     override var intrinsicContentSize: CGSize {
-        let width = max(nameLabel.intrinsicContentSize.width, statusLabel.intrinsicContentSize.width)
+        let dotsWidth = dots.isAnimating ? (TypingDotsView.width + 2) * 2 : 0
+        let width = max(nameLabel.intrinsicContentSize.width, statusLabel.intrinsicContentSize.width + dotsWidth)
         let status = statusLabel.text == nil ? 0 : ceil(statusLabel.font.lineHeight)
 
         return CGSize(width: min(width, 240), height: ceil(nameLabel.font.lineHeight) + status)
@@ -39,13 +42,15 @@ final class ChatTitleView: UIControl {
         intrinsicContentSize
     }
 
-    func apply(name: String, status: String?, isOnline: Bool, theme: AppTheme) {
+    func apply(name: String, status: String?, isOnline: Bool, isTyping: Bool = false, theme: AppTheme) {
         nameLabel.text = name
         nameLabel.font = theme.fonts.headline
         nameLabel.textColor = theme.colors.textPrimary
         statusLabel.text = status
         statusLabel.font = theme.fonts.caption
-        statusLabel.textColor = isOnline ? theme.colors.accent : theme.colors.textSecondary
+        statusLabel.textColor = isOnline || isTyping ? theme.colors.accent : theme.colors.textSecondary
+        dots.color = theme.colors.accent
+        dots.isAnimating = isTyping
         accessibilityLabel = [name, status].compactMap(\.self).joined(separator: ", ")
         invalidateIntrinsicContentSize()
         setNeedsLayout()
@@ -58,6 +63,80 @@ final class ChatTitleView: UIControl {
         let top = (bounds.height - nameHeight - statusHeight) / 2
         nameLabel.frame = CGRect(x: 0, y: top, width: bounds.width, height: nameHeight)
         statusLabel.frame = CGRect(x: 0, y: top + nameHeight, width: bounds.width, height: statusHeight)
+        let textWidth = min(bounds.width, statusLabel.intrinsicContentSize.width)
+        dots.frame = CGRect(
+            x: min(bounds.width - TypingDotsView.width, (bounds.width + textWidth) / 2 + 2),
+            y: statusLabel.frame.midY - 2,
+            width: TypingDotsView.width,
+            height: 6
+        )
+    }
+}
+
+final class TypingDotsView: UIView {
+    static let width: CGFloat = 16
+
+    var color: UIColor = .systemBlue {
+        didSet {
+            for dot in dotLayers {
+                dot.backgroundColor = color.cgColor
+            }
+        }
+    }
+
+    var isAnimating = false {
+        didSet {
+            guard isAnimating != oldValue else {
+                return
+            }
+
+            isHidden = !isAnimating
+            isAnimating ? start() : stop()
+        }
+    }
+
+    private let dotLayers = (0..<3).map { _ in
+        CALayer()
+    }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isHidden = true
+        isUserInteractionEnabled = false
+        for dot in dotLayers {
+            dot.cornerRadius = 1.5
+            layer.addSublayer(dot)
+        }
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        for (index, dot) in dotLayers.enumerated() {
+            dot.frame = CGRect(x: CGFloat(index) * 5, y: bounds.midY - 1.5, width: 3, height: 3)
+        }
+    }
+
+    private func start() {
+        for (index, dot) in dotLayers.enumerated() {
+            let animation = CAKeyframeAnimation(keyPath: "opacity")
+            animation.values = [0.25, 1, 0.25]
+            animation.keyTimes = [0, 0.5, 1]
+            animation.duration = 1.0
+            animation.beginTime = CACurrentMediaTime() + Double(index) * 0.18
+            animation.repeatCount = .infinity
+            dot.add(animation, forKey: "typing")
+        }
+    }
+
+    private func stop() {
+        for dot in dotLayers {
+            dot.removeAnimation(forKey: "typing")
+        }
     }
 }
 
