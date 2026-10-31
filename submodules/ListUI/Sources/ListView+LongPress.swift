@@ -30,6 +30,16 @@ extension ListView {
             return
         }
 
-        item.longPressed(node: node)
+        item.longPressed(node: node, at: gesture.location(in: node.view))
+    }
+}
+
+extension ListView {
+    public func itemID(at point: CGPoint, in space: UIView) -> String? {
+        let location = space.convert(point, to: content.view)
+
+        return active.values.first { node in
+            node.frame.contains(location)
+        }?.itemID
     }
 }

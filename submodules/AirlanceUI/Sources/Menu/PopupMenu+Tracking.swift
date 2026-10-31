@@ -3,6 +3,13 @@ import UIKit
 
 extension PopupMenu {
     public func track(_ point: CGPoint?, ended: Bool) {
+        let allowed = point.map { point in
+            gate.allows(panel.convert(point, to: self))
+        } ?? false
+        follow(allowed ? point : nil, ended: ended)
+    }
+
+    private func follow(_ point: CGPoint?, ended: Bool) {
         let target = point.flatMap(index(at:))
         if target != highlighted {
             highlight(target)
@@ -32,22 +39,22 @@ extension PopupMenu {
         switch gesture.state {
         case .began:
             Haptics.prepare(.selection)
-            track(location(of: gesture), ended: false)
+            follow(location(of: gesture), ended: false)
         case .changed:
-            track(location(of: gesture), ended: false)
+            follow(location(of: gesture), ended: false)
         case .ended:
-            track(location(of: gesture), ended: true)
+            follow(location(of: gesture), ended: true)
         default:
-            track(nil, ended: true)
+            follow(nil, ended: true)
         }
     }
 
     private func index(at point: CGPoint) -> Int? {
-        guard panel.bounds.contains(point) else {
+        guard panel.bounds.contains(point), point.y >= headerHeight else {
             return nil
         }
 
-        let index = Int(point.y / Self.rowHeight)
+        let index = Int((point.y - headerHeight) / Self.rowHeight)
 
         return items.indices.contains(index) ? index : nil
     }

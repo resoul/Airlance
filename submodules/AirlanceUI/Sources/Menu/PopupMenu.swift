@@ -30,20 +30,28 @@ public struct PopupMenuItem {
 }
 
 @MainActor
-public final class PopupMenu: UIView {
+public final class PopupMenu: UIView, FocusOverlay {
     static let rowHeight: CGFloat = 46
     private static let width: CGFloat = 240
     private static let margin: CGFloat = 16
 
     let panel = UIView()
     let items: [PopupMenuItem]
+    let headerHeight: CGFloat
     var highlights: [UIView] = []
     var highlighted: Int?
+    var gate = MenuGestureGate()
     private let blur = UIVisualEffectView(effect: nil)
     private var isClosing = false
 
-    private init(items: [PopupMenuItem], theme: AppTheme, frame: CGRect) {
+    private init(items: [PopupMenuItem], header: String?, theme: AppTheme, frame: CGRect) {
         self.items = items
+        let headerLabel = header.map { text in
+            Self.headerLabel(text, theme: theme)
+        }
+        headerHeight = headerLabel.map { label in
+            label.frame.maxY + 10
+        } ?? 0
         super.init(frame: frame)
         blur.frame = bounds
         blur.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -58,6 +66,10 @@ public final class PopupMenu: UIView {
         let press = UILongPressGestureRecognizer(target: self, action: #selector(pressed(_:)))
         press.minimumPressDuration = 0
         panel.addGestureRecognizer(press)
+        if let headerLabel {
+            panel.addSubview(headerLabel)
+            addLine(at: headerHeight, theme: theme)
+        }
         for (index, item) in items.enumerated() {
             let highlight = UIView(frame: rowFrame(index))
             highlight.backgroundColor = theme.colors.textPrimary.withAlphaComponent(0.08)
@@ -66,14 +78,7 @@ public final class PopupMenu: UIView {
             panel.addSubview(highlight)
             panel.addSubview(row(for: item, theme: theme, index: index))
             if index < items.count - 1 {
-                let line = UIView(frame: CGRect(
-                    x: 0,
-                    y: CGFloat(index + 1) * Self.rowHeight - 0.5,
-                    width: Self.width,
-                    height: 0.5
-                ))
-                line.backgroundColor = theme.colors.separator
-                panel.addSubview(line)
+                addLine(at: rowFrame(index).maxY, theme: theme)
             }
         }
     }
@@ -89,13 +94,14 @@ public final class PopupMenu: UIView {
         theme: AppTheme,
         from anchor: CGRect,
         in container: UIView,
-        below sibling: UIView? = nil
+        below sibling: UIView? = nil,
+        header: String? = nil
     ) -> PopupMenu? {
         guard !items.isEmpty else {
             return nil
         }
 
-        let menu = PopupMenu(items: items, theme: theme, frame: container.bounds)
+        let menu = PopupMenu(items: items, header: header, theme: theme, frame: container.bounds)
         menu.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         if let sibling, sibling.superview === container {
             container.insertSubview(menu, belowSubview: sibling)
@@ -108,7 +114,7 @@ public final class PopupMenu: UIView {
     }
 
     private func present(count: Int, anchor: CGRect) {
-        let height = CGFloat(count) * Self.rowHeight
+        let height = headerHeight + CGFloat(count) * Self.rowHeight
         let x = min(max(anchor.midX - Self.width / 2, Self.margin), bounds.width - Self.width - Self.margin)
         let below = anchor.minY - 10 - height < safeAreaInsets.top + Self.margin
         let y = below ? anchor.maxY + 10 : anchor.minY - 10 - height
@@ -126,6 +132,8 @@ public final class PopupMenu: UIView {
         UIView.animate(withDuration: 0.45, delay: 0, usingSpringWithDamping: 0.7, initialSpringVelocity: 0) {
             self.panel.alpha = 1
             self.panel.transform = .identity
+        } completion: { _ in
+            self.gate.isReady = true
         }
     }
 
@@ -174,7 +182,27 @@ public final class PopupMenu: UIView {
     }
 
     private func rowFrame(_ index: Int) -> CGRect {
-        CGRect(x: 0, y: CGFloat(index) * Self.rowHeight, width: Self.width, height: Self.rowHeight)
+        CGRect(x: 0, y: headerHeight + CGFloat(index) * Self.rowHeight, width: Self.width, height: Self.rowHeight)
+    }
+
+    private func addLine(at y: CGFloat, theme: AppTheme) {
+        let line = UIView(frame: CGRect(x: 0, y: y - 0.5, width: Self.width, height: 0.5))
+        line.backgroundColor = theme.colors.separator
+        panel.addSubview(line)
+    }
+
+    private static func headerLabel(_ text: String, theme: AppTheme) -> UILabel {
+        let label = UILabel()
+        label.text = text
+        label.font = theme.fonts.caption
+        label.textColor = theme.colors.textSecondary
+        label.numberOfLines = 3
+        label.lineBreakMode = .byTruncatingMiddle
+        let width = Self.width - 32
+        let height = ceil(label.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height)
+        label.frame = CGRect(x: 16, y: 10, width: width, height: height)
+
+        return label
     }
 
     @objc

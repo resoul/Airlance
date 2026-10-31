@@ -1,12 +1,13 @@
 import Foundation
+import MediaStore
 
 public struct MessageFile: Sendable, Hashable {
     public let name: String
     public let size: Int64
-    public let source: String
+    public let source: MediaSource
     public var isDownloaded: Bool
 
-    public init(name: String, size: Int64, source: String, isDownloaded: Bool) {
+    public init(name: String, size: Int64, source: MediaSource, isDownloaded: Bool) {
         self.name = name
         self.size = size
         self.source = source
