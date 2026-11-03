@@ -11,12 +11,34 @@ public struct StoryItem: Sendable, Identifiable {
     public let media: StoryMedia
     public let duration: TimeInterval
     public let timeText: String
+    public let widgets: [StoryEntity]
+    public let aspect: CGSize?
+    public let caption: String
+    public let isProtected: Bool
+    public let isEditable: Bool
 
-    public init(id: String, media: StoryMedia, duration: TimeInterval = 5, timeText: String) {
+    public init(
+        id: String,
+        media: StoryMedia,
+        duration: TimeInterval = 5,
+        timeText: String,
+        widgets: [StoryEntity] = [],
+        aspect: CGSize? = nil,
+        caption: String = "",
+        isProtected: Bool = false,
+        isEditable: Bool = false
+    ) {
         self.id = id
         self.media = media
         self.duration = max(duration, 1)
         self.timeText = timeText
+        self.widgets = widgets.filter { entity in
+            entity.widget != nil
+        }
+        self.aspect = aspect
+        self.caption = caption
+        self.isProtected = isProtected
+        self.isEditable = isEditable
     }
 }
 
@@ -45,4 +67,10 @@ public struct StoryAuthor: Sendable, Identifiable {
 @MainActor
 public protocol StoryTransitionSource: AnyObject {
     func storyAvatarFrame(for peerID: String) -> CGRect?
+    func setStoryAvatarHidden(_ isHidden: Bool, for peerID: String)
+}
+
+public extension StoryTransitionSource {
+    func setStoryAvatarHidden(_ isHidden: Bool, for peerID: String) {
+    }
 }

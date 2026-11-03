@@ -1,4 +1,3 @@
-import Haptics
 import LiquidUI
 import UIKit
 
@@ -16,6 +15,7 @@ public final class StoriesHeaderView: UIView, UIScrollViewDelegate {
 
     public var onOpen: (@MainActor (String) -> Void)?
     public var onStackTap: (@MainActor () -> Void)?
+    public var onCreate: (@MainActor () -> Void)?
 
     public var title = "" {
         didSet {
@@ -72,7 +72,7 @@ public final class StoriesHeaderView: UIView, UIScrollViewDelegate {
         rowScroll.showsHorizontalScrollIndicator = false
         rowScroll.alwaysBounceHorizontal = true
         rowScroll.backgroundColor = .clear
-        rowScroll.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(rowTapped(_:))))
+        bindRowGestures()
         addSubview(rowScroll)
         addGestureRecognizer(stackTap)
         applyTheme()
@@ -127,6 +127,12 @@ public final class StoriesHeaderView: UIView, UIScrollViewDelegate {
         rowScroll.isUserInteractionEnabled = value > 0.9
         place()
         wake()
+    }
+
+    public func setAvatarHidden(_ isHidden: Bool, for id: String) {
+        entries.first { entry in
+            entry.peer.id == id
+        }?.avatar.isHidden = isHidden
     }
 
     public func avatarFrame(for id: String, in view: UIView) -> CGRect? {
@@ -218,25 +224,5 @@ public final class StoriesHeaderView: UIView, UIScrollViewDelegate {
     @objc
     private func stackTapped() {
         onStackTap?()
-    }
-
-    @objc
-    private func rowTapped(_ gesture: UITapGestureRecognizer) {
-        let point = gesture.location(in: rowScroll)
-        let index = Int(((point.x - Self.rowInset) / Self.slotWidth).rounded(.down))
-        guard entries.indices.contains(index), point.x >= Self.rowInset else {
-            return
-        }
-
-        let entry = entries[index]
-        Haptics.play(.tap)
-        UIView.animate(withDuration: 0.12, animations: {
-            entry.container.transform = CGAffineTransform(scaleX: 0.9, y: 0.9)
-        }, completion: { _ in
-            UIView.animate(withDuration: 0.2) {
-                entry.container.transform = .identity
-            }
-        })
-        onOpen?(entry.peer.id)
     }
 }

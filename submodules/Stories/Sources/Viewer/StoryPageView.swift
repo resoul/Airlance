@@ -6,8 +6,15 @@ import UIKit
 final class StoryPageView: UIView {
     let author: StoryAuthor
     let media = StoryMediaView()
+    let widgets = StoryWidgetLayer()
     let shade = UIView()
     let closeButton = UIButton(type: .system)
+    let moreButton = UIButton(type: .system)
+    let captionLabel = UILabel()
+    let bottomGradient = CAGradientLayer()
+    let plainHost = UIView()
+    let secureField = UITextField()
+    var secureCanvas: UIView?
 
     var safeTop: CGFloat = 0 {
         didSet {
@@ -16,6 +23,7 @@ final class StoryPageView: UIView {
     }
 
     private(set) var itemIndex = 0
+    var votes: [UUID: Int] = [:]
 
     private let topGradient = CAGradientLayer()
     private let progressView = StoryProgressView()
@@ -31,7 +39,7 @@ final class StoryPageView: UIView {
         self.author = author
         super.init(frame: .zero)
         backgroundColor = .black
-        addSubview(media)
+        setUpContent()
         topGradient.colors = [UIColor(white: 0, alpha: 0.5).cgColor, UIColor.clear.cgColor]
         layer.addSublayer(topGradient)
         progressView.setCount(author.items.count)
@@ -49,6 +57,7 @@ final class StoryPageView: UIView {
         closeButton.setImage(UIImage(systemName: "xmark", withConfiguration: symbol), for: .normal)
         closeButton.tintColor = .white
         addSubview(closeButton)
+        setUpExtras()
         shade.backgroundColor = .black
         shade.alpha = 0
         shade.isUserInteractionEnabled = false
@@ -70,6 +79,8 @@ final class StoryPageView: UIView {
         timeLabel.text = item.timeText
         progressView.set(index: index, progress: 0)
         media.show(item)
+        widgets.show(item.widgets, aspect: item.aspect, votes: votes)
+        apply(item)
         setNeedsLayout()
     }
 
@@ -78,9 +89,17 @@ final class StoryPageView: UIView {
         media.update()
     }
 
+    func avatarFrame(in view: UIView) -> CGRect {
+        avatar.view.convert(avatar.view.bounds, to: view)
+    }
+
+    func setAvatarHidden(_ isHidden: Bool) {
+        avatar.isHidden = isHidden
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
-        media.frame = bounds
+        layoutContent()
         shade.frame = bounds
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -92,9 +111,10 @@ final class StoryPageView: UIView {
         let rowY = progressView.frame.maxY + 10
         avatar.frame = CGRect(x: 12, y: rowY, width: 32, height: 32)
         let textX = avatar.frame.maxX + 8
-        let nameWidth = min(ceil(nameLabel.intrinsicContentSize.width), bounds.width - textX - 120)
+        let nameWidth = min(ceil(nameLabel.intrinsicContentSize.width), bounds.width - textX - 160)
         nameLabel.frame = CGRect(x: textX, y: rowY, width: nameWidth, height: 32)
         timeLabel.frame = CGRect(x: nameLabel.frame.maxX + 8, y: rowY, width: 80, height: 32)
         closeButton.frame = CGRect(x: bounds.width - 52, y: rowY - 6, width: 44, height: 44)
+        moreButton.frame = CGRect(x: bounds.width - 92, y: rowY - 6, width: 40, height: 44)
     }
 }

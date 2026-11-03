@@ -27,6 +27,10 @@ extension StoryViewerController {
             return
         }
 
+        guard !handleWidgetTap(gesture.location(in: view)) else {
+            return
+        }
+
         if gesture.location(in: view).x < view.bounds.width * 0.3 {
             previous()
         } else {
@@ -50,6 +54,7 @@ extension StoryViewerController {
         let velocity = gesture.velocity(in: view)
         switch gesture.state {
         case .began:
+            dismissTooltip()
             isHorizontalPan = abs(velocity.x) > abs(velocity.y)
             isDragging = !isHorizontalPan
             page?.media.setPaused(true)

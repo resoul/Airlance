@@ -6,6 +6,8 @@ extension StoryViewerController {
     func beginOpening(from source: CGRect?, completion: @escaping @MainActor () -> Void) {
         view.layoutIfNeeded()
         let start = startRect(for: source)
+        closeWidth = 0
+        setSprings(closing: false)
         reset(to: start)
         phase = .opening
         goal = view.bounds
@@ -19,8 +21,16 @@ extension StoryViewerController {
         page?.media.setPaused(true)
         phase = .closing
         isDragging = false
-        goal = startRect(for: source)
         phaseCompletion = completion
+        if let source, source.width > 1, let page, !UIAccessibility.isReduceMotionEnabled {
+            fadesWithSource = false
+            closeWidth = right.value - left.value
+            goal = shrunkRect(toward: source)
+            setSprings(closing: true)
+            flyAvatar(of: page, to: source)
+        } else {
+            goal = startRect(for: source)
+        }
         driver.start()
     }
 
@@ -30,9 +40,9 @@ extension StoryViewerController {
             bottom.step(toward: goal.maxY, deltaTime: deltaTime)
             left.step(toward: goal.minX, deltaTime: deltaTime)
             right.step(toward: goal.maxX, deltaTime: deltaTime)
-            corner.step(toward: phase == .closing ? goal.width / 2 : 0, deltaTime: deltaTime)
+            corner.step(toward: cornerGoal, deltaTime: deltaTime)
         }
-        if phase == .open, !isHeld, !isDragging, !isTurning, !isCloseRequested {
+        if phase == .open, !isHeld, !isInteracting, !isDragging, !isTurning, !isCloseRequested {
             advance(deltaTime)
         }
         applyStage()
@@ -78,7 +88,7 @@ extension StoryViewerController {
 
         let openness = min(1, rect.height / bounds.height)
         dim.alpha = openness * (phase == .closing ? 0.6 : 1)
-        stage.alpha = fadesWithSource ? min(1, openness * 3) : 1
+        stage.alpha = stageAlpha(width: rect.width, openness: openness)
     }
 
     func next() {
