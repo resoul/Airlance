@@ -1,10 +1,34 @@
+import UIKit
+
 enum ThemeFactory {
     static func makeTheme(_ inputs: ThemeInputs) -> AppTheme {
-        AppTheme(
+        let colors = makeColors(appearance: inputs.appearance, accent: inputs.accent)
+
+        return AppTheme(
             inputs: inputs,
-            colors: makeColors(appearance: inputs.appearance, accent: inputs.accent),
-            fonts: FontFactory.makeFonts(font: inputs.font, contentSize: inputs.contentSize)
+            colors: colors,
+            fonts: FontFactory.makeFonts(font: inputs.font, contentSize: inputs.contentSize),
+            chat: makeChat(inputs, accent: colors.accent)
         )
+    }
+
+    private static func makeChat(_ inputs: ThemeInputs, accent: UIColor) -> ThemeChat {
+        let chat = inputs.chat
+        let radius = clamp(chat.bubbleRadius, to: ChatAppearance.radiusRange)
+        let size = clamp(chat.textSize, to: ChatAppearance.textSizeRange)
+        let font = FontFactory.makeMessageFont(font: inputs.font, size: CGFloat(size), contentSize: inputs.contentSize)
+        let gradient = ChatPalette.gradient(for: inputs.accent, appearance: inputs.appearance)
+
+        return ThemeChat(
+            outgoingColors: chat.fill == .gradient ? gradient : [accent],
+            bubbleRadius: CGFloat(radius),
+            messageFont: font,
+            wallpaper: ChatPalette.wallpaper(chat.wallpaper, appearance: inputs.appearance)
+        )
+    }
+
+    private static func clamp(_ value: Int, to range: ClosedRange<Int>) -> Int {
+        min(max(value, range.lowerBound), range.upperBound)
     }
 
     private static func makeColors(appearance: ThemeAppearance, accent: ThemeAccent) -> ThemeColors {

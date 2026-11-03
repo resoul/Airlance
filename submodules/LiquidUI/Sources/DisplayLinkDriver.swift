@@ -10,7 +10,10 @@ public final class DisplayLinkDriver {
         link != nil
     }
 
-    public init(onFrame: @escaping @MainActor (CFTimeInterval) -> Void) {
+    private let maximumRate: Float
+
+    public init(maximumRate: Float = 120, onFrame: @escaping @MainActor (CFTimeInterval) -> Void) {
+        self.maximumRate = maximumRate
         self.onFrame = onFrame
     }
 
@@ -20,7 +23,11 @@ public final class DisplayLinkDriver {
         }
 
         let link = CADisplayLink(target: DisplayLinkTarget(driver: self), selector: #selector(DisplayLinkTarget.tick))
-        link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 120, preferred: 120)
+        link.preferredFrameRateRange = CAFrameRateRange(
+            minimum: min(60, maximumRate),
+            maximum: maximumRate,
+            preferred: maximumRate
+        )
         link.add(to: .main, forMode: .common)
         self.link = link
     }

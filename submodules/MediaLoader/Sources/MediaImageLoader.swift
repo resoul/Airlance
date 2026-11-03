@@ -67,6 +67,10 @@ public final class MediaImageLoader {
         cache.totalCostLimit = 64 * 1024 * 1024
     }
 
+    public func removeAll() {
+        cache.removeAllObjects()
+    }
+
     public func cached(_ request: MediaImageRequest) -> UIImage? {
         cache.object(forKey: request.key as NSString)
     }

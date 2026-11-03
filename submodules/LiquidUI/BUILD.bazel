@@ -19,6 +19,9 @@ swift_library(
     srcs = glob(["Sources/**/*.swift"]),
     copts = ["-swift-version", "6"],
     data = [":LiquidUIResources"],
-    deps = ["//submodules/Haptics"],
+    deps = [
+        "//submodules/Device",
+        "//submodules/Haptics",
+    ],
     visibility = ["//visibility:public"],
 )

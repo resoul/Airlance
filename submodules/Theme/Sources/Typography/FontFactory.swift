@@ -14,6 +14,15 @@ enum FontFactory {
         )
     }
 
+    static func makeMessageFont(font: ThemeFont, size: CGFloat, contentSize: UIContentSizeCategory) -> UIFont {
+        let traits = UITraitCollection(preferredContentSizeCategory: contentSize)
+        let base = font == .montserrat
+            ? UIFont(name: montserratName(for: .regular), size: size) ?? .systemFont(ofSize: size)
+            : .systemFont(ofSize: size)
+
+        return UIFontMetrics(forTextStyle: .body).scaledFont(for: base, compatibleWith: traits)
+    }
+
     private static func makeFont(_ style: TypeStyle, font: ThemeFont, traits: UITraitCollection) -> UIFont {
         let base = baseFont(style, font: font)
 

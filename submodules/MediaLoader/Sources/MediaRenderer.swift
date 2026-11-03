@@ -30,6 +30,20 @@ public enum MediaRenderer {
             width: ceil(request.size.width * request.scale),
             height: ceil(request.size.height * request.scale)
         )
+        let disk = MediaDiskCache.shared
+        if let cached = disk.image(for: request.source, pixels: pixels) {
+            return cached
+        }
+
+        let art = await draw(request, pixels: pixels)
+        if let art, !Task.isCancelled {
+            disk.store(art, for: request.source, pixels: pixels)
+        }
+
+        return art
+    }
+
+    private static func draw(_ request: MediaImageRequest, pixels: CGSize) async -> UIImage? {
         let side = max(pixels.width, pixels.height)
         switch request.source {
         case .generated(let seed):
