@@ -2,14 +2,22 @@ import Photos
 import UIKit
 
 final class AttachCameraCell: UICollectionViewCell {
+    private let icon = UIImageView()
+    private weak var preview: CALayer?
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         contentView.backgroundColor = UIColor(white: 0.12, alpha: 1)
-        let icon = UIImageView(image: UIImage(
+        contentView.clipsToBounds = true
+        icon.image = UIImage(
             systemName: "camera.fill",
             withConfiguration: UIImage.SymbolConfiguration(pointSize: 26)
-        ))
+        )
         icon.tintColor = .white
+        icon.layer.shadowColor = UIColor.black.cgColor
+        icon.layer.shadowOpacity = 0.4
+        icon.layer.shadowRadius = 4
+        icon.layer.shadowOffset = .zero
         icon.contentMode = .center
         icon.frame = contentView.bounds
         icon.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -21,6 +29,29 @@ final class AttachCameraCell: UICollectionViewCell {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) is not supported")
+    }
+
+    func show(preview layer: CALayer?) {
+        guard layer !== preview || layer?.superlayer !== contentView.layer else {
+            return
+        }
+
+        if preview?.superlayer === contentView.layer {
+            preview?.removeFromSuperlayer()
+        }
+        preview = layer
+        if let layer {
+            contentView.layer.insertSublayer(layer, below: icon.layer)
+        }
+        setNeedsLayout()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        preview?.frame = contentView.bounds
+        CATransaction.commit()
     }
 }
 

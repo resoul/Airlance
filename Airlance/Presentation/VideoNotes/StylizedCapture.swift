@@ -53,8 +53,9 @@ final class StylizedCapture: NSObject, @unchecked Sendable {
             self.audioInput?.markAsFinished()
             self.writer = nil
             self.isStarted = false
+            nonisolated(unsafe) let finishing = writer
             writer.finishWriting {
-                completion(writer.status == .completed ? url : nil)
+                completion(finishing.status == .completed ? url : nil)
             }
         }
     }

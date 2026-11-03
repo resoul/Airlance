@@ -30,6 +30,10 @@ extension ChatHistoryController {
 
     func historyChanged(_ event: HistoryEvent) {
         let wasAtEnd = window.isAtEnd
+        let effects = event.appended.filter { message in
+            message.effect != nil
+        }
+        pendingEffects.formUnion(effects.map(\.id))
         let incoming = event.appended.filter { message in
             !message.isOutgoing
         }.count

@@ -37,12 +37,18 @@ extension ChatHistoryStore {
         }
 
         liveCount += 1
-        let message = ChatHistoryFixtures.incoming(
+        var message = ChatHistoryFixtures.incoming(
             for: chat,
             index: liveCount,
             date: Date(),
             replyTo: histories[id]?.messages.last
         )
+        if Int.random(in: 0..<8) == 0 {
+            message.effect = MessageEffect.allCases.randomElement()?.rawValue
+        } else if Int.random(in: 0..<7) == 0 {
+            message.lifetime = 30
+            message.expiresAt = Date().addingTimeInterval(30)
+        }
         guard await type(message, in: chat) else {
             return
         }
@@ -54,6 +60,19 @@ extension ChatHistoryStore {
     }
 
     func deliver(_ message: HistoryMessage, in id: String) {
+        guard !failIfOffline(message, in: id) else {
+            return
+        }
+
+        let isUploading = upload(message, in: id) { [weak self] in
+            self?.confirm(message, in: id)
+        }
+        if !isUploading {
+            confirm(message, in: id)
+        }
+    }
+
+    private func confirm(_ message: HistoryMessage, in id: String) {
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: 500_000_000)
             self?.update(message.id, in: id) { message in

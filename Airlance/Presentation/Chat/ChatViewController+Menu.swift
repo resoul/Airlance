@@ -82,7 +82,7 @@ extension ChatViewController {
                 self?.startReply(message.id)
             }
         )
-        var items = canWrite ? [reply] : []
+        var items = retryItems(for: message) + (canWrite ? [reply] : [])
         let text = message.content.text
         if !text.isEmpty {
             items.append(copyItem(text))
@@ -100,7 +100,7 @@ extension ChatViewController {
                 self?.showForward([message])
             }
         )
-        items.append(contentsOf: [forward] + videoReactionItems(for: message))
+        items.append(contentsOf: [forward] + videoReactionItems(for: message) + showInGroupItems(for: message))
         items.append(pinItem(for: message))
         items.append(selectItem(for: message))
         let delete = MenuItem(

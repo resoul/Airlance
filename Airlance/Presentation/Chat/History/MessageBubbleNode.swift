@@ -9,11 +9,14 @@ import UIKit
 final class MessageBubbleNode: ListItemNode {
     private let shape = CAShapeLayer()
     private let flashLayer = CALayer()
-    private var layoutResult: MessageBubbleLayout?
+    let gradientLayer = CAGradientLayer()
+    let gradientMask = CAShapeLayer()
+    var gradient: [UIColor]?
+    private(set) var layoutResult: MessageBubbleLayout?
     private var morphFrom: MessageBubbleLayout?
     private weak var fading: ASDisplayNode?
     var waveView: LiquidWaveView?
-    var downloadRing: CAShapeLayer?
+    var transferIndicators: [TransferIndicator] = []
     var selectionCheck: UIImageView?
     var selectionState: BubbleSelection?
     let searchLayer = CALayer()
@@ -66,6 +69,9 @@ final class MessageBubbleNode: ListItemNode {
         layer.insertSublayer(shape, at: 0)
         flashLayer.opacity = 0
         layer.insertSublayer(flashLayer, at: 0)
+        gradientLayer.mask = gradientMask
+        gradientLayer.isHidden = true
+        layer.insertSublayer(gradientLayer, above: shape)
     }
 
     var bubbleFrame: CGRect? {
@@ -78,18 +84,6 @@ final class MessageBubbleNode: ListItemNode {
         layoutResult?.tiles ?? []
     }
 
-    func tileIndex(at point: CGPoint) -> Int? {
-        guard let layout = layoutResult else {
-            return nil
-        }
-
-        let local = CGPoint(x: point.x - layout.bubbleFrame.minX, y: point.y - layout.bubbleFrame.minY)
-
-        return layout.tiles.firstIndex { tile in
-            tile.node.frame.contains(local)
-        }
-    }
-
     var fileIconFrame: CGRect? {
         layoutResult.flatMap { layout in
             layout.fileIcon.map { icon in
@@ -100,37 +94,6 @@ final class MessageBubbleNode: ListItemNode {
 
     var isOutgoing: Bool {
         layoutResult?.isOutgoing ?? false
-    }
-
-    func linkURL(at point: CGPoint) -> URL? {
-        guard let layout = layoutResult, let text = layout.text, !text.linkAttributeNames.isEmpty else {
-            return nil
-        }
-
-        let local = CGPoint(x: point.x - layout.bubbleFrame.minX, y: point.y - layout.bubbleFrame.minY)
-        guard text.frame.contains(local) else {
-            return nil
-        }
-
-        let inText = CGPoint(x: local.x - text.frame.minX, y: local.y - text.frame.minY)
-
-        return text.linkAttributeValue(at: inText, attributeName: nil, range: nil) as? URL
-    }
-
-    func action(at point: CGPoint) -> BubbleAction.Kind? {
-        guard let layout = layoutResult else {
-            return nil
-        }
-
-        if let url = linkURL(at: point) {
-            return .url(url)
-        }
-
-        let local = CGPoint(x: point.x - layout.bubbleFrame.minX, y: point.y - layout.bubbleFrame.minY)
-
-        return layout.actions.first { action in
-            action.frame.contains(local)
-        }?.kind
     }
 
     func flash(color: UIColor) {
@@ -148,8 +111,8 @@ final class MessageBubbleNode: ListItemNode {
         if previous?.messageID != layout.messageID || layout.voice == nil {
             removeVoice()
         }
-        if previous?.messageID != layout.messageID || layout.fileIcon == nil {
-            removeDownload()
+        if previous?.messageID != layout.messageID || layout.transfer == nil {
+            removeTransfer()
         }
         if previous?.messageID != layout.messageID {
             removeSpoiler()
@@ -167,6 +130,7 @@ final class MessageBubbleNode: ListItemNode {
         }
         layoutResult = layout
         self.color = color
+        gradient = layout.gradient
         layout.content.frame.origin = layout.bubbleFrame.origin
         if layout.content.supernode !== self {
             addSubnode(layout.content)
@@ -187,6 +151,7 @@ final class MessageBubbleNode: ListItemNode {
         shape.frame = CGRect(origin: .zero, size: bounds.size)
         shape.fillColor = color.resolvedColor(with: view.traitCollection).cgColor
         shape.path = Self.path(layoutResult)
+        layoutGradient(layoutResult.bubbleFrame, path: shape.path)
         CATransaction.commit()
         if let morphFrom {
             self.morphFrom = nil
@@ -196,7 +161,12 @@ final class MessageBubbleNode: ListItemNode {
 
     private static func path(_ layout: MessageBubbleLayout) -> CGPath {
         let frame = layout.bubbleFrame
-        let path = BubblePath.make(size: frame.size, outgoing: layout.isOutgoing, grouping: layout.grouping)
+        let path = BubblePath.make(
+            size: frame.size,
+            outgoing: layout.isOutgoing,
+            grouping: layout.grouping,
+            radius: layout.radius
+        )
         var transform = CGAffineTransform(translationX: frame.minX, y: frame.minY)
 
         return path.copy(using: &transform) ?? path
@@ -217,6 +187,9 @@ final class MessageBubbleNode: ListItemNode {
         spring.damping = 35
         spring.duration = spring.settlingDuration
         shape.add(spring, forKey: "morph")
+        if gradient != nil {
+            gradientMask.add(spring, forKey: "morph")
+        }
         let fade = CABasicAnimation(keyPath: "opacity")
         fade.fromValue = 0
         fade.toValue = 1
@@ -296,11 +269,11 @@ final class MessageBubbleNode: ListItemNode {
 }
 
 enum BubblePath {
-    static func make(size: CGSize, outgoing: Bool, grouping: HistoryGrouping) -> CGPath {
+    static func make(size: CGSize, outgoing: Bool, grouping: HistoryGrouping, radius: CGFloat = 17) -> CGPath {
         let width = size.width
         let height = size.height
-        let big = min(17, height / 2)
-        let small: CGFloat = 6
+        let big = min(radius, height / 2)
+        let small = min(6, big)
         let topRight = grouping.joinedTop ? small : big
         let bottomRight = grouping.joinedBottom ? small : big
         let path = UIBezierPath()

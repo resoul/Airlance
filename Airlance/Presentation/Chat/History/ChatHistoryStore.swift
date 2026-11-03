@@ -19,16 +19,23 @@ final class ChatHistoryStore: HistorySource {
     var scheduleTasks: [String: Task<Void, Never>] = [:]
     var translations: [String: [String: MessageTranslation]] = [:]
     var revealedSpoilers: [String: Set<String>] = [:]
+    var expandedTexts: [String: Set<String>] = [:]
+    var focusRequests: [String: String] = [:]
+    let transfers = MediaTransfers()
+    let transcriber = VoiceTranscriber()
+    var transcripts: [String: [String: VoiceTranscript]] = [:]
     private var viewers: [String: Set<UUID>] = [:]
     private(set) var isShutDown = false
 
     private let observers = ObserverList<HistoryEvent>()
     private let incoming = ObserverList<IncomingMessage>()
+    let expirations = ObserverList<IncomingMessage>()
     private var sentCount = 0
 
     init(chatsStore: ChatsStore, fixtureSalt: Int = 0) {
         self.chatsStore = chatsStore
         self.fixtureSalt = fixtureSalt
+        _ = DemoNetwork.shared
     }
 
     func history(for id: String) -> ChatHistoryFixtures.History? {
@@ -40,7 +47,7 @@ final class ChatHistoryStore: HistorySource {
             return threadHistory(id)
         }
 
-        let history = ChatHistoryFixtures.history(for: chat, salt: fixtureSalt)
+        let history = discussionHistory(chat) ?? ChatHistoryFixtures.history(for: chat, salt: fixtureSalt)
         histories[id] = history
 
         return history
@@ -106,6 +113,7 @@ final class ChatHistoryStore: HistorySource {
         }
 
         append(message, to: id)
+        scheduleExpiry(message, in: id)
         let isOpen = isViewed(id)
         chatsStore.recordIncoming(message, in: id, countsUnread: !isOpen)
         if !isOpen {
@@ -134,6 +142,8 @@ final class ChatHistoryStore: HistorySource {
 
     func shutdown() async {
         isShutDown = true
+        transfers.cancelAll()
+        transcriber.cancelAll()
         scheduleTasks.values.forEach { task in
             task.cancel()
         }
@@ -162,40 +172,6 @@ final class ChatHistoryStore: HistorySource {
 
     func observeIncoming(_ onMessage: @escaping @MainActor @Sendable (IncomingMessage) -> Void) -> ObservationToken {
         incoming.add(onMessage)
-    }
-
-    func send(
-        _ text: String,
-        to id: String,
-        replyTo: HistoryMessage? = nil,
-        quote: MessageQuote? = nil,
-        options: SendOptions = SendOptions()
-    ) {
-        let url = Self.firstLink(in: text)
-        let link = url.map { url in
-            MessageLink(url: url)
-        }
-        let reply = replyTo.map { message in
-            MessageReply(message, quote: quote)
-        }
-        var message = outgoing(.text(text), in: id, reply: reply, link: link)
-        message.entities = MessageEntity.valid(options.entities, in: text)
-        message.isSilent = options.isSilent
-        post(message, to: id)
-        if let url {
-            loadPreview(url, messageID: message.id, chatID: id)
-        }
-    }
-
-    func forward(_ source: HistoryMessage, authorName: String, to id: String) {
-        let origin = source.forward ?? MessageForward(fromID: source.authorID, fromName: authorName)
-        var link = source.link
-        if link?.preview == nil, let url = link?.url {
-            link?.preview = ChatLinkFixtures.preview(for: url)
-        }
-        var message = outgoing(source.content, in: id, reply: nil, link: link)
-        message.forward = origin
-        post(message, to: id)
     }
 
     func outgoing(
@@ -230,6 +206,7 @@ final class ChatHistoryStore: HistorySource {
         let text = ChatsStore.preview(of: message)
         chatsStore.recordOutgoing(text, date: message.date, in: id)
         deliver(message, in: id)
+        scheduleExpiry(message, in: id)
     }
 
     func setPinned(_ isPinned: Bool, messageID: String, in id: String) {
@@ -268,6 +245,7 @@ final class ChatHistoryStore: HistorySource {
             return
         }
 
+        transfers.cancel(TransferKey(chatID: id, messageID: messageID))
         histories[id]?.messages.removeAll { message in
             message.id == messageID
         }

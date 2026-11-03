@@ -66,14 +66,24 @@ extension ChatViewController {
         cancelReply()
     }
 
-    func send(_ composed: ComposedText, isSilent: Bool = false) {
+    func send(
+        _ composed: ComposedText,
+        isSilent: Bool = false,
+        effect: String? = nil,
+        lifetime: TimeInterval? = nil
+    ) {
         guard editTarget == nil else {
             finishEdit(composed)
 
             return
         }
 
-        let options = SendOptions(entities: composed.entities, isSilent: isSilent)
+        let options = SendOptions(
+            entities: composed.entities,
+            isSilent: isSilent,
+            effect: effect,
+            lifetime: lifetime
+        )
         history.send(composed.text, replyTo: replyTarget, quote: replyQuote, options: options)
         cancelReply()
         inputBar.clear()

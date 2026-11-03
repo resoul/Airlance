@@ -1,4 +1,5 @@
 import AirlanceUI
+import CameraUI
 import ChatHistory
 import MediaStore
 import Observers
@@ -20,10 +21,15 @@ final class ChatViewController: ScreenViewController {
     let router: AppRouter
     let titleView = ChatTitleView()
     let avatarButton = ChatAvatarButton()
+    let avatarDrag = AvatarSearchDrag()
+    var chatCamera: CameraSession?
+    var cameraFlow: ChatCameraFlow?
+    var isOpeningCamera = false
     let selectionBar = MessageSelectionBar()
     let selectionTitle = UILabel()
     let searchBar = ChatSearchBar()
     let searchField = UITextField()
+    let wallpaper = ChatWallpaperView()
     var searchDebounce: Task<Void, Never>?
     let inputBar = ChatInputBar()
     let mentions = MentionSuggestionsView()
@@ -47,6 +53,7 @@ final class ChatViewController: ScreenViewController {
     private var viewing: ObservationToken?
     private let scrollDown = ChatScrollDownButton()
     private var observation: ObservationToken?
+    var expiryObservation: ObservationToken?
 
     init(id: String, dependencies: ChatDependencies, router: AppRouter) {
         self.id = id
@@ -69,6 +76,11 @@ final class ChatViewController: ScreenViewController {
                 for: .touchUpInside
             )
         }
+        avatarDrag.attach(to: avatarButton)
+        avatarDrag.onSearch = { [weak self] in
+            self?.startSearch()
+        }
+        view.addSubview(wallpaper)
         view.addSubview(history.listView.view)
         translator.attach(to: self)
         history.load(id, kind: thread == nil ? dependencies.chatsStore.chat(id)?.kind : .group)
@@ -96,6 +108,7 @@ final class ChatViewController: ScreenViewController {
     override func apply(_ presentation: PresentationData) {
         super.apply(presentation)
         view.backgroundColor = presentation.theme.colors.background
+        wallpaper.apply(presentation.theme.chat.wallpaper)
         inputBar.apply(presentation)
         scrollDown.apply(presentation)
         history.apply(presentation)
@@ -105,6 +118,7 @@ final class ChatViewController: ScreenViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        wallpaper.frame = view.bounds
         layoutChannelBar()
         layoutSelectionBar()
         let list = history.listView
@@ -141,7 +155,6 @@ final class ChatViewController: ScreenViewController {
         viewing = nil
         history.savePosition()
         history.voicePlayback.stop()
-        history.fileDownloads.cancelAll()
         history.metrics?.stop()
         dependencies.chatsStore.setDraft(editTarget == nil ? inputBar.text : draftBeforeEdit ?? "", for: id)
     }
@@ -171,17 +184,13 @@ final class ChatViewController: ScreenViewController {
         bindPolls()
         bindVideoNotes()
         bindVoice()
+        bindFailed()
+        bindMessageActions()
         history.onOpenURL = { [weak self] url in
             self?.openLink(url)
         }
         history.onLinkMenu = { [weak self] url, node, point in
             self?.showLinkMenu(url, node: node, point: point)
-        }
-        history.onOpenFile = { [weak self] file in
-            self?.openFile(file)
-        }
-        history.onOpenComments = { [weak self] postID in
-            self?.openComments(postID)
         }
         history.listView.onLongPressMove = { [weak self] gesture in
             self?.trackMenu(gesture)

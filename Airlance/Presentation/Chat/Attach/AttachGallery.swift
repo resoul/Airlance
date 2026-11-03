@@ -6,7 +6,12 @@ final class AttachGallery: UIView, UICollectionViewDataSource, UICollectionViewD
     private static let limit = 30
 
     var onSelectionChange: (@MainActor (Int) -> Void)?
-    var onCamera: (@MainActor () -> Void)?
+    var onCamera: (@MainActor (CGRect?) -> Void)?
+    var cameraPreview: CALayer? {
+        didSet {
+            collection.reloadItems(at: [IndexPath(item: 0, section: 0)])
+        }
+    }
     var onManage: (@MainActor () -> Void)?
 
     private(set) var selection: [String] = []
@@ -125,6 +130,7 @@ final class AttachGallery: UIView, UICollectionViewDataSource, UICollectionViewD
     ) -> UICollectionViewCell {
         let reuse = indexPath.item == 0 || library == nil ? "camera" : "photo"
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: reuse, for: indexPath)
+        (cell as? AttachCameraCell)?.show(preview: cameraPreview)
         guard let photo = cell as? AttachPhotoCell, let library else {
             return cell
         }
@@ -150,7 +156,10 @@ final class AttachGallery: UIView, UICollectionViewDataSource, UICollectionViewD
 
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         guard indexPath.item > 0, let library else {
-            onCamera?()
+            let cell = collectionView.cellForItem(at: indexPath)
+            onCamera?(cell.map { cell in
+                cell.convert(cell.bounds, to: nil)
+            })
 
             return
         }

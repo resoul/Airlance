@@ -3,15 +3,9 @@ import UIKit
 
 extension ChatViewController {
     var defaultRightItems: [UIBarButtonItem] {
-        let search = UIBarButtonItem(
-            image: UIImage(systemName: "magnifyingglass"),
-            primaryAction: UIAction { [weak self] _ in
-                self?.startSearch()
-            }
-        )
-        search.accessibilityLabel = presentation.strings.chatSearch
-
-        return [UIBarButtonItem(customView: avatarButton), search]
+        [UIBarButtonItem(customView: avatarButton)] + (discussionItem.map { item in
+            [item]
+        } ?? [])
     }
 
     func bindSearch() {
@@ -58,6 +52,14 @@ extension ChatViewController {
     }
 
     func renderSearch(_ presentation: PresentationData) {
+        avatarDrag.tint = presentation.theme.colors.accent
+        avatarButton.accessibilityCustomActions = [
+            UIAccessibilityCustomAction(name: presentation.strings.chatSearch) { [weak self] _ in
+                self?.startSearch()
+
+                return true
+            },
+        ]
         searchBar.apply(presentation)
         searchBar.update(history.search, strings: presentation.strings)
         let colors = presentation.theme.colors

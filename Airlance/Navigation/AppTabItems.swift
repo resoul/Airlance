@@ -5,10 +5,14 @@ import UIKit
 enum AppTabItems {
     private static let avatarSide: CGFloat = 28
 
-    static func make(_ presentation: PresentationData, accounts: any AccountSwitching) -> [TabBarItem] {
+    static func make(
+        _ tabs: [AppRoute],
+        presentation: PresentationData,
+        accounts: any AccountSwitching
+    ) -> [TabBarItem] {
         let strings = presentation.strings
 
-        return AppRoute.tabs.map { tab in
+        return tabs.map { tab in
             switch tab {
             case .contacts:
                 TabBarItem(
@@ -28,6 +32,12 @@ enum AppTabItems {
                     selectedImage: UIImage(systemName: "phone.fill"),
                     title: strings.tabCalls
                 )
+            case .onAir:
+                TabBarItem(
+                    image: UIImage(systemName: "dot.radiowaves.left.and.right"),
+                    selectedImage: UIImage(systemName: "dot.radiowaves.left.and.right"),
+                    title: strings.tabOnAir
+                )
             default:
                 settingsItem(presentation, accounts: accounts)
             }
@@ -35,27 +45,27 @@ enum AppTabItems {
     }
 
     static func menu(
-        for index: Int,
+        for tab: AppRoute,
         strings: AppStrings,
         router: AppRouter,
         accounts: any AccountSwitching
     ) -> [PopupMenuItem]? {
-        guard AppRoute.tabs.indices.contains(index) else {
-            return nil
+        let editTabs = PopupMenuItem(title: strings.tabsEdit, symbol: "square.grid.3x1.below.line.grid.1x2") {
+            router.show(.tabSettings)
         }
 
-        switch AppRoute.tabs[index] {
+        switch tab {
         case .chats:
             let addFolder = PopupMenuItem(title: strings.tabsChatsAddFolder, symbol: "folder.badge.plus") {
                 router.selectTab(.chats)
                 router.open(.newChatFolder)
             }
 
-            return [addFolder]
+            return [addFolder, editTabs]
         case .settings:
-            return accountItems(strings: strings, accounts: accounts)
+            return accountItems(strings: strings, accounts: accounts) + [editTabs]
         default:
-            return nil
+            return [editTabs]
         }
     }
 

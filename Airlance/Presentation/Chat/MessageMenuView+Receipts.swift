@@ -19,6 +19,11 @@ extension MessageMenuView {
         panel.onToggle = { [weak self] expanded in
             self?.setReceiptsExpanded(expanded)
         }
+        panel.onVideo = { [weak self] reactionID in
+            self?.close {
+                receipts.onVideo?(reactionID)
+            }
+        }
         addSubview(panel)
         receiptsPanel = panel
     }

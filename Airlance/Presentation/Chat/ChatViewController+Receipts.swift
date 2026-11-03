@@ -4,21 +4,32 @@ import Foundation
 extension ChatViewController {
     func menuReceipts(for message: HistoryMessage) -> MessageMenuReceipts? {
         let chat = thread == nil ? dependencies.chatsStore.chat(id) : nil
-        guard let receipts = ChatReceiptFixtures.receipts(for: message, chat: chat) else {
+        let receipts = ChatReceiptFixtures.receipts(for: message, chat: chat)
+        guard receipts != nil || !message.videoReactions.isEmpty else {
             return nil
         }
 
-        let strings = presentation.strings
         let time = DateFormatter()
-        time.locale = strings.pack.locale
+        time.locale = presentation.strings.pack.locale
         time.setLocalizedDateFormatFromTemplate("jmm")
-        if let readAt = receipts.readAt {
-            let summary = strings.chatReceiptsReadAt(time.string(from: readAt))
-
-            return MessageMenuReceipts(summary: summary, symbol: "checkmark", avatars: [], rows: [])
+        let rows = Self.withVideos(rows(receipts, time: time), videos: message.videoReactions)
+        var menu = MessageMenuReceipts(
+            summary: summary(receipts, videos: message.videoReactions.count, time: time),
+            symbol: symbol(receipts, hasVideos: !message.videoReactions.isEmpty),
+            avatars: receipts?.readAt != nil ? [] : rows.prefix(3).map(\.person),
+            rows: rows
+        )
+        menu.onVideo = { [weak self] reactionID in
+            self?.showVideoReaction(reactionID, messageID: message.id)
         }
 
-        let rows = receipts.people.map { person in
+        return menu
+    }
+
+    private func rows(_ receipts: MessageReceipts?, time: DateFormatter) -> [MessageMenuReceipts.Row] {
+        let strings = presentation.strings
+
+        return (receipts?.people ?? []).map { person in
             MessageMenuReceipts.Row(
                 person: person.commenter,
                 detail: person.readAt.map { date in
@@ -27,17 +38,54 @@ extension ChatViewController {
                 reaction: person.reaction
             )
         }
-
-        return MessageMenuReceipts(
-            summary: summary(receipts),
-            symbol: receipts.reactionCount > 0 ? "heart" : "checkmark",
-            avatars: receipts.people.prefix(3).map(\.commenter),
-            rows: rows
-        )
     }
 
-    private func summary(_ receipts: MessageReceipts) -> String {
+    private static func withVideos(
+        _ rows: [MessageMenuReceipts.Row],
+        videos: [MessageVideoReaction]
+    ) -> [MessageMenuReceipts.Row] {
+        var rows = rows
+        var added: [MessageMenuReceipts.Row] = []
+        for video in videos.reversed() {
+            if let index = rows.firstIndex(where: { row in
+                row.person.id == video.author.id && row.video == nil
+            }) {
+                var row = rows.remove(at: index)
+                row.video = video
+                added.append(row)
+            } else {
+                var row = MessageMenuReceipts.Row(person: video.author, detail: nil, reaction: nil)
+                row.video = video
+                added.append(row)
+            }
+        }
+
+        return added + rows
+    }
+
+    private func symbol(_ receipts: MessageReceipts?, hasVideos: Bool) -> String {
+        if let receipts, receipts.reactionCount > 0 {
+            return "heart"
+        }
+
+        return hasVideos && receipts?.readAt == nil ? "video" : "checkmark"
+    }
+
+    private func summary(_ receipts: MessageReceipts?, videos: Int, time: DateFormatter) -> String {
         let strings = presentation.strings
+        if let readAt = receipts?.readAt {
+            return strings.chatReceiptsReadAt(time.string(from: readAt))
+        }
+
+        guard let receipts, receipts.readCount > 0 || receipts.reactionCount > 0 else {
+            return strings.count(
+                videos,
+                one: strings.chatReceiptsVideosOne,
+                few: strings.chatReceiptsVideosFew,
+                many: strings.chatReceiptsVideosMany
+            )
+        }
+
         guard receipts.reactionCount > 0 else {
             return strings.count(
                 receipts.readCount,

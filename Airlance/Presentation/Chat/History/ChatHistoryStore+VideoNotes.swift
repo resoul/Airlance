@@ -9,6 +9,14 @@ extension ChatHistoryStore {
         }
     }
 
+    func removeVideoReaction(_ reactionID: String, messageID: String, in id: String) {
+        update(messageID, in: id) { message in
+            message.videoReactions.removeAll { reaction in
+                reaction.id == reactionID && reaction.author.id == Reactions.me.id
+            }
+        }
+    }
+
     func videoReaction(_ reactionID: String, messageID: String, in id: String) -> MessageVideoReaction? {
         let message = history(for: id)?.messages.first { message in
             message.id == messageID

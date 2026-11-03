@@ -8,6 +8,7 @@ enum PermissionPurpose {
     case shareContact
     case findFriends
     case sendLocation
+    case transcribeVoice
 
     var permissions: [Permission] {
         switch self {
@@ -23,6 +24,8 @@ enum PermissionPurpose {
             [.contacts]
         case .sendLocation:
             [.location]
+        case .transcribeVoice:
+            [.speech]
         }
     }
 }

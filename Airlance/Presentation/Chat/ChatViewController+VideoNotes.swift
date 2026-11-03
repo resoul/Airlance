@@ -1,4 +1,5 @@
 import ChatHistory
+import Haptics
 import MediaStore
 import UIKit
 
@@ -66,11 +67,11 @@ extension ChatViewController {
         let flow = dependencies.permissionFlow
         guard flow.isAuthorized(.videoMessage) else {
             Task { [weak self] in
-                guard let self else {
+                guard let self, await flow.authorize(.videoMessage, from: self), options.tapToStop else {
                     return
                 }
 
-                _ = await flow.authorize(.videoMessage, from: self)
+                self.startVideoRecorder(options, onNote: onNote)
             }
 
             return
@@ -138,12 +139,18 @@ extension ChatViewController {
         }
     }
 
-    private func showVideoReaction(_ reactionID: String, messageID: String) {
+    func showVideoReaction(_ reactionID: String, messageID: String) {
         guard let reaction = dependencies.historyStore.videoReaction(reactionID, messageID: messageID, in: id) else {
             return
         }
 
         let player = VideoReactionPlayerController(reaction: reaction, presentation: presentation)
+        let store = dependencies.historyStore
+        let chatID = id
+        player.onDelete = {
+            Haptics.play(.success)
+            store.removeVideoReaction(reactionID, messageID: messageID, in: chatID)
+        }
         present(player, animated: true)
     }
 }

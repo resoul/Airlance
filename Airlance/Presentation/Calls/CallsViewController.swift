@@ -19,7 +19,7 @@ final class CallsViewController: ScreenViewController {
     private let dependencies: CallsDependencies
     private let router: AppRouter
     private let listView = ListView(theme: ListTheme())
-    private let filterControl = UISegmentedControl(items: ["", ""])
+    private let filterControl = LiquidSegmentedControl()
     private let emptyLabel = UILabel()
     private var filter = Filter.all
     private var isEditingCalls = false
@@ -35,13 +35,10 @@ final class CallsViewController: ScreenViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         navigationItem.largeTitleDisplayMode = .never
-        filterControl.selectedSegmentIndex = Filter.all.rawValue
-        filterControl.addAction(
-            UIAction { [weak self] _ in
-                self?.filterChanged()
-            },
-            for: .valueChanged
-        )
+        filterControl.select(Filter.all.rawValue, animated: false)
+        filterControl.onSelect = { [weak self] index in
+            self?.filterChanged(index)
+        }
         navigationItem.titleView = filterControl
 
         view.addSubnode(listView)
@@ -73,13 +70,8 @@ final class CallsViewController: ScreenViewController {
         let strings = presentation.strings
 
         dateFormatter = ListDateFormatter(locale: strings.pack.locale)
-        filterControl.setTitle(strings.callsAll, forSegmentAt: Filter.all.rawValue)
-        filterControl.setTitle(strings.callsMissed, forSegmentAt: Filter.missed.rawValue)
-        filterControl.selectedSegmentTintColor = theme.colors.surface
-        filterControl.setTitleTextAttributes(
-            [.font: theme.fonts.subheadline, .foregroundColor: theme.colors.textPrimary],
-            for: .normal
-        )
+        filterControl.apply(theme)
+        filterControl.setTitles([strings.callsAll, strings.callsMissed])
         listView.theme = ListTheme(
             background: theme.colors.background,
             rowBackground: theme.colors.background,
@@ -95,8 +87,9 @@ final class CallsViewController: ScreenViewController {
         render(animated: false)
     }
 
-    private func filterChanged() {
-        filter = Filter(rawValue: filterControl.selectedSegmentIndex) ?? .all
+    private func filterChanged(_ index: Int) {
+        filter = Filter(rawValue: index) ?? .all
+        filterControl.select(index, animated: true)
         render()
     }
 

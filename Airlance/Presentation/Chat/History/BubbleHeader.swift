@@ -25,6 +25,10 @@ struct BubbleAction {
         case pollExplanation
         case videoNote
         case videoReaction(String)
+        case expand
+        case effect
+        case transcribe
+        case forwardSource(String)
     }
 
     let frame: CGRect
@@ -77,15 +81,19 @@ struct BubbleHeader {
         )
     }
 
-    func place(in content: ASDisplayNode, at origin: CGPoint, width: CGFloat) -> (MediaTile?, BubbleAction?) {
+    func place(in content: ASDisplayNode, at origin: CGPoint, width: CGFloat) -> (MediaTile?, [BubbleAction]) {
         var y = origin.y
+        var actions: [BubbleAction] = []
         for case let node? in [name, forward] {
             node.frame.origin = CGPoint(x: origin.x, y: y)
             content.addSubnode(node)
+            if node === forward, let source = input.message.forward?.fromID {
+                actions.append(BubbleAction(frame: node.frame.insetBy(dx: -4, dy: -4), kind: .forwardSource(source)))
+            }
             y = node.frame.maxY + 3
         }
         guard let quote, let reply = input.reply else {
-            return (nil, nil)
+            return (nil, actions)
         }
 
         let frame = CGRect(x: origin.x, y: y, width: width, height: Self.quoteHeight)
@@ -104,7 +112,7 @@ struct BubbleHeader {
         content.addSubnode(quote.title)
         content.addSubnode(quote.text)
 
-        return (tile, BubbleAction(frame: frame, kind: .reply(reply.messageID, reply.quote)))
+        return (tile, actions + [BubbleAction(frame: frame, kind: .reply(reply.messageID, reply.quote))])
     }
 
     private func thumbnail(_ photo: MessagePhoto, at origin: CGPoint, in content: ASDisplayNode) -> MediaTile {

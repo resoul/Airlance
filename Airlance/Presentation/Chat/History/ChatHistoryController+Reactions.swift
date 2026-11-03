@@ -25,6 +25,13 @@ extension ChatHistoryController {
     }
 
     func bubbleTapped(_ messageID: String) {
+        if let message = message(messageID), message.delivery == .failed, message.isOutgoing,
+           let node = listView.node(for: messageID) as? MessageBubbleNode {
+            onFailedMessage?(message, node)
+
+            return
+        }
+
         let now = CACurrentMediaTime()
         guard let last = lastBubbleTap, last.id == messageID, now - last.time < 0.35 else {
             lastBubbleTap = (messageID, now)

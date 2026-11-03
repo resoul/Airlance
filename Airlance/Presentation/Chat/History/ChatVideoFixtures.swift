@@ -20,7 +20,7 @@ enum ChatVideoFixtures {
         MessagePhoto(id: id, width: size.0, height: size.1, source: .generated(seed: seed))
     }
 
-    static func video(id: String, pick: Int) -> MessagePhoto {
+    static func video(id: String, pick: Int, isOutgoing: Bool = false) -> MessagePhoto {
         let clip = clips[pick % clips.count]
         let source = MediaSource.bundle(name: clip.name, ext: "mp4")
 
@@ -29,7 +29,9 @@ enum ChatVideoFixtures {
             width: clip.width,
             height: clip.height,
             source: source,
-            video: MessageVideo(source: source, duration: clip.duration)
+            video: MessageVideo(source: source, duration: clip.duration),
+            size: Int64(clip.duration * 1_400_000) + Int64(pick) * 37_000,
+            isDownloaded: isOutgoing || pick % 3 != 0
         )
     }
 }

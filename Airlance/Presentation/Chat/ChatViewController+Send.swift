@@ -51,9 +51,40 @@ extension ChatViewController {
             PopupMenuItem(title: strings.chatScheduleTitle, symbol: "calendar.badge.clock") { [weak self] in
                 self?.pickScheduleDate()
             },
+            PopupMenuItem(title: strings.chatSendEffect, symbol: "sparkles") { [weak self] in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    self?.showEffectMenu()
+                }
+            },
+            PopupMenuItem(title: strings.chatSendTimer, symbol: "timer") { [weak self] in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    self?.showLifetimeMenu()
+                }
+            },
         ]
         Haptics.play(.menu)
         activeSendMenu = PopupMenu.show(items, theme: presentation.theme, from: anchor, in: host)
+    }
+
+    private func showEffectMenu() {
+        guard let host = view.window else {
+            return
+        }
+
+        let strings = presentation.strings
+        let anchor = inputBar.convert(inputBar.actionIcon.frame, to: host)
+        let items = MessageEffect.allCases.compactMap { effect -> PopupMenuItem? in
+            MessageEffectPlayer.image(for: effect.rawValue, size: 22).map { image in
+                PopupMenuItem(title: effect.title(strings), image: image, isChecked: false) { [weak self] in
+                    self?.sendWithEffect(effect)
+                }
+            }
+        }
+        PopupMenu.show(items, theme: presentation.theme, from: anchor, in: host, header: strings.chatSendEffect)
+    }
+
+    private func sendWithEffect(_ effect: MessageEffect) {
+        send(ComposedText(attributed: inputBar.textView.attributedText), effect: effect.rawValue)
     }
 
     private func sendSilently() {

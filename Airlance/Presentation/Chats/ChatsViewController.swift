@@ -2,6 +2,7 @@ import AirlanceUI
 @preconcurrency import AsyncDisplayKit
 import ChatFolders
 import ListUI
+import MediaStore
 import Observers
 import Stories
 import ToastUI
@@ -13,6 +14,9 @@ struct ChatsDependencies {
     let historyStore: ChatHistoryStore
     let storiesStore: StoriesStore
     let chatFolders: ChatFolderStore
+    let permissionFlow: PermissionFlow
+    let videoNotes: VideoNoteSettings
+    let media: MediaStore
 }
 
 enum ChatsPage: Equatable {
@@ -39,6 +43,9 @@ final class ChatsViewController: ScreenViewController {
     var pages: [ChatsPage] = [.all]
     var dateFormatter = ListDateFormatter(locale: .current)
     weak var activePeek: ChatPeekView?
+    var storyStudio: StoryStudio?
+    weak var storyRow: ChatRowNode?
+    var storyRowPeer: String?
 
     private let composeButton = UIButton(type: .system)
     private var observations: [ObservationToken] = []
@@ -211,8 +218,15 @@ final class ChatsViewController: ScreenViewController {
         header.onStackTap = { [weak self] in
             self?.expandStories()
         }
-        header.onOpen = { [router] peerID in
-            router.open(.stories(peerID))
+        header.onOpen = { [weak self] peerID in
+            self?.storyRowPeer = nil
+            self?.router.open(.stories(peerID))
+        }
+        header.onCreate = { [weak self] in
+            self?.createStory()
+        }
+        dependencies.storiesStore.onSeed = { [weak self] seed in
+            self?.createStory(seed: seed)
         }
     }
 }
@@ -223,6 +237,32 @@ extension ChatsViewController: StoryTransitionSource {
             return nil
         }
 
+        if let row = rowSource(for: peerID) {
+            return row.avatarFrame(in: window)
+        }
+
         return header.avatarFrame(for: peerID, in: window)
+    }
+
+    func setStoryAvatarHidden(_ isHidden: Bool, for peerID: String) {
+        if let row = rowSource(for: peerID) {
+            row.setAvatarHidden(isHidden)
+        } else {
+            header.setAvatarHidden(isHidden, for: peerID)
+        }
+    }
+
+    func openStory(_ peerID: String, from row: ChatRowNode) {
+        storyRow = row
+        storyRowPeer = peerID
+        router.open(.stories(peerID))
+    }
+
+    private func rowSource(for peerID: String) -> ChatRowNode? {
+        guard storyRowPeer == peerID, let row = storyRow, row.isNodeLoaded, row.view.window != nil else {
+            return nil
+        }
+
+        return row
     }
 }

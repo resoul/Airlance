@@ -11,7 +11,7 @@ final class MessageReceiptsTabs: UIScrollView {
     private var keys: [String?] = []
     private let colors: ThemeColors
 
-    init(total: Int, reactions: [(String, Int)], presentation: PresentationData) {
+    init(total: Int, reactions: [(String, Int)], videos: Int, presentation: PresentationData) {
         colors = presentation.theme.colors
         super.init(frame: .zero)
         showsHorizontalScrollIndicator = false
@@ -21,6 +21,11 @@ final class MessageReceiptsTabs: UIScrollView {
         for (emoji, count) in reactions {
             chips.append(chip(title: "\(emoji) \(count)", image: nil, font: presentation.theme.fonts.caption))
             keys.append(emoji)
+        }
+        if videos > 0 {
+            let image = UIImage(systemName: "video.fill")
+            chips.append(chip(title: "\(videos)", image: image, font: presentation.theme.fonts.caption))
+            keys.append(MessageMenuReceipts.videoKey)
         }
         chips.forEach { chip in
             addSubview(chip)

@@ -120,6 +120,9 @@ extension ChatsViewController {
                 draft: draft,
                 typing: chat.typing.map { name in
                     strings.typing(name)
+                },
+                onStory: { [weak self] node in
+                    self?.openStory(chat.id, from: node)
                 }
             ) { [router] in
                 router.open(.chat(chat.id))

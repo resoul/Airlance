@@ -14,21 +14,27 @@ final class AppCoordinator: NSObject, RouteNavigator {
     }
 
     private let window: UIWindow
-    private let router: AppRouter
+    let router: AppRouter
     private let factory: ScreenFactory
-    private let presentationContext: PresentationContext
-    private let accounts: any AccountSwitching
-    private let tabBarController: ScreenTabBarController
-    private var tabNavigations: [ScreenNavigationController] = []
-    private var modalNavigations: [ScreenNavigationController] = []
-    private var routes: [ObjectIdentifier: AppRoute] = [:]
+    let presentationContext: PresentationContext
+    let accounts: any AccountSwitching
+    let tabSettings: TabSettings
+    let tabBarController: ScreenTabBarController
+    var tabs: [AppRoute] = []
+    var tabNavigations: [ScreenNavigationController] = []
+    var modalNavigations: [ScreenNavigationController] = []
+    var routes: [ObjectIdentifier: AppRoute] = [:]
+    var detailNavigation: ScreenNavigationController?
+    var detailPlaceholder: UIViewController?
+    var detailTab: AppRoute?
     private var pending: [PendingTransition] = []
     private var isApplying = false
     private var isStopped = false
     private var presentationObservation: ObservationToken?
     private var accountsObservation: ObservationToken?
+    var tabsObservation: ObservationToken?
 
-    private var selectedNavigation: ScreenNavigationController? {
+    var selectedNavigation: ScreenNavigationController? {
         let index = tabBarController.selectedIndex
 
         return tabNavigations.indices.contains(index) ? tabNavigations[index] : nil
@@ -39,30 +45,21 @@ final class AppCoordinator: NSObject, RouteNavigator {
         router: AppRouter,
         factory: ScreenFactory,
         presentationContext: PresentationContext,
-        accounts: any AccountSwitching
+        accounts: any AccountSwitching,
+        tabSettings: TabSettings
     ) {
         self.window = window
         self.router = router
         self.factory = factory
         self.presentationContext = presentationContext
         self.accounts = accounts
+        self.tabSettings = tabSettings
         tabBarController = ScreenTabBarController(presentationSource: presentationContext)
         super.init()
     }
 
     func start() {
-        tabNavigations = AppRoute.tabs.map { tab in
-            let navigation = makeNavigation(prefersLargeTitles: true)
-            navigation.viewControllers = [makeScreen(for: tab)]
-
-            return navigation
-        }
-        let selectedIndex = router.tab.flatMap(AppRoute.tabs.firstIndex(of:)) ?? 0
-        tabBarController.setTabs(
-            tabNavigations,
-            items: AppTabItems.make(presentationContext.presentation, accounts: accounts),
-            selectedIndex: selectedIndex
-        )
+        setUpTabs()
         tabBarController.onSelect = { [weak self] index in
             self?.selectTab(at: index)
         }
@@ -72,15 +69,19 @@ final class AppCoordinator: NSObject, RouteNavigator {
             }
 
             return AppTabItems.menu(
-                for: index,
+                for: tabs[index],
                 strings: presentationContext.presentation.strings,
                 router: router,
                 accounts: accounts
             )
         }
+        setUpDetail()
         window.rootViewController = tabBarController
         router.attach(self)
 
+        tabsObservation = tabSettings.observe { [weak self] tabs in
+            self?.updateTabs(tabs)
+        }
         presentationObservation = presentationContext.observe { [weak self] presentation in
             self?.apply(presentation)
         }
@@ -93,6 +94,7 @@ final class AppCoordinator: NSObject, RouteNavigator {
         isStopped = true
         presentationObservation = nil
         accountsObservation = nil
+        tabsObservation = nil
         pending = []
         modalNavigations = []
         tabBarController.view.isUserInteractionEnabled = false
@@ -109,7 +111,7 @@ final class AppCoordinator: NSObject, RouteNavigator {
     }
 
     private func selectTab(at index: Int) {
-        let tab = AppRoute.tabs[index]
+        let tab = tabs[index]
         guard router.stack != [tab] else {
             tabBarController.scrollSelectedToTop()
 
@@ -176,29 +178,13 @@ final class AppCoordinator: NSObject, RouteNavigator {
     }
 
     private func updateBase(_ layer: RouteLayer<AppRoute>, animated: Bool) {
-        guard let tab = layer.routes.first, let index = AppRoute.tabs.firstIndex(of: tab) else {
+        guard let tab = layer.routes.first, let index = tabs.firstIndex(of: tab) else {
             return
         }
 
         let tabChanged = index != tabBarController.selectedIndex
         tabBarController.select(index, animated: animated)
-
-        let navigation = tabNavigations[index]
-        let current = navigation.viewControllers
-        let kept = zip(current, layer.routes)
-            .prefix { controller, route in
-                routes[ObjectIdentifier(controller)] == route
-            }
-            .count
-        let controllers = Array(current.prefix(kept)) + layer.routes.dropFirst(kept).map(makeScreen(for:))
-        guard controllers != current else {
-            return
-        }
-
-        navigation.setViewControllers(controllers, animated: animated && !tabChanged)
-        if tabChanged {
-            updateTabBarVisibility(for: navigation, top: controllers.last, coordinator: nil)
-        }
+        layOutBase(layer.routes, at: index, tabChanged: tabChanged, animated: animated)
     }
 
     private func updateModal(_ update: RouteLayerUpdate<AppRoute>, animated: Bool) {
@@ -233,7 +219,7 @@ final class AppCoordinator: NSObject, RouteNavigator {
         }
     }
 
-    private func makeNavigation(prefersLargeTitles: Bool = false) -> ScreenNavigationController {
+    func makeNavigation(prefersLargeTitles: Bool = false) -> ScreenNavigationController {
         let navigation = ScreenNavigationController(
             presentationSource: presentationContext,
             prefersLargeTitles: prefersLargeTitles
@@ -272,12 +258,13 @@ final class AppCoordinator: NSObject, RouteNavigator {
             return
         }
 
-        let identifiers = Set((tabNavigations + modalNavigations).flatMap(\.viewControllers).map(ObjectIdentifier.init))
+        let navigations = tabNavigations + modalNavigations + [detailNavigation].compactMap(\.self)
+        let identifiers = Set(navigations.flatMap(\.viewControllers).map(ObjectIdentifier.init))
         routes = routes.filter { identifier, _ in
             identifiers.contains(identifier)
         }
 
-        let visible = ([selectedNavigation] + modalNavigations).flatMap(\.viewControllers)
+        let visible = selectedNavigation.viewControllers + visibleDetail + modalNavigations.flatMap(\.viewControllers)
         router.sync(visible.compactMap { controller in
             routes[ObjectIdentifier(controller)]
         })
@@ -322,7 +309,7 @@ extension AppCoordinator: UIAdaptivePresentationControllerDelegate {
 }
 
 extension AppCoordinator {
-    fileprivate func updateTabBarVisibility(
+    func updateTabBarVisibility(
         for navigation: UINavigationController,
         top: UIViewController?,
         coordinator: (any UIViewControllerTransitionCoordinator)?
@@ -337,7 +324,7 @@ extension AppCoordinator {
         let topRoute = top.flatMap { controller in
             routes[ObjectIdentifier(controller)]
         }
-        let hidesTabBar = AppRoute.tabs[index] == .settings || topRoute == .chatArchive || isFullScreenChat(topRoute)
+        let hidesTabBar = tabs[index] == .settings || topRoute == .chatArchive || isFullScreenChat(topRoute)
         let hidden = !isRoot && hidesTabBar
         tabBarController.setTabBarHidden(hidden, animated: coordinator != nil, alongside: coordinator)
     }
@@ -367,20 +354,24 @@ extension AppCoordinator {
             return
         }
 
-        tabBarController.setItems(AppTabItems.make(presentationContext.presentation, accounts: accounts))
+        tabBarController.setItems(makeTabItems(presentationContext.presentation))
     }
 
     fileprivate func apply(_ presentation: PresentationData) {
-        tabBarController.setItems(AppTabItems.make(presentation, accounts: accounts))
+        tabBarController.setItems(makeTabItems(presentation))
         window.overrideUserInterfaceStyle = presentation.theme.appearance.userInterfaceStyle
     }
 }
 
 extension AppCoordinator {
-    private func makeScreen(for route: AppRoute) -> UIViewController {
+    func makeScreen(for route: AppRoute) -> UIViewController {
         let controller = switch route {
         case .contacts:
             factory.makeContacts()
+        case .onAir:
+            factory.makeOnAir()
+        case .myOnAir:
+            factory.makeMyOnAir()
         case .chats:
             factory.makeChats()
         case .calls:
@@ -397,7 +388,8 @@ extension AppCoordinator {
             factory.makeNewContact()
         case .invite:
             factory.makeInvite()
-        case .permissions, .appearance, .videoNotes, .chatFolders, .newChatFolder, .chatFolder:
+        case .permissions, .appearance, .chatAppearance, .storage, .videoNotes, .chatFolders, .newChatFolder,
+             .chatFolder, .tabSettings:
             settingsScreen(for: route)
         case .profile(let id):
             factory.makeProfile(id: id)
@@ -419,12 +411,18 @@ extension AppCoordinator {
             factory.makePermissions()
         case .videoNotes:
             factory.makeVideoNotes()
+        case .chatAppearance:
+            factory.makeChatAppearance()
+        case .storage:
+            factory.makeStorage()
         case .chatFolders:
             factory.makeChatFolders()
         case .newChatFolder:
             factory.makeChatFolderEditor(id: nil)
         case .chatFolder(let id):
             factory.makeChatFolderEditor(id: id)
+        case .tabSettings:
+            factory.makeTabSettings()
         default:
             factory.makeAppearance()
         }

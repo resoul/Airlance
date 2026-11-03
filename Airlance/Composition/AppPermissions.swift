@@ -5,6 +5,7 @@ import MicrophonePermission
 import NotificationsPermission
 import PermissionsAPI
 import PhotosPermission
+import SpeechPermission
 
 enum AppPermissions {
     @MainActor
@@ -16,6 +17,7 @@ enum AppPermissions {
             PhotosPermission(),
             ContactsPermission(),
             LocationPermission(),
+            SpeechPermission(),
         ]
     }
 }

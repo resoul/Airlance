@@ -15,6 +15,8 @@ extension AppStrings {
             permissionContactsTitle
         case .location:
             permissionLocationTitle
+        case .speech:
+            permissionSpeechTitle
         }
     }
 
@@ -32,6 +34,8 @@ extension AppStrings {
             permissionContactsSummary
         case .location:
             permissionLocationSummary
+        case .speech:
+            permissionSpeechSummary
         }
     }
 
@@ -49,6 +53,8 @@ extension AppStrings {
             permissionContactsRefusal
         case .location:
             permissionLocationRefusal
+        case .speech:
+            permissionSpeechRefusal
         }
     }
 

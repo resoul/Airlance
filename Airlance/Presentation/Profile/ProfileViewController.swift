@@ -3,15 +3,21 @@ import AirlanceUI
 import AvatarUI
 import LiquidUI
 import ListUI
+import Observers
 import UIKit
 
 struct ProfileDependencies {
     let presentationContext: PresentationContext
     let chatsStore: ChatsStore
+    let groupMembers: GroupMembersStore
+    let onAir: OnAirStore
 }
 
 final class ProfileViewController: ScreenViewController {
     let id: String
+    let dependencies: ProfileDependencies
+    let chat: ChatSummary?
+    let membersPane: ListPane?
     let peer: ProfilePeer
     let photos: [AvatarDescriptor]
     let router: AppRouter
@@ -39,11 +45,20 @@ final class ProfileViewController: ScreenViewController {
 
     private let tabs = LiquidTabsView()
     private var savedPopGesture: Bool?
+    private var membersObservation: ObservationToken?
+    private static var didShowHint = false
+
+    var mediaIndex: Int {
+        membersPane == nil ? 0 : 1
+    }
 
     init(id: String, dependencies: ProfileDependencies, router: AppRouter) {
         self.id = id
+        self.dependencies = dependencies
         self.router = router
-        peer = ProfilePeer(id: id, chat: dependencies.chatsStore.chat(id))
+        chat = dependencies.chatsStore.chat(id)
+        membersPane = chat?.kind == .group ? ListPane(list: ListView(theme: ListTheme())) : nil
+        peer = ProfilePeer(id: id, chat: chat)
         photos = peer.avatars
         super.init(presentationSource: dependencies.presentationContext)
     }
@@ -52,7 +67,17 @@ final class ProfileViewController: ScreenViewController {
         super.viewDidLoad()
         view.addSubview(container.view)
         pager.setTabsView(tabs, height: LiquidTabsView.height)
-        pager.setPanes([mediaPane] + listPanes)
+        let members: [any ScrollablePane] = membersPane.map { pane in
+            [pane]
+        } ?? []
+        pager.setPanes(members + [mediaPane] + listPanes)
+        membersObservation = dependencies.groupMembers.observe { [weak self] event in
+            guard let self, event.chatID == self.id else {
+                return
+            }
+
+            self.applyLists(self.presentation)
+        }
         bindPaging()
         bindHeader()
         monthPill.alpha = 0
@@ -73,6 +98,22 @@ final class ProfileViewController: ScreenViewController {
             gesture.isEnabled = false
         }
         container.setSuspended(false)
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard !Self.didShowHint else {
+            return
+        }
+
+        Self.didShowHint = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self, self.view.window != nil else {
+                return
+            }
+
+            self.showToast(self.presentation.strings.profileHint, symbol: "hand.draw")
+        }
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -97,7 +138,9 @@ final class ProfileViewController: ScreenViewController {
         container.frame = view.bounds
         navigationBar.frame = CGRect(x: 0, y: 0, width: view.bounds.width, height: geometry.navHeight)
         mediaPane.bottomInset = safe.bottom
-        for pane in listPanes {
+        for pane in listPanes + (membersPane.map { pane in
+            [pane]
+        } ?? []) {
             pane.list.contentInsets.bottom = safe.bottom
         }
         updateHeaderHeight()
@@ -109,26 +152,26 @@ final class ProfileViewController: ScreenViewController {
         let strings = presentation.strings
         let theme = presentation.theme
 
-        view.backgroundColor = theme.colors.background
-        let status = peer.isOnline ? strings.profileOnline : strings.profileLastSeen
-        header.apply(name: peer.name, status: status, isOnline: peer.isOnline, presentation: presentation)
+        view.backgroundColor = theme.groupedBackground
+        let status = chat.map { chat in
+            chat.kind == .person ? nil : ChatViewController.status(of: chat, strings: strings)
+        } ?? nil
+        let personStatus = peer.isOnline ? strings.profileOnline : strings.profileLastSeen
+        let shownStatus = status ?? personStatus
+        header.apply(name: peer.name, status: shownStatus, isOnline: peer.isOnline, presentation: presentation)
         applyActions(presentation)
-        header.info.apply(
-            [
-                ProfileInfoCard.Row(value: peer.phone, key: strings.profilePhone, isAccent: false),
-                ProfileInfoCard.Row(value: peer.username, key: strings.profileUsername, isAccent: true),
-                ProfileInfoCard.Row(value: peer.bio, key: strings.profileBio, isAccent: false),
-            ],
-            theme: theme
-        )
+        header.info.apply(infoRows(strings), theme: theme)
         navigationBar.apply(title: peer.name, back: strings.profileBack, theme: theme)
+        tabs.fillsWidth = true
+        tabs.background = theme.groupedBackground
         tabs.apply(theme)
-        let titles = [strings.profileMedia, strings.profileFiles, strings.profileLinks, strings.profileVoice]
+        let members = membersPane == nil ? [] : [strings.profileMembers]
+        let titles = members + [strings.profileMedia, strings.profileFiles, strings.profileLinks, strings.profileVoice]
         tabs.setTabs(titles.map { title in
             LiquidTab(title: title)
         })
         tabs.select(pager.selectedIndex, animated: false)
-        mediaPane.node.backgroundColor = theme.colors.background
+        mediaPane.node.backgroundColor = theme.groupedBackground
         mediaPane.grid.setAccessibilityLabels(strings.profilePhoto)
         applyLists(presentation)
         monthFormatter.locale = strings.pack.locale
@@ -173,11 +216,26 @@ final class ProfileViewController: ScreenViewController {
         )
     }
 
+    private func infoRows(_ strings: AppStrings) -> [ProfileInfoCard.Row] {
+        guard chat?.kind == .person || chat == nil else {
+            return [
+                ProfileInfoCard.Row(value: peer.bio, key: strings.groupDescription, isAccent: false),
+                ProfileInfoCard.Row(value: "airlance.app/\(id)", key: strings.groupLink, isAccent: true),
+            ]
+        }
+
+        return [
+            ProfileInfoCard.Row(value: peer.phone, key: strings.profilePhone, isAccent: false),
+            ProfileInfoCard.Row(value: peer.username, key: strings.profileUsername, isAccent: true),
+            ProfileInfoCard.Row(value: peer.bio, key: strings.profileBio, isAccent: false),
+        ]
+    }
+
     private func applyLists(_ presentation: PresentationData) {
         let theme = presentation.theme
         let listTheme = ListTheme(
-            background: theme.colors.background,
-            rowBackground: theme.colors.background,
+            background: theme.groupedBackground,
+            rowBackground: theme.groupedCell,
             primary: theme.colors.textPrimary,
             secondary: theme.colors.textSecondary,
             separator: theme.colors.separator,
@@ -192,6 +250,7 @@ final class ProfileViewController: ScreenViewController {
             }
             pane.list.apply(items: items, animated: false)
         }
+        applyMembers(presentation, theme: listTheme)
     }
 
     @objc

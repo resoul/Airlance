@@ -3,6 +3,7 @@ import Database
 import DatabaseAPI
 import Foundation
 import Keychain
+import MediaLoader
 import MediaStore
 import os
 
@@ -17,9 +18,12 @@ final class AccountContext {
     let chatFolders: ChatFolderStore
     let chatsStore: ChatsStore
     let historyStore: ChatHistoryStore
+    let groupMembers = GroupMembersStore()
     let callsStore: CallsStore
     let storiesStore: StoriesStore
     let videoNotes: VideoNoteSettings
+    let tabs: TabSettings
+    let onAir: OnAirStore
     let media: MediaStore
 
     private let database: AccountDatabase
@@ -42,11 +46,26 @@ final class AccountContext {
         self.database = database
         storage = database.keyValue
         chatFolders = ChatFolderStore(tables: database.tables)
-        chatsStore = ChatsStore(chats: ChatFixtures.make(now: now, variant: record.fixtureVariant))
+        let previews = ChatFixtures.previews(now: now)
+        let onAirPreviews = OnAirFixtures.summaries(now: now).filter { summary in
+            !previews.contains { preview in
+                preview.id == summary.id
+            }
+        }
+        chatsStore = ChatsStore(
+            chats: ChatFixtures.make(now: now, variant: record.fixtureVariant),
+            previews: previews + onAirPreviews
+        )
+        onAir = OnAirStore(
+            channels: OnAirFixtures.channels(),
+            posts: OnAirFixtures.posts(now: now),
+            storage: database.keyValue
+        )
         historyStore = ChatHistoryStore(chatsStore: chatsStore, fixtureSalt: record.fixtureVariant)
         callsStore = CallsStore(entries: CallFixtures.make(now: now))
         storiesStore = StoriesStore(stories: StoryFixtures.make())
         videoNotes = VideoNoteSettings(storage: database.keyValue)
+        tabs = TabSettings(storage: database.keyValue)
         let media = MediaStore(account: record.id.rawValue)
         self.media = media
         Task.detached(priority: .background) {
@@ -73,6 +92,7 @@ final class AccountContext {
         try AccountStorage.remove(directory: directory(accountID: accountID))
         try? FileManager.default.removeItem(at: directory(accountID: accountID))
         MediaStore(account: accountID.rawValue).removeAll()
+        MediaDiskCache.shared.remove(account: accountID.rawValue)
         try AccountDatabaseKey.remove(accountID: accountID.rawValue, keychain: keychain)
     }
 

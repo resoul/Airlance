@@ -31,6 +31,21 @@ final class ChatRowNode: ListItemNode {
         setNeedsLayout()
     }
 
+    var avatarFrame: CGRect {
+        let size = ChatRowLayout.avatarSize
+
+        return CGRect(x: ChatRowLayout.avatarX, y: (bounds.height - size) / 2, width: size, height: size)
+    }
+
+    func avatarFrame(in view: UIView) -> CGRect {
+        self.view.convert(avatarFrame, to: view)
+    }
+
+    func setAvatarHidden(_ isHidden: Bool) {
+        avatar.isHidden = isHidden
+        onlineDot.alpha = isHidden ? 0 : 1
+    }
+
     func apply(_ layout: ChatRowLayout) {
         content.frame = CGRect(origin: .zero, size: layout.content.size)
         content.apply(layout.content)
@@ -43,13 +58,13 @@ final class ChatRowNode: ListItemNode {
     override func prepareForReuse() {
         super.prepareForReuse()
         avatar.prepareForReuse()
+        setAvatarHidden(false)
         content.apply(nil)
     }
 
     override func layout() {
         super.layout()
-        let size = ChatRowLayout.avatarSize
-        avatar.frame = CGRect(x: ChatRowLayout.avatarX, y: (bounds.height - size) / 2, width: size, height: size)
+        avatar.frame = avatarFrame
 
         let dot: CGFloat = 16
         let origin = CGPoint(x: avatar.frame.maxX - dot + 1, y: avatar.frame.maxY - dot + 1)

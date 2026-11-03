@@ -10,6 +10,8 @@ import Theme
 
 @MainActor
 final class ApplicationContext {
+    nonisolated static let thumbnailLimit: Int64 = 200 * 1024 * 1024
+
     let sharedStorage: any KeyValueStore
     let keychain: Keychain
     let themeStore: ThemeStore
@@ -24,6 +26,7 @@ final class ApplicationContext {
         }
         Task.detached(priority: .background) {
             MediaStore.removeLegacyFolders()
+            MediaDiskCache.shared.trim(to: Self.thumbnailLimit)
         }
         sharedStorage = try SharedStorage.open(directory: Self.sharedDirectory())
         keychain = Keychain(service: Bundle.main.bundleIdentifier ?? "org.airlance")

@@ -61,7 +61,7 @@ enum ChatLinkFixtures {
     ]
 
     static let forwardSources = [
-        MessageForward(fromID: "tech-digest", fromName: "Tech Digest"),
+        MessageForward(fromID: "swift-weekly", fromName: "Swift Weekly"),
         MessageForward(fromID: "design-daily", fromName: "Дизайн щодня"),
         MessageForward(fromID: "olena", fromName: "Олена"),
     ]

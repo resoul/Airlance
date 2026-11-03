@@ -4,12 +4,15 @@ import UIKit
 enum VideoBadge {
     private static let playSize: CGFloat = 44
 
-    static func make(duration: TimeInterval, frame: CGRect, style: HistoryStyle) -> ASDisplayNode {
+    static func make(duration: TimeInterval, size: Int64?, frame: CGRect, style: HistoryStyle) -> ASDisplayNode {
         let container = ASDisplayNode()
         container.isLayerBacked = true
         container.frame = frame
-        container.addSubnode(durationNode(duration, style: style))
-        if frame.width >= playSize * 1.5, frame.height >= playSize * 1.5 {
+        let title = size.map { size in
+            "\(text(duration)) · \(ByteCountFormatter.string(fromByteCount: size, countStyle: .file))"
+        } ?? text(duration)
+        container.addSubnode(durationNode(title, style: style))
+        if size == nil, frame.width >= playSize * 1.5, frame.height >= playSize * 1.5 {
             container.addSubnode(playNode(in: CGRect(origin: .zero, size: frame.size)))
         }
 
@@ -22,15 +25,15 @@ enum VideoBadge {
         return String(format: "%d:%02d", seconds / 60, seconds % 60)
     }
 
-    private static func durationNode(_ duration: TimeInterval, style: HistoryStyle) -> ASDisplayNode {
+    private static func durationNode(_ title: String, style: HistoryStyle) -> ASDisplayNode {
         let label = ASTextNode()
         label.isLayerBacked = true
         label.maximumNumberOfLines = 1
         label.attributedText = NSAttributedString(
-            string: text(duration),
+            string: title,
             attributes: [.font: style.metaFont, .foregroundColor: UIColor.white]
         )
-        let size = MessageBubbleLayout.measure(label, width: 80)
+        let size = MessageBubbleLayout.measure(label, width: 160)
         let background = ASDisplayNode()
         background.isLayerBacked = true
         background.backgroundColor = UIColor.black.withAlphaComponent(0.45)

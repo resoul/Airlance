@@ -31,6 +31,7 @@ extension QuickReplyCardView {
     }
 
     private func buildHeader() {
+        let titleSize: CGFloat = isLarge ? 17 : 15
         var configuration = UIButton.Configuration.plain()
         configuration.title = texts.title
         let chevron = UIImage.SymbolConfiguration(pointSize: 9, weight: .semibold)
@@ -41,7 +42,7 @@ extension QuickReplyCardView {
         configuration.baseForegroundColor = .white
         configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
             var result = attributes
-            result.font = .systemFont(ofSize: 15, weight: .semibold)
+            result.font = .systemFont(ofSize: titleSize, weight: .semibold)
 
             return result
         }
@@ -54,7 +55,6 @@ extension QuickReplyCardView {
             for: .touchUpInside
         )
         message.text = texts.message
-        message.font = .systemFont(ofSize: 13)
         message.textColor = UIColor.white.withAlphaComponent(0.78)
         message.numberOfLines = 2
         let xmark = UIImage.SymbolConfiguration(pointSize: 12, weight: .bold)
@@ -103,6 +103,11 @@ extension QuickReplyCardView {
         grabber.layer.cornerRadius = 2
     }
 
+    func applyFonts() {
+        message.font = .systemFont(ofSize: isLarge ? 15 : 13)
+        field.font = .systemFont(ofSize: isLarge ? 17 : 16)
+    }
+
     func updateControls() {
         field.isHidden = !isReplying
         send.isHidden = !isReplying
@@ -118,7 +123,7 @@ extension QuickReplyCardView {
         let headerHeight = Self.bannerHeight - (Self.bannerHeight - Self.chatHeaderHeight) * progress
         avatar.frame = CGRect(x: 16, y: 17 - 4 * progress, width: 40, height: 40)
         name.frame = CGRect(x: 68, y: 14 + 9 * progress, width: width - 112, height: 20)
-        message.frame = CGRect(x: 68, y: 36, width: width - 92, height: 34)
+        message.frame = CGRect(x: 68, y: 36, width: width - 92, height: isLarge ? 38 : 34)
         message.alpha = max(0, 1 - progress * 2.5)
         close.frame = CGRect(x: width - 40, y: 5 + 8 * progress, width: 36, height: 34)
         let replyGap = Self.replyHeight - Self.bannerHeight
@@ -155,16 +160,17 @@ extension QuickReplyCardView {
         var neck: CGFloat = 0
         switch mode {
         case .entering:
-            neck = 22 * max(0, 1 - CGFloat(phaseTime) / 0.4)
+            neck = hasIsland ? 22 * max(0, 1 - CGFloat(phaseTime) / 0.4) : 0
             content.alpha = min(1, max(0, CGFloat(phaseTime - 0.1) / 0.2))
             if phaseTime > 0.65 {
                 mode = .banner
             }
         case .dismissing:
-            target = islandMouth
-            size = CGPoint(x: 7, y: 7)
-            neck = hypot(centerSpring.position.x - target.x, centerSpring.position.y - target.y) < 65 ? 18 : 0
-            if phaseTime > 0.65 {
+            target = hasIsland ? islandMouth : hiddenCenter
+            size = hasIsland ? CGPoint(x: 7, y: 7) : halfSpring.position
+            let isNear = hypot(centerSpring.position.x - target.x, centerSpring.position.y - target.y) < 65
+            neck = hasIsland && isNear ? 18 : 0
+            if phaseTime > (hasIsland ? 0.65 : 0.45) {
                 finish()
 
                 return
@@ -235,10 +241,8 @@ extension QuickReplyCardView {
             width: halfSize.width * 2,
             height: halfSize.height * 2
         )
-        canvas.blobs = [
-            LiquidBlob(frame: island, cornerRadius: island.height / 2, blend: 0),
-            LiquidBlob(frame: frame, cornerRadius: min(28, halfSize.height), blend: neck),
-        ]
+        let card = LiquidBlob(frame: frame, cornerRadius: min(28, halfSize.height), blend: neck)
+        canvas.blobs = hasIsland ? [LiquidBlob(frame: island, cornerRadius: island.height / 2, blend: 0), card] : [card]
         content.center = position
         if mode == .entering || mode == .dismissing {
             content.bounds = CGRect(origin: .zero, size: scaleBase)

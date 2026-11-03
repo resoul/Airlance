@@ -1,3 +1,4 @@
+import Device
 import Observers
 import UIKit
 
@@ -37,22 +38,47 @@ final class VideoNoteSettingsController: ScreenViewController, UITableViewDataSo
         table.reloadData()
     }
 
+    private var hasVolumeZoom: Bool {
+        DeviceFeatures.volumeCaptureButtons
+    }
+
     func numberOfSections(in tableView: UITableView) -> Int {
-        2
+        3
     }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        section == 0 ? VideoNoteStyle.allCases.count : 1
+        switch section {
+        case 0:
+            VideoNoteStyle.allCases.count
+        case 1:
+            1
+        default:
+            hasVolumeZoom ? 2 : 1
+        }
     }
 
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        section == 0 ? presentation.strings.videoNotesFormat : nil
+        switch section {
+        case 0:
+            presentation.strings.videoNotesFormat
+        case 2:
+            presentation.strings.videoNotesCamera
+        default:
+            nil
+        }
     }
 
     func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         let strings = presentation.strings
 
-        return section == 0 ? strings.videoNotesFormatHint : strings.videoNotesReactionsHint
+        switch section {
+        case 0:
+            return strings.videoNotesFormatHint
+        case 1:
+            return strings.videoNotesReactionsHint
+        default:
+            return nil
+        }
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -66,7 +92,14 @@ final class VideoNoteSettingsController: ScreenViewController, UITableViewDataSo
         cell.detailTextLabel?.numberOfLines = 0
         cell.imageView?.tintColor = colors.accent
         guard indexPath.section == 0 else {
-            return reactionsCell(cell)
+            switch (indexPath.section, indexPath.row) {
+            case (1, _):
+                return reactionsCell(cell)
+            case (_, 0):
+                return autoSubtitlesCell(cell)
+            default:
+                return volumeZoomCell(cell)
+            }
         }
 
         let style = VideoNoteStyle.allCases[indexPath.row]
@@ -82,13 +115,44 @@ final class VideoNoteSettingsController: ScreenViewController, UITableViewDataSo
     private func reactionsCell(_ cell: UITableViewCell) -> UITableViewCell {
         cell.textLabel?.text = presentation.strings.videoNotesReactions
         cell.imageView?.image = UIImage(systemName: "face.smiling.inverse")
+
+        return toggleCell(cell, isOn: dependencies.settings.reactionsEnabled) { [weak self] isOn in
+            self?.dependencies.settings.setReactionsEnabled(isOn)
+        }
+    }
+
+    private func autoSubtitlesCell(_ cell: UITableViewCell) -> UITableViewCell {
+        cell.textLabel?.text = presentation.strings.videoNotesAutoSubtitles
+        cell.detailTextLabel?.text = presentation.strings.videoNotesAutoSubtitlesHint
+        cell.imageView?.image = UIImage(systemName: "captions.bubble.fill")
+
+        return toggleCell(cell, isOn: dependencies.settings.autoSubtitlesEnabled) { [weak self] isOn in
+            self?.dependencies.settings.setAutoSubtitlesEnabled(isOn)
+        }
+    }
+
+    private func volumeZoomCell(_ cell: UITableViewCell) -> UITableViewCell {
+        cell.textLabel?.text = presentation.strings.videoNotesVolumeZoom
+        cell.detailTextLabel?.text = presentation.strings.videoNotesVolumeZoomHint
+        cell.imageView?.image = UIImage(systemName: "plus.forwardslash.minus")
+
+        return toggleCell(cell, isOn: dependencies.settings.volumeZoomEnabled) { [weak self] isOn in
+            self?.dependencies.settings.setVolumeZoomEnabled(isOn)
+        }
+    }
+
+    private func toggleCell(
+        _ cell: UITableViewCell,
+        isOn: Bool,
+        onChange: @escaping @MainActor (Bool) -> Void
+    ) -> UITableViewCell {
         cell.selectionStyle = .none
         let toggle = UISwitch()
         toggle.onTintColor = presentation.theme.colors.accent
-        toggle.isOn = dependencies.settings.reactionsEnabled
+        toggle.isOn = isOn
         toggle.addAction(
-            UIAction { [weak self, weak toggle] _ in
-                self?.dependencies.settings.setReactionsEnabled(toggle?.isOn ?? false)
+            UIAction { [weak toggle] _ in
+                onChange(toggle?.isOn ?? false)
             },
             for: .valueChanged
         )

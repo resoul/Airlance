@@ -63,12 +63,12 @@ final class ProfileHeaderView: UIView {
     func apply(name: String, status: String, isOnline: Bool, presentation: PresentationData) {
         let theme = presentation.theme
         nameLabel.text = name
-        nameLabel.font = theme.fonts.title
+        nameLabel.font = theme.fonts.title.withSize(max(24, theme.fonts.title.pointSize))
         statusLabel.text = status
-        statusLabel.font = theme.fonts.subheadline
+        statusLabel.font = theme.fonts.subheadline.withSize(max(15, theme.fonts.subheadline.pointSize))
         textColor = theme.colors.textPrimary
         statusColor = isOnline ? theme.colors.accent : theme.colors.textSecondary
-        backgroundColor = theme.colors.background
+        backgroundColor = theme.groupedBackground
     }
 
     func apply(action: ProfileAction, symbol: String, title: String, theme: AppTheme) {
@@ -146,10 +146,18 @@ final class ProfileHeaderView: UIView {
     }
 
     func shakePhoto(forward: Bool) {
-        let shake = CAKeyframeAnimation(keyPath: "transform.rotation.y")
-        shake.values = [0, forward ? -0.12 : 0.12, 0]
-        shake.duration = 0.3
-        photo.layer.add(shake, forKey: "edge")
+        let shift: CGFloat = forward ? -10 : 10
+        let shake = CAKeyframeAnimation(keyPath: "transform")
+        let nudged = [1, -0.35].map { step in
+            CATransform3DMakeAffineTransform(
+                CGAffineTransform(translationX: shift * step, y: 0).scaledBy(x: 1.05, y: 1.05)
+            )
+        }
+        shake.values = [CATransform3DIdentity] + nudged + [CATransform3DIdentity]
+        shake.keyTimes = [0, 0.35, 0.7, 1]
+        shake.duration = 0.35
+        shake.timingFunctions = Array(repeating: CAMediaTimingFunction(name: .easeInEaseOut), count: 3)
+        avatar.layer.add(shake, forKey: "edge")
     }
 
     @objc

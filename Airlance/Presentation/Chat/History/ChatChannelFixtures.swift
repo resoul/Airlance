@@ -2,7 +2,7 @@ import ChatHistory
 import Foundation
 
 enum ChatChannelFixtures {
-    private static let withoutDiscussion: Set<String> = ["music"]
+    private static let discussionGroups = ["news": "news-chat"]
     static let commenters = [
         MessageCommenter(id: "vika", name: "Віка"),
         MessageCommenter(id: "anna", name: "Анна"),
@@ -31,8 +31,14 @@ enum ChatChannelFixtures {
         "Хтось вже пробував?",
     ]
 
-    static func hasDiscussion(_ chat: ChatSummary) -> Bool {
-        chat.kind == .channel && !withoutDiscussion.contains(chat.id)
+    static func discussionGroup(of channelID: String) -> String? {
+        discussionGroups[channelID]
+    }
+
+    static func channel(discussedIn groupID: String) -> String? {
+        discussionGroups.first { _, group in
+            group == groupID
+        }?.key
     }
 
     static func decorate(_ messages: inout [HistoryMessage], chat: ChatSummary, random: inout SeededRandom) {
@@ -41,16 +47,13 @@ enum ChatChannelFixtures {
         }
 
         let audience = max(100, chat.memberCount)
-        let discussion = hasDiscussion(chat)
         for index in messages.indices where !messages[index].content.isService {
             let reach = 30 + Int(random.next() % 70)
             messages[index].views = audience * reach / 100
             if random.next() % 10 < 3 {
                 messages[index].signature = signatures[Int(random.next() % UInt64(signatures.count))]
             }
-            if discussion {
-                messages[index].comments = comments(random: &random)
-            }
+            messages[index].comments = comments(random: &random)
         }
     }
 
@@ -81,6 +84,53 @@ enum ChatChannelFixtures {
         }
 
         return ChatHistoryFixtures.History(messages: messages, unreadFrom: nil)
+    }
+
+    static func discussion(
+        posts: [HistoryMessage],
+        threads: (HistoryMessage) -> [HistoryMessage],
+        group: String,
+        channel: ChatSummary
+    ) -> ChatHistoryFixtures.History {
+        var messages: [HistoryMessage] = []
+        for post in posts where !post.content.isService {
+            var copy = HistoryMessage(
+                id: discussionPostID(post.id, group: group),
+                authorID: channel.id,
+                authorName: channel.name,
+                isOutgoing: false,
+                date: post.date,
+                content: post.content,
+                link: post.link
+            )
+            copy.forward = MessageForward(fromID: channel.id, fromName: channel.name)
+            messages.append(copy)
+            messages += threads(post).map { comment in
+                discussionComment(comment, post: copy)
+            }
+        }
+        messages.sort { lhs, rhs in
+            lhs.date < rhs.date
+        }
+
+        return ChatHistoryFixtures.History(messages: messages, unreadFrom: nil)
+    }
+
+    static func discussionPostID(_ postID: String, group: String) -> String {
+        "\(group)-post-\(postID)"
+    }
+
+    static func discussionComment(_ comment: HistoryMessage, post: HistoryMessage) -> HistoryMessage {
+        var comment = comment
+        if comment.reply == nil {
+            comment.reply = MessageReply(post)
+        }
+
+        return comment
+    }
+
+    static func isComment(_ message: HistoryMessage, in thread: CommentThread) -> Bool {
+        !message.content.isService && message.id != thread.id + "-post"
     }
 
     private static func header(

@@ -30,7 +30,7 @@ final class TabMemory {
                 AppRoute(segment: RouteSegment(name))
             }
             .flatMap { route in
-                AppRoute.tabs.contains(route) ? route : nil
+                TabSettings.all.contains(route) ? route : nil
             }
     }
 

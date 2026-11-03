@@ -27,6 +27,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         )
         self.window = window
         window.makeKeyAndVisible()
+        if let context {
+            ParticleSplashView.present(in: window, tint: context.presentationContext.presentation.theme.colors.accent)
+        }
 
         open(connectionOptions.urlContexts, animated: false)
     }

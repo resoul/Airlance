@@ -15,6 +15,9 @@ final class ChatHistoryController {
     var onLinkMenu: (@MainActor (URL, MessageBubbleNode, CGPoint) -> Void)?
     var onOpenComments: (@MainActor (String) -> Void)?
     var onOpenFile: (@MainActor (MessageFile) -> Void)?
+    var onFailedMessage: (@MainActor (HistoryMessage, MessageBubbleNode) -> Void)?
+    var onEffect: (@MainActor (String, MessageBubbleNode) -> Void)?
+    var pendingEffects: Set<String> = []
     var onUpdate: (@MainActor () -> Void)?
     var isReadOnly = false
     var window = HistoryWindow()
@@ -27,6 +30,8 @@ final class ChatHistoryController {
     var pollDrafts: [String: Set<Int>] = [:]
     var onPollResults: (@MainActor (String) -> Void)?
     var onVideoReaction: (@MainActor (_ messageID: String, _ reactionID: String) -> Void)?
+    var onTranscribe: (@MainActor (String) -> Void)?
+    var onOpenChat: (@MainActor (String) -> Void)?
     var onPollFeedback: (@MainActor (_ text: String, _ isCorrect: Bool?) -> Void)?
     var onSearchChange: (@MainActor () -> Void)?
     var pendingTextReveal: String?
@@ -46,6 +51,7 @@ final class ChatHistoryController {
     let positions: ChatScrollPositions?
     private(set) var chatID = ""
     private var observation: ObservationToken?
+    private var transferObservation: ObservationToken?
     private var showsNames = false
     private var showsAvatars = false
     private var revision = 0
@@ -54,7 +60,6 @@ final class ChatHistoryController {
     private var locale = Locale.current
     private var layouts = LayoutCache()
     let avatars = StickyAvatars()
-    let fileDownloads = FileDownloads()
     private(set) lazy var replySwipe = MessageReplySwipe(list: listView)
     let voicePlayback = VoicePlayback()
 
@@ -76,12 +81,16 @@ final class ChatHistoryController {
         chatID = id
         showsNames = kind == .group
         showsAvatars = kind == .group
+        transferObservation = bindTransfers()
         observation = store.observeHistory { [weak self] event in
             if event.chatID == self?.chatID {
                 self?.historyChanged(event)
             }
         }
-        if let anchor = positions?.anchor(for: id) {
+        if let focus = store.focusRequests.removeValue(forKey: id) {
+            pendingReveal = focus
+            fetch(window.request(around: focus), focus: focus, keepsEnd: false)
+        } else if let anchor = positions?.anchor(for: id) {
             listView.scroll(to: anchor)
             fetch(window.request(around: anchor.id), focus: anchor.id, keepsEnd: false)
         } else {
@@ -99,7 +108,7 @@ final class ChatHistoryController {
             replySwipe.apply(theme)
         }
         listView.theme = ListTheme(
-            background: theme.colors.background,
+            background: theme.chat.wallpaper == nil ? theme.colors.background : .clear,
             rowBackground: .clear,
             primary: theme.colors.textPrimary,
             secondary: theme.colors.textSecondary,
@@ -151,7 +160,14 @@ final class ChatHistoryController {
     }
 
     func photoTapped(_ messageID: String, index: Int, node: MessageBubbleNode) {
-        if let message = message(messageID) {
+        guard let message = message(messageID) else {
+            return
+        }
+
+        let isTransferring = store.transfers.progress(TransferKey(chatID: chatID, messageID: messageID)) != nil
+        if isTransferring || message.pendingDownload != nil {
+            toggleTransfer(messageID)
+        } else {
             onPhotos?(message, index, node)
         }
     }
@@ -201,7 +217,9 @@ final class ChatHistoryController {
             titles: titles,
             previous: layouts.storage,
             translations: translations,
-            pollDrafts: pollDrafts
+            pollDrafts: pollDrafts,
+            expanded: expandedTexts,
+            transcripts: store.transcripts[chatID] ?? [:]
         )
         isPreparing = true
         Task { [weak self] in
@@ -247,6 +265,7 @@ final class ChatHistoryController {
         reportBottomState()
         revealPending()
         revealTranslatedText()
+        playPendingEffects()
         onUpdate?()
         if scrollsToBottom, window.isAtEnd {
             scrollsToBottom = false
