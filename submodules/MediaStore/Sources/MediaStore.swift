@@ -91,6 +91,20 @@ public final class MediaStore: Sendable {
         }
     }
 
+    public func usage(of kind: LocalMedia.Kind) -> Int64 {
+        files(in: directory(of: kind)).reduce(0) { total, file in
+            total + file.size
+        }
+    }
+
+    public func remove(kind: LocalMedia.Kind) {
+        try? FileManager.default.removeItem(at: directory(of: kind))
+    }
+
+    private func directory(of kind: LocalMedia.Kind) -> URL {
+        Self.directory(for: account).appendingPathComponent(kind.rawValue, isDirectory: true)
+    }
+
     public func trim(to limit: Int64) {
         var files = files().sorted { lhs, rhs in
             lhs.date < rhs.date
@@ -110,9 +124,13 @@ public final class MediaStore: Sendable {
     }
 
     private func files() -> [(url: URL, size: Int64, date: Date)] {
+        files(in: Self.directory(for: account))
+    }
+
+    private func files(in directory: URL) -> [(url: URL, size: Int64, date: Date)] {
         let keys: [URLResourceKey] = [.fileSizeKey, .contentModificationDateKey, .isRegularFileKey]
         guard let enumerator = FileManager.default.enumerator(
-            at: Self.directory(for: account),
+            at: directory,
             includingPropertiesForKeys: keys
         ) else {
             return []

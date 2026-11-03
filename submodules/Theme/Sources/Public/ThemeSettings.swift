@@ -1,14 +1,16 @@
 public struct ThemeSettings: Codable, Equatable, Sendable {
-    public static let `default` = ThemeSettings(mode: .system, accent: .blue, font: .montserrat)
+    public static let `default` = ThemeSettings(mode: .system, accent: .blue, font: .montserrat, chat: .default)
 
     public var mode: ThemeMode
     public var accent: ThemeAccent
     public var font: ThemeFont
+    public var chat: ChatAppearance
 
-    public init(mode: ThemeMode, accent: ThemeAccent, font: ThemeFont) {
+    public init(mode: ThemeMode, accent: ThemeAccent, font: ThemeFont, chat: ChatAppearance) {
         self.mode = mode
         self.accent = accent
         self.font = font
+        self.chat = chat
     }
 
     public init(from decoder: any Decoder) throws {
@@ -16,5 +18,6 @@ public struct ThemeSettings: Codable, Equatable, Sendable {
         mode = (try? container.decodeIfPresent(ThemeMode.self, forKey: .mode)) ?? Self.default.mode
         accent = (try? container.decodeIfPresent(ThemeAccent.self, forKey: .accent)) ?? Self.default.accent
         font = (try? container.decodeIfPresent(ThemeFont.self, forKey: .font)) ?? Self.default.font
+        chat = (try? container.decodeIfPresent(ChatAppearance.self, forKey: .chat)) ?? Self.default.chat
     }
 }

@@ -47,6 +47,12 @@ public final class ThemeStore {
         }
     }
 
+    public func setChat(_ chat: ChatAppearance) async throws {
+        try await storage.update(.themeSettings) {
+            $0.chat = chat
+        }
+    }
+
     private func apply(settings: ThemeSettings) {
         guard settings != self.settings else {
             return

@@ -7,10 +7,11 @@ public final class AppTheme: Sendable {
     public let contentSize: UIContentSizeCategory
     public let colors: ThemeColors
     public let fonts: ThemeFonts
+    public let chat: ThemeChat
 
     let inputs: ThemeInputs
 
-    init(inputs: ThemeInputs, colors: ThemeColors, fonts: ThemeFonts) {
+    init(inputs: ThemeInputs, colors: ThemeColors, fonts: ThemeFonts, chat: ThemeChat) {
         self.inputs = inputs
         appearance = inputs.appearance
         accent = inputs.accent
@@ -18,5 +19,6 @@ public final class AppTheme: Sendable {
         contentSize = inputs.contentSize
         self.colors = colors
         self.fonts = fonts
+        self.chat = chat
     }
 }

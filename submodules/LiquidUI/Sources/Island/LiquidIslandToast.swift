@@ -1,3 +1,4 @@
+import Device
 import Haptics
 import UIKit
 
@@ -59,13 +60,13 @@ public final class LiquidIslandToast: UIView, UITextFieldDelegate {
         in window: UIWindow,
         duration: TimeInterval = 5
     ) -> LiquidIslandToast? {
-        guard LiquidCanvasView.isSupported else {
+        guard LiquidCanvasView.isSupported, let island = DeviceScreen.island(in: window) else {
             return nil
         }
 
         current?.dismiss()
         let toast = LiquidIslandToast(content, duration: duration)
-        toast.install(in: window)
+        toast.install(in: window, island: island)
         current = toast
 
         return toast
@@ -138,10 +139,10 @@ public final class LiquidIslandToast: UIView, UITextFieldDelegate {
         return false
     }
 
-    private func install(in window: UIWindow) {
+    private func install(in window: UIWindow, island: CGRect) {
         window.addSubview(self)
         frame = window.bounds
-        island = DynamicIslandGeometry.frame(in: window).insetBy(dx: 1.5, dy: 1.5)
+        self.island = island.insetBy(dx: 1.5, dy: 1.5)
         width = min(window.bounds.width - 24, 360)
         canvas.frame = CGRect(x: 0, y: 0, width: window.bounds.width, height: island.maxY + 300)
         content.bounds = CGRect(x: 0, y: 0, width: width, height: LiquidIslandContentView.expandedHeight)
