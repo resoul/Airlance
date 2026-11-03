@@ -36,5 +36,6 @@ swift_library(
         "Microphone",
         "Notifications",
         "Photos",
+        "Speech",
     ]
 ]
