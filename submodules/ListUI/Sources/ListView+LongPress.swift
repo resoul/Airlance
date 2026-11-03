@@ -11,7 +11,11 @@ extension ListView {
     @objc
     private func longPressed(_ gesture: UILongPressGestureRecognizer) {
         guard gesture.state == .began else {
-            onLongPressMove?(gesture)
+            if reorder != nil {
+                continueReorder(gesture)
+            } else {
+                onLongPressMove?(gesture)
+            }
 
             return
         }
@@ -27,6 +31,10 @@ extension ListView {
         guard let node, let id = node.itemID, let item = items.first(where: { item in
             item.id == id
         }) else {
+            return
+        }
+
+        if onMove != nil, item.isMovable, beginReorder(id: id, node: node, location: location) {
             return
         }
 

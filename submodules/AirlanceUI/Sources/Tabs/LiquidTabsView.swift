@@ -17,9 +17,21 @@ public final class LiquidTabsView: UIView {
     public static let height: CGFloat = 48
 
     private static let tabHeight: CGFloat = 34
+    private static let segmentHeight: CGFloat = 32
     private static let padding: CGFloat = 14
 
     public var onSelect: (@MainActor (Int) -> Void)?
+    public var fillsWidth = false {
+        didSet {
+            scrollView.isScrollEnabled = !fillsWidth
+            setNeedsLayout()
+        }
+    }
+    public var background: UIColor? {
+        didSet {
+            backgroundColor = background ?? theme?.colors.background
+        }
+    }
 
     private let scrollView = UIScrollView()
     private let selection = LiquidSelectionView()
@@ -58,6 +70,8 @@ public final class LiquidTabsView: UIView {
             labels = tabs.map { _ in
                 let label = UILabel()
                 label.textAlignment = .center
+                label.adjustsFontSizeToFitWidth = true
+                label.minimumScaleFactor = 0.7
                 scrollView.addSubview(label)
 
                 return label
@@ -69,7 +83,7 @@ public final class LiquidTabsView: UIView {
 
     public func apply(_ theme: AppTheme) {
         self.theme = theme
-        backgroundColor = theme.colors.background
+        backgroundColor = background ?? theme.colors.background
         selection.color = theme.colors.accent
         updateLabels()
         setNeedsLayout()
@@ -97,12 +111,14 @@ public final class LiquidTabsView: UIView {
         super.layoutSubviews()
         scrollView.frame = bounds
 
-        var x: CGFloat = 12
-        let y = (bounds.height - Self.tabHeight) / 2
+        var x: CGFloat = fillsWidth ? 16 : 12
+        let height = fillsWidth ? Self.segmentHeight : Self.tabHeight
+        let y = (bounds.height - height) / 2
+        let segment = (bounds.width - 32 - CGFloat(max(labels.count - 1, 0)) * 4) / CGFloat(max(labels.count, 1))
         var slots: [CGRect] = []
         for label in labels {
-            let width = ceil(label.intrinsicContentSize.width) + Self.padding * 2
-            let frame = CGRect(x: x, y: y, width: width, height: Self.tabHeight)
+            let width = fillsWidth ? segment : ceil(label.intrinsicContentSize.width) + Self.padding * 2
+            let frame = CGRect(x: x, y: y, width: width, height: height)
             label.frame = frame
             slots.append(frame)
             x += width + 4

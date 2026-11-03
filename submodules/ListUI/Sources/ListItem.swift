@@ -5,6 +5,7 @@ public protocol ListItem {
     var id: String { get }
     var version: Int { get }
     var reuseIdentifier: String { get }
+    var isMovable: Bool { get }
 
     func height(for width: CGFloat, theme: ListTheme) -> CGFloat
     func makeNode() -> ListItemNode
@@ -22,6 +23,10 @@ extension ListItem {
 
     public var reuseIdentifier: String {
         String(reflecting: Self.self)
+    }
+
+    public var isMovable: Bool {
+        false
     }
 
     public func selected() {
