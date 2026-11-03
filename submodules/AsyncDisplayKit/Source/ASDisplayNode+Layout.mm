@@ -15,7 +15,6 @@
 #import <AsyncDisplayKit/ASInternalHelpers.h>
 #import <AsyncDisplayKit/ASLayout.h>
 #import <AsyncDisplayKit/ASLayoutElementStylePrivate.h>
-#import <AsyncDisplayKit/ASDisplayNode+Yoga.h>
 #import <AsyncDisplayKit/NSArray+Diffing.h>
 
 using AS::MutexLocker;
@@ -87,7 +86,7 @@ using AS::MutexLocker;
 
 - (ASLayout *)layoutThatFits:(ASSizeRange)constrainedSize parentSize:(CGSize)parentSize
 {
-  ASScopedLockSelfOrToRoot();
+  ASLockScopeSelf();
 
   // If one or multiple layout transitions are in flight it still can happen that layout information is requested
   // on other threads. As the pending and calculated layout to be updated in the layout transition in here just a
@@ -331,7 +330,7 @@ ASLayoutElementStyleExtensibilityForwarding
 - (void)_u_measureNodeWithBoundsIfNecessary:(CGRect)bounds
 {
   DISABLED_ASAssertUnlocked(__instanceLock__);
-  ASScopedLockSelfOrToRoot();
+  ASLockScopeSelf();
 
   // Check if we are a subnode in a layout transition.
   // In this case no measurement is needed as it's part of the layout transition
@@ -675,7 +674,7 @@ ASLayoutElementStyleExtensibilityForwarding
     NSUInteger newLayoutVersion = self->_layoutVersion;
     ASLayout *newLayout;
     {
-      ASScopedLockSelfOrToRoot();
+      ASLockScopeSelf();
 
       ASLayoutElementContext *ctx = [[ASLayoutElementContext alloc] init];
       ctx.transitionID = transitionID;

@@ -17,7 +17,6 @@
 #import <queue>
 
 #if AS_IG_LIST_DIFF_KIT
-#import <AsyncDisplayKit/ASLayout+IGListDiffKit.h>
 #endif
 
 using AS::MutexLocker;

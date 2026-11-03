@@ -13,8 +13,6 @@
 
 #if YOGA
   #import YOGA_HEADER_PATH
-  #import <AsyncDisplayKit/ASYogaUtilities.h>
-  #import <AsyncDisplayKit/ASDisplayNode+Yoga.h>
 #endif
 
 NS_ASSUME_NONNULL_BEGIN

@@ -15,7 +15,6 @@ using AS::MutexLocker;
 
 #if YOGA
   #import YOGA_HEADER_PATH
-  #import <AsyncDisplayKit/ASYogaUtilities.h>
 #endif
 
 #pragma mark - ASLayoutElementContext
