@@ -82,6 +82,20 @@ final class StoryMediaView: UIView {
         }
     }
 
+    var repostMedia: StoryDraft.Media? {
+        if let asset = player?.currentItem?.asset as? AVURLAsset {
+            return .video(asset.url)
+        }
+
+        guard let data = imageView.image?.jpegData(compressionQuality: 0.92) else {
+            return nil
+        }
+
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".jpg")
+
+        return (try? data.write(to: url)) == nil ? nil : .photo(url)
+    }
+
     func setPaused(_ paused: Bool) {
         isPaused = paused
         if paused {

@@ -11,6 +11,8 @@ public final class StoryViewerController: UIViewController {
 
     public var onSeen: (@MainActor (String, Int) -> Void)?
     public var onClose: (@MainActor () -> Void)?
+    public var onInteraction: (@MainActor (StoryInteraction) -> Void)?
+    public var labels: [StoryLabel: String] = [:]
     public let transition = StoryViewerTransition()
 
     let authors: [StoryAuthor]
@@ -26,7 +28,12 @@ public final class StoryViewerController: UIViewController {
     var isTurning = false
     var isHorizontalPan = false
     var fadesWithSource = false
+    var closeWidth: CGFloat = 0
     var isCloseRequested = false
+    var isInteracting = false
+    var votes: [UUID: Int] = [:]
+    var tooltip: StoryTooltipView?
+    var answerView: StoryAnswerView?
     var phaseCompletion: (@MainActor () -> Void)?
     var top = Spring(0, stiffness: 12, dampingRatio: 0.7)
     var bottom = Spring(0, stiffness: 9.5, dampingRatio: 0.66)
@@ -116,6 +123,8 @@ public final class StoryViewerController: UIViewController {
 
     func makePage(for author: StoryAuthor) -> StoryPageView {
         let page = StoryPageView(author: author)
+        page.votes = votes
+        bindMenu(page)
         page.frame = stage.bounds
         page.safeTop = view.safeAreaInsets.top
         page.closeButton.addAction(

@@ -8,8 +8,10 @@ swift_library(
     deps = [
         "//submodules/AsyncDisplayKit",
         "//submodules/AvatarUI",
+        "//submodules/CameraUI",
         "//submodules/Haptics",
         "//submodules/LiquidUI",
+        "//submodules/Subtitles",
     ],
     visibility = ["//visibility:public"],
 )
