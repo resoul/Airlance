@@ -3,8 +3,17 @@ import os
 import UIKit
 
 @MainActor
+public enum ViewEffectsSettings {
+    public static var isEnabled = true
+}
+
+@MainActor
 final class EffectsGPU {
-    static let shared = EffectsGPU()
+    private static let instance = EffectsGPU()
+
+    static var shared: EffectsGPU? {
+        ViewEffectsSettings.isEnabled ? instance : nil
+    }
 
     private static let bundleName = "EffectsUI"
     private static let logger = Logger(subsystem: "EffectsUI", category: "GPU")

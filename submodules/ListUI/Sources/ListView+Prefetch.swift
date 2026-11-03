@@ -9,12 +9,14 @@ struct ListPreparation {
 extension ListView {
     private static let prefetchLimit = 4
 
+    public static var prefetchesAhead = true
+
     func updatePrefetch() {
         guard isNodeLoaded, isOnScreen, layoutWidth > 0, frames.count == items.count else {
             return
         }
 
-        let range = visibleIndices(margin: max(600, scrollView.bounds.height * 2))
+        let range = visibleIndices(margin: Self.prefetchesAhead ? max(600, scrollView.bounds.height * 2) : 0)
         guard range != prefetchedRange else {
             return
         }

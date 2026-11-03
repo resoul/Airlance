@@ -2,7 +2,7 @@ import UIKit
 
 enum ThemeFactory {
     static func makeTheme(_ inputs: ThemeInputs) -> AppTheme {
-        let colors = makeColors(appearance: inputs.appearance, accent: inputs.accent)
+        let colors = makeColors(inputs)
 
         return AppTheme(
             inputs: inputs,
@@ -23,7 +23,7 @@ enum ThemeFactory {
             outgoingColors: chat.fill == .gradient ? gradient : [accent],
             bubbleRadius: CGFloat(radius),
             messageFont: font,
-            wallpaper: ChatPalette.wallpaper(chat.wallpaper, appearance: inputs.appearance)
+            wallpaper: ChatPalette.wallpaper(chat.wallpaper, color: chat.wallpaperColor, appearance: inputs.appearance)
         )
     }
 
@@ -31,8 +31,10 @@ enum ThemeFactory {
         min(max(value, range.lowerBound), range.upperBound)
     }
 
-    private static func makeColors(appearance: ThemeAppearance, accent: ThemeAccent) -> ThemeColors {
-        let base = BasePalette.palette(for: appearance)
+    private static func makeColors(_ inputs: ThemeInputs) -> ThemeColors {
+        let appearance = inputs.appearance
+        let accent = inputs.accent
+        let base = BasePalette.palette(for: appearance, style: inputs.nightStyle)
 
         return ThemeColors(
             background: base.background,

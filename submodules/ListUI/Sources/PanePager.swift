@@ -8,6 +8,11 @@ public final class PanePager: ASDisplayNode {
 
     public private(set) var panes: [any ScrollablePane] = []
     public private(set) var selectedIndex = 0
+    public var overlaysTabs = false {
+        didSet {
+            setNeedsLayout()
+        }
+    }
 
     var onPaneChange: (@MainActor ((any ScrollablePane)?) -> Void)?
     var onPagingBegan: (@MainActor () -> Void)?
@@ -101,14 +106,18 @@ public final class PanePager: ASDisplayNode {
         super.layout()
         tabsView?.frame = CGRect(x: 0, y: 0, width: bounds.width, height: tabsHeight)
         placePanes()
+        if let tabsView {
+            view.bringSubviewToFront(tabsView)
+        }
     }
 
     private func placePanes() {
-        let height = max(0, bounds.height - tabsHeight)
+        let top = overlaysTabs ? 0 : tabsHeight
+        let height = max(0, bounds.height - top)
         for (index, pane) in panes.enumerated() {
             let offset = CGFloat(index) - pagePosition
             pane.node.isHidden = abs(offset) >= 1
-            pane.node.frame = CGRect(x: offset * bounds.width, y: tabsHeight, width: bounds.width, height: height)
+            pane.node.frame = CGRect(x: offset * bounds.width, y: top, width: bounds.width, height: height)
         }
         onPosition?(pagePosition)
     }

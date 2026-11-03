@@ -3,8 +3,17 @@ import Metal
 import os
 
 @MainActor
+public enum ParticleEffects {
+    public static var isEnabled = true
+}
+
+@MainActor
 final class ParticlesGPU {
-    static let shared = ParticlesGPU()
+    private static let instance = ParticlesGPU()
+
+    static var shared: ParticlesGPU? {
+        ParticleEffects.isEnabled ? instance : nil
+    }
 
     private static let bundleName = "ParticlesUI"
     private static let logger = Logger(subsystem: "ParticlesUI", category: "GPU")

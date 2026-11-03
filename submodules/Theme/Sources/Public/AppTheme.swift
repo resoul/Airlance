@@ -11,6 +11,14 @@ public final class AppTheme: Sendable {
 
     let inputs: ThemeInputs
 
+    public var chatAppearance: ChatAppearance {
+        inputs.chat
+    }
+
+    public var nightStyle: NightStyle {
+        inputs.nightStyle
+    }
+
     init(inputs: ThemeInputs, colors: ThemeColors, fonts: ThemeFonts, chat: ThemeChat) {
         self.inputs = inputs
         appearance = inputs.appearance

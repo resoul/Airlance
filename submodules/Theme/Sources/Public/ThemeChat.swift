@@ -14,7 +14,10 @@ public struct ThemeWallpaper: Sendable, Hashable {
 }
 
 extension ChatWallpaper {
-    public func resolved(for appearance: ThemeAppearance) -> ThemeWallpaper? {
-        ChatPalette.wallpaper(self, appearance: appearance)
+    public func resolved(
+        for appearance: ThemeAppearance,
+        color: UInt32 = ChatAppearance.defaultColor
+    ) -> ThemeWallpaper? {
+        ChatPalette.wallpaper(self, color: color, appearance: appearance)
     }
 }

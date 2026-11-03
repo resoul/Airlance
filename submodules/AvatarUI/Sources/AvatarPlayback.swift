@@ -23,6 +23,11 @@ public final class AvatarPlayback {
             update()
         }
     }
+    public var isAllowed = true {
+        didSet {
+            update()
+        }
+    }
 
     private var participants: [ObjectIdentifier: Entry] = [:]
     private var nextOrder = 0
@@ -94,7 +99,7 @@ public final class AvatarPlayback {
         let lowPower = respectsLowPowerMode && ProcessInfo.processInfo.isLowPowerModeEnabled
         let reduceMotion = respectsReduceMotion && UIAccessibility.isReduceMotionEnabled
 
-        return isActive && !lowPower && !reduceMotion
+        return isAllowed && isActive && !lowPower && !reduceMotion
     }
 
     private func candidate() -> (any AvatarPlaybackParticipant)? {

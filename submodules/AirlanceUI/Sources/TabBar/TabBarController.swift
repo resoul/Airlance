@@ -52,7 +52,8 @@ open class TabBarController<Presentation: ThemedPresentation>:
         selectedViewController?.view.frame = primary
         layoutDetail()
 
-        let reserved = isTabBarHidden ? 0 : TabBarLayout.reservedHeight(bottomInset: view.safeAreaInsets.bottom)
+        let barReserve = TabBarLayout.reservedHeight(bottomInset: view.safeAreaInsets.bottom)
+        let reserved = isTabBarHidden ? 0 : barReserve + tabBarView.accessoryReserve
         for controller in viewControllers where controller.additionalSafeAreaInsets.bottom != reserved {
             controller.additionalSafeAreaInsets.bottom = reserved
         }

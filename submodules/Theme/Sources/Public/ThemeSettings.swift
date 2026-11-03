@@ -5,12 +5,14 @@ public struct ThemeSettings: Codable, Equatable, Sendable {
     public var accent: ThemeAccent
     public var font: ThemeFont
     public var chat: ChatAppearance
+    public var night: NightSettings
 
     public init(mode: ThemeMode, accent: ThemeAccent, font: ThemeFont, chat: ChatAppearance) {
         self.mode = mode
         self.accent = accent
         self.font = font
         self.chat = chat
+        night = NightSettings(schedule: mode == .system ? .system : .off)
     }
 
     public init(from decoder: any Decoder) throws {
@@ -19,5 +21,7 @@ public struct ThemeSettings: Codable, Equatable, Sendable {
         accent = (try? container.decodeIfPresent(ThemeAccent.self, forKey: .accent)) ?? Self.default.accent
         font = (try? container.decodeIfPresent(ThemeFont.self, forKey: .font)) ?? Self.default.font
         chat = (try? container.decodeIfPresent(ChatAppearance.self, forKey: .chat)) ?? Self.default.chat
+        night = (try? container.decodeIfPresent(NightSettings.self, forKey: .night))
+            ?? NightSettings(schedule: mode == .system ? .system : .off)
     }
 }

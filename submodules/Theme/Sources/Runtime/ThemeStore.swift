@@ -32,6 +32,21 @@ public final class ThemeStore {
     public func setMode(_ mode: ThemeMode) async throws {
         try await storage.update(.themeSettings) {
             $0.mode = mode
+            $0.night.schedule = mode == .system ? .system : .off
+        }
+    }
+
+    public func setNight(_ night: NightSettings) async throws {
+        try await storage.update(.themeSettings) {
+            $0.night = night
+        }
+    }
+
+    public func apply(_ preset: ChatThemePreset) async throws {
+        try await storage.update(.themeSettings) {
+            $0.accent = preset.accent
+            $0.chat.wallpaper = preset.wallpaper
+            $0.chat.fill = .gradient
         }
     }
 

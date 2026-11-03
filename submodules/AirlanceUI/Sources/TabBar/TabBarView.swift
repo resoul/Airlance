@@ -13,6 +13,8 @@ public final class TabBarView: UIView {
     }
 
     public private(set) var selectedIndex = 0
+    var accessory: (view: UIView, height: CGFloat)?
+    var isAccessoryShown = false
 
     let background = UIView()
     private let selection = LiquidSelectionView()
@@ -114,6 +116,7 @@ public final class TabBarView: UIView {
             count: items.count,
             compactProgress: compactAnimator.value
         )
+        layoutAccessory(above: layout.barFrame)
         guard layout != self.layout else {
             return
         }
@@ -152,7 +155,7 @@ public final class TabBarView: UIView {
     }
 
     override public func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        guard background.frame.contains(point) else {
+        guard background.frame.contains(point) || accessoryContains(point) else {
             return nil
         }
 

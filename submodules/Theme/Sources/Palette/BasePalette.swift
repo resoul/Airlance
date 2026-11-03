@@ -19,6 +19,15 @@ struct BasePalette {
         destructive: UIColor(rgb: 0xFF453A)
     )
 
+    static let tinted = BasePalette(
+        background: UIColor(rgb: 0x18222D),
+        surface: UIColor(rgb: 0x212F3D),
+        textPrimary: UIColor(rgb: 0xFFFFFF),
+        textSecondary: UIColor(rgb: 0x7F8D9C),
+        separator: UIColor(rgb: 0x2F3E4E),
+        destructive: UIColor(rgb: 0xFF5E57)
+    )
+
     let background: UIColor
     let surface: UIColor
     let textPrimary: UIColor
@@ -26,13 +35,14 @@ struct BasePalette {
     let separator: UIColor
     let destructive: UIColor
 
-    static func palette(for appearance: ThemeAppearance) -> BasePalette {
-        switch appearance {
-        case .light:
+    static func palette(for appearance: ThemeAppearance, style: NightStyle) -> BasePalette {
+        switch (appearance, style) {
+        case (.light, _):
             light
-
-        case .dark:
+        case (.dark, .night):
             dark
+        case (.dark, .tinted):
+            tinted
         }
     }
 }

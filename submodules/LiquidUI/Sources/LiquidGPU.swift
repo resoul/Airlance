@@ -4,8 +4,17 @@ import os
 import UIKit
 
 @MainActor
+public enum LiquidEffects {
+    public static var isEnabled = true
+}
+
+@MainActor
 final class LiquidGPU {
-    static let shared = LiquidGPU()
+    private static let instance = LiquidGPU()
+
+    static var shared: LiquidGPU? {
+        LiquidEffects.isEnabled ? instance : nil
+    }
 
     private static let bundleName = "LiquidUI"
     private static let logger = Logger(subsystem: "LiquidUI", category: "GPU")
