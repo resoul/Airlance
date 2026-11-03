@@ -10,6 +10,15 @@ enum ChatEntityFixtures {
             }
 
             var message = messages[index]
+            let roll = random.next() % 100
+            if roll < 6, index < messages.count - 1 {
+                let sample = samples[Int(roll) % samples.count]
+                message.content = .text(sample.text)
+                message.entities = sample.entities
+                messages[index] = message
+
+                continue
+            }
             if random.next() % 100 < 8 {
                 addSpoiler(to: &message, text: text, random: &random)
             }
@@ -18,6 +27,43 @@ enum ChatEntityFixtures {
             }
             messages[index] = message
         }
+    }
+
+    private static let samples: [ComposedText] = [
+        sample([
+            ("Важливо: ", .bold),
+            ("реліз переносимо на ", nil),
+            ("пʼятницю", .italic),
+            (", ", nil),
+            ("стару гілку", .strikethrough),
+            (" не чіпаємо", nil),
+        ]),
+        sample([("Перед комітом запусти ", nil), ("make lint", .code), (" — інакше CI впаде", nil)]),
+        sample([("Ось що поміняв у конфігу:\n", nil), ("let timeout = 30\nlet retries = 3\nlet cache = true", .pre)]),
+        sample([("Простота — запорука надійності", .quote), ("\nЦе якраз про наш модуль історії 🙂", nil)]),
+        sample([(longText, nil)]),
+    ]
+    private static let longParagraph = "Пройшовся по всіх екранах після оновлення: список чатів, історія, профіль, "
+        + "налаштування. Скрол плавний, але на старих пристроях є просідання під час першого відкриття чату з фото. "
+        + "Пропоную кешувати вже намальовані прев’ю і не перераховувати верстку при поверненні назад."
+    private static let longText = (1...6).map(paragraph).joined(separator: "\n\n")
+
+    private static func paragraph(_ index: Int) -> String {
+        "\(index). " + longParagraph
+    }
+
+    private static func sample(_ parts: [(String, MessageEntity.Kind?)]) -> ComposedText {
+        var text = ""
+        var entities: [MessageEntity] = []
+        for (part, kind) in parts {
+            let location = (text as NSString).length
+            text += part
+            if let kind {
+                entities.append(MessageEntity(kind, location: location, length: (part as NSString).length))
+            }
+        }
+
+        return ComposedText(text: text, entities: entities)
     }
 
     private static func addSpoiler(to message: inout HistoryMessage, text: String, random: inout SeededRandom) {

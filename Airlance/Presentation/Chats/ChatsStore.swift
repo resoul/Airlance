@@ -7,15 +7,36 @@ final class ChatsStore {
     private(set) var chats: [ChatSummary]
 
     private let observers = ObserverList<[ChatSummary]>()
+    private var previews: [String: ChatSummary]
 
-    init(chats: [ChatSummary]) {
+    init(chats: [ChatSummary], previews: [ChatSummary] = []) {
         self.chats = chats
+        self.previews = Dictionary(uniqueKeysWithValues: previews.map { chat in
+            (chat.id, chat)
+        })
     }
 
     func chat(_ id: String) -> ChatSummary? {
         chats.first { chat in
             chat.id == id
+        } ?? previews[id]
+    }
+
+    func isJoined(_ id: String) -> Bool {
+        chats.contains { chat in
+            chat.id == id
         }
+    }
+
+    func subscribe(_ id: String) {
+        guard var chat = previews.removeValue(forKey: id) else {
+            return
+        }
+
+        chat.date = Date()
+        chat.memberCount += 1
+        chats.insert(chat, at: 0)
+        observers.notify(chats)
     }
 
     func toggleRead(_ id: String) {

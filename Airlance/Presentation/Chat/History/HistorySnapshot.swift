@@ -22,6 +22,8 @@ struct HistorySnapshot: Sendable {
         let previous: [String: MessageBubbleLayout]
         var translations: [String: MessageTranslation] = [:]
         var pollDrafts: [String: Set<Int>] = [:]
+        var expanded: Set<String> = []
+        var transcripts: [String: VoiceTranscript] = [:]
     }
 
     struct Titles: Sendable {
@@ -38,6 +40,9 @@ struct HistorySnapshot: Sendable {
         let edited: String
         let discussionStarted: String
         let leaveComment: String
+        let showMore: String
+        let transcribing: String
+        let transcribeFailed: String
         let views: @Sendable (Int) -> String
         let comments: @Sendable (Int) -> String
         let created: @Sendable (String) -> String
@@ -112,8 +117,27 @@ struct HistorySnapshot: Sendable {
             channel: channelParts(message, titles: titles),
             reactions: reactionChips(message, titles: titles),
             translationNote: translation?.note,
-            pollDraft: request.pollDrafts[message.id] ?? []
+            pollDraft: request.pollDrafts[message.id] ?? [],
+            expandTitle: request.expanded.contains(message.id) ? nil : titles.showMore,
+            transcript: transcriptText(request.transcripts[message.id], titles: titles)
         )
+    }
+
+    private static func transcriptText(_ transcript: VoiceTranscript?, titles: Titles) -> VoiceTranscriptText? {
+        guard let transcript else {
+            return nil
+        }
+
+        switch transcript.state {
+        case .loading:
+            let text = transcript.text.isEmpty ? titles.transcribing : transcript.text + " …"
+
+            return VoiceTranscriptText(text: text, isShown: true, isPending: true)
+        case .done:
+            return VoiceTranscriptText(text: transcript.text, isShown: transcript.isShown, isPending: false)
+        case .failed:
+            return VoiceTranscriptText(text: titles.transcribeFailed, isShown: transcript.isShown, isPending: true)
+        }
     }
 
     private static func reactionChips(_ message: HistoryMessage, titles: Titles) -> [ReactionChip] {
@@ -250,9 +274,10 @@ extension HistorySnapshot.Titles {
             edited: strings.chatEdited,
             discussionStarted: strings.chatCommentsStarted,
             leaveComment: strings.chatCommentsLeave,
-            views: { count in
-                strings.compactCount(count)
-            },
+            showMore: strings.chatShowMore,
+            transcribing: strings.chatTranscribeLoading,
+            transcribeFailed: strings.chatTranscribeFailed,
+            views: strings.compactCount,
             comments: { count in
                 strings.count(
                     count,

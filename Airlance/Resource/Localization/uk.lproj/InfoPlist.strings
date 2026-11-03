@@ -4,3 +4,4 @@
 "NSMicrophoneUsageDescription" = "Contact використовує мікрофон для голосових повідомлень і дзвінків.";
 "NSPhotoLibraryAddUsageDescription" = "Contact зберігає фото й відео з чатів у вашу медіатеку.";
 "NSPhotoLibraryUsageDescription" = "Contact використовує ваші фото й відео, щоб ви могли надсилати їх у чатах.";
+"NSSpeechRecognitionUsageDescription" = "Airlance перетворює голосові повідомлення на текст прямо на вашому iPhone.";

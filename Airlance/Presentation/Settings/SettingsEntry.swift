@@ -11,6 +11,9 @@ enum SettingsEntry: String, CaseIterable {
     case permissions
     case passcode
     case appearance
+    case chatAppearance
+    case tabs
+    case storage
     case videoNotes
     case language
     case about
@@ -19,7 +22,8 @@ enum SettingsEntry: String, CaseIterable {
         switch self {
         case .profile, .saved, .calls, .devices, .folders:
             0
-        case .notifications, .privacy, .permissions, .passcode, .appearance, .videoNotes, .language:
+        case .notifications, .privacy, .permissions, .passcode, .appearance, .chatAppearance, .tabs, .storage,
+             .videoNotes, .language:
             1
         case .about:
             2
@@ -48,6 +52,12 @@ enum SettingsEntry: String, CaseIterable {
             "lock.shield.fill"
         case .appearance:
             "paintbrush.fill"
+        case .chatAppearance:
+            "bubble.left.and.bubble.right.fill"
+        case .tabs:
+            "square.grid.3x1.below.line.grid.1x2.fill"
+        case .storage:
+            "internaldrive.fill"
         case .videoNotes:
             "video.bubble.fill"
         case .language:
@@ -63,16 +73,18 @@ enum SettingsEntry: String, CaseIterable {
             .systemRed
         case .saved, .permissions, .appearance, .about:
             .systemBlue
-        case .calls, .passcode:
+        case .calls, .passcode, .storage:
             .systemGreen
         case .devices, .videoNotes:
             .systemOrange
-        case .folders:
+        case .folders, .chatAppearance:
             .systemTeal
         case .privacy:
             .systemGray
         case .language:
             .systemPurple
+        case .tabs:
+            .systemIndigo
         }
     }
 
@@ -86,6 +98,12 @@ enum SettingsEntry: String, CaseIterable {
             .chatFolders
         case .videoNotes:
             .videoNotes
+        case .chatAppearance:
+            .chatAppearance
+        case .storage:
+            .storage
+        case .tabs:
+            .tabSettings
         default:
             nil
         }
@@ -113,6 +131,12 @@ enum SettingsEntry: String, CaseIterable {
             strings.settingsPasscode
         case .appearance:
             strings.settingsAppearance
+        case .chatAppearance:
+            strings.settingsChatAppearance
+        case .tabs:
+            strings.tabsTitle
+        case .storage:
+            strings.settingsStorage
         case .videoNotes:
             strings.videoNotesTitle
         case .language:

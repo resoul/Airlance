@@ -33,7 +33,7 @@ final class ProfileNavigationBar: UIView {
         titleLabel.text = title
         titleLabel.font = theme.fonts.headline
         titleLabel.textColor = theme.colors.textPrimary
-        background.backgroundColor = theme.colors.background
+        background.backgroundColor = theme.groupedBackground
         separator.backgroundColor = theme.colors.separator
         backButton.accessibilityLabel = back
         accent = theme.colors.accent

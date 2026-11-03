@@ -6,7 +6,6 @@ import UIKit
 struct MediaBody {
     static let inset: CGFloat = 2
     private static let innerRadius: CGFloat = 4
-    private static let bigRadius: CGFloat = 17
     private static let smallRadius: CGFloat = 6
 
     let photos: [MessagePhoto]
@@ -36,7 +35,7 @@ struct MediaBody {
             height = addCaption(to: &body, below: mediaFrame, width: width, meta: meta, style: style)
         }
 
-        let corners = Self.corners(for: input, hasHeader: mediaTop > Self.inset, hasCaption: hasCaption)
+        let corners = Self.corners(for: input, style: style, hasHeader: mediaTop > Self.inset, hasCaption: hasCaption)
         let tiles = zip(photos, mosaic.frames).map { photo, frame in
             let frame = frame.offsetBy(dx: mediaFrame.minX, dy: mediaFrame.minY)
 
@@ -56,8 +55,19 @@ struct MediaBody {
         content.frame = CGRect(origin: .zero, size: size)
         body.size = size
         body.tiles = tiles
+        body.transfer = Self.transferSlots(photos, tiles: tiles)
 
         return body
+    }
+
+    private static func transferSlots(_ photos: [MessagePhoto], tiles: [MediaTile]) -> TransferSlots {
+        let frames = tiles.map(\.node.frame)
+        var pending: [CGRect] = []
+        for (photo, frame) in zip(photos, frames) where !photo.isDownloaded {
+            pending.append(frame)
+        }
+
+        return TransferSlots(all: frames, pending: pending, showsIdle: true)
     }
 
     private func addHeader(to body: inout BubbleBody, width: CGFloat, style: HistoryStyle) -> CGFloat {
@@ -100,8 +110,8 @@ struct MediaBody {
             style: style,
             width: width - padding.left - padding.right
         )
-        text.frame.origin = CGPoint(x: padding.left, y: media.maxY + 6)
-        body.content.addSubnode(text)
+        let origin = CGPoint(x: padding.left, y: media.maxY + 6)
+        text.place(in: body.content, at: origin, width: width - padding.left - padding.right)
         body.text = text
         meta.place(in: body.content, bottomRight: CGPoint(x: width - padding.right, y: text.frame.maxY))
 
@@ -136,19 +146,31 @@ struct MediaBody {
         node.frame = frame
         let request = MediaImageRequest(source: photo.source, size: frame.size, scale: scale, corners: corners)
         let overlay = photo.video.map { video in
-            VideoBadge.make(duration: video.duration, frame: frame, style: style)
+            VideoBadge.make(
+                duration: video.duration,
+                size: photo.isDownloaded ? nil : photo.size,
+                frame: frame,
+                style: style
+            )
         }
 
         return MediaTile(node: node, request: request, overlay: overlay)
     }
 
-    static func corners(for input: MessageBubbleInput, hasHeader: Bool, hasCaption: Bool) -> MediaCorners {
+    static func corners(
+        for input: MessageBubbleInput,
+        style: HistoryStyle,
+        hasHeader: Bool,
+        hasCaption: Bool
+    ) -> MediaCorners {
         let grouping = input.grouping
+        let radius = style.bubbleRadius
+        let small = min(Self.smallRadius, radius)
         let near = (
-            top: grouping.joinedTop ? Self.smallRadius : Self.bigRadius,
-            bottom: grouping.joinedBottom ? Self.smallRadius : Self.innerRadius + Self.inset
+            top: grouping.joinedTop ? small : radius,
+            bottom: grouping.joinedBottom ? small : Self.innerRadius + Self.inset
         )
-        let far = Self.bigRadius
+        let far = radius
         var corners = input.message.isOutgoing
             ? MediaCorners(topLeft: far, topRight: near.top, bottomLeft: far, bottomRight: near.bottom)
             : MediaCorners(topLeft: near.top, topRight: far, bottomLeft: near.bottom, bottomRight: far)

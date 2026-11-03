@@ -1,4 +1,5 @@
 import AVFoundation
+import Device
 import MediaStore
 import UIKit
 
@@ -39,7 +40,7 @@ final class VideoNoteCamera: NSObject {
 
     init?(dual: Bool, stylized: Bool, store: MediaStore) {
         self.store = store
-        let useMulti = dual && AVCaptureMultiCamSession.isMultiCamSupported
+        let useMulti = dual && DeviceCameras.supportsMultiCam
         session = useMulti ? AVCaptureMultiCamSession() : AVCaptureSession()
         mainPreview = AVCaptureVideoPreviewLayer(sessionWithNoConnection: session)
         self.stylized = stylized && !dual ? StylizedCapture() : nil

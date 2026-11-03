@@ -1,19 +1,35 @@
 import AvatarUI
 import ChatHistory
 import Haptics
+import MediaLoader
 import UIKit
 
 struct MessageMenuReceipts {
+    static let videoKey = "airlance.video"
+
     struct Row {
         let person: MessageCommenter
         let detail: String?
         let reaction: String?
+        var video: MessageVideoReaction?
+
+        func matches(_ filter: String?) -> Bool {
+            switch filter {
+            case nil:
+                true
+            case MessageMenuReceipts.videoKey:
+                video != nil
+            default:
+                reaction == filter
+            }
+        }
     }
 
     let summary: String
     let symbol: String
     let avatars: [MessageCommenter]
     let rows: [Row]
+    var onVideo: (@MainActor (String) -> Void)?
 }
 
 final class MessageReceiptsPanel: UIView {
@@ -21,6 +37,7 @@ final class MessageReceiptsPanel: UIView {
     static let rowHeight: CGFloat = 50
 
     var onToggle: (@MainActor (Bool) -> Void)?
+    var onVideo: (@MainActor (String) -> Void)?
 
     private(set) var isExpanded = false
     private let receipts: MessageMenuReceipts
@@ -108,7 +125,7 @@ final class MessageReceiptsPanel: UIView {
         tabs?.frame = CGRect(x: 0, y: Self.summaryHeight, width: width, height: MessageReceiptsTabs.height)
         var y = listTop
         for (index, row) in rows.enumerated() {
-            let isShown = filter == nil || receipts.rows[index].reaction == filter
+            let isShown = receipts.rows[index].matches(filter)
             row.isHidden = !isShown
             if isShown {
                 row.frame = CGRect(x: 0, y: y, width: width, height: Self.rowHeight)
@@ -157,7 +174,18 @@ final class MessageReceiptsPanel: UIView {
         back.addTarget(self, action: #selector(backTapped), for: .touchUpInside)
         list.addSubview(back)
         rows = receipts.rows.map { row in
-            MessageReceiptsRow(row: row, presentation: presentation)
+            let view = MessageReceiptsRow(row: row, presentation: presentation)
+            if let video = row.video {
+                view.addAction(
+                    UIAction { [weak self] _ in
+                        Haptics.play(.tap)
+                        self?.onVideo?(video.id)
+                    },
+                    for: .touchUpInside
+                )
+            }
+
+            return view
         }
         rows.forEach { row in
             list.addSubview(row)
@@ -173,10 +201,14 @@ final class MessageReceiptsPanel: UIView {
                 emojis.append(emoji)
             }
         }
+        let videos = receipts.rows.filter { row in
+            row.video != nil
+        }.count
         let hasPlainReaders = receipts.rows.contains { row in
-            row.reaction == nil
+            row.reaction == nil && row.video == nil
         }
-        guard !emojis.isEmpty, emojis.count > 1 || hasPlainReaders else {
+        let groups = emojis.count + (videos > 0 ? 1 : 0)
+        guard groups > 0, groups > 1 || hasPlainReaders else {
             return
         }
 
@@ -185,7 +217,12 @@ final class MessageReceiptsPanel: UIView {
                 row.reaction == emoji
             }.count)
         }
-        let tabs = MessageReceiptsTabs(total: receipts.rows.count, reactions: counts, presentation: presentation)
+        let tabs = MessageReceiptsTabs(
+            total: receipts.rows.count,
+            reactions: counts,
+            videos: videos,
+            presentation: presentation
+        )
         tabs.onSelect = { [weak self] emoji in
             self?.filter = emoji
             UIView.animate(withDuration: 0.2) {
@@ -209,14 +246,17 @@ final class MessageReceiptsPanel: UIView {
     }
 }
 
-final class MessageReceiptsRow: UIView {
+final class MessageReceiptsRow: UIControl {
     private static let avatarSide: CGFloat = 32
+    private static let videoSide: CGFloat = 34
 
     private let avatar = UIImageView()
     private let name = UILabel()
     private let detail = UILabel()
     private let reaction = UILabel()
+    private let poster = UIImageView()
     private let separator = UIView()
+    private var posterTask: Task<Void, Never>?
 
     init(row: MessageMenuReceipts.Row, presentation: PresentationData) {
         super.init(frame: .zero)
@@ -234,8 +274,45 @@ final class MessageReceiptsRow: UIView {
         reaction.font = .systemFont(ofSize: 20)
         reaction.textAlignment = .center
         separator.backgroundColor = colors.separator
-        for view in [avatar, name, detail, reaction, separator] {
+        for view in [avatar, name, detail, reaction, poster, separator] {
+            view.isUserInteractionEnabled = false
             addSubview(view)
+        }
+        setupPoster(row.video, accent: colors.accent)
+    }
+
+    deinit {
+        posterTask?.cancel()
+    }
+
+    override var isHighlighted: Bool {
+        didSet {
+            backgroundColor = isHighlighted ? UIColor.label.withAlphaComponent(0.06) : nil
+        }
+    }
+
+    private func setupPoster(_ video: MessageVideoReaction?, accent: UIColor) {
+        poster.isHidden = video == nil
+        guard let video else {
+            return
+        }
+
+        let side = Self.videoSide
+        poster.layer.cornerRadius = side / 2
+        poster.layer.borderWidth = 2
+        poster.layer.borderColor = accent.cgColor
+        poster.clipsToBounds = true
+        poster.contentMode = .scaleAspectFill
+        poster.backgroundColor = UIColor.systemGray5
+        let request = MediaImageRequest(
+            source: video.note.source,
+            size: CGSize(width: side, height: side),
+            scale: UIScreen.main.scale,
+            corners: .uniform(side / 2)
+        )
+        posterTask = Task { [weak self] in
+            let image = await MediaImageLoader.shared.image(for: request)
+            self?.poster.image = image
         }
     }
 
@@ -254,7 +331,15 @@ final class MessageReceiptsRow: UIView {
         let side = Self.avatarSide
         separator.frame = CGRect(x: 0, y: 0, width: bounds.width, height: 0.5)
         avatar.frame = CGRect(x: 14, y: (bounds.height - side) / 2, width: side, height: side)
-        reaction.frame = CGRect(x: bounds.width - 44, y: 0, width: 32, height: bounds.height)
+        let videoSide = Self.videoSide
+        poster.frame = CGRect(
+            x: bounds.width - 14 - videoSide,
+            y: (bounds.height - videoSide) / 2,
+            width: videoSide,
+            height: videoSide
+        )
+        let reactionRight = poster.isHidden ? bounds.width - 12 : poster.frame.minX - 4
+        reaction.frame = CGRect(x: reactionRight - 32, y: 0, width: 32, height: bounds.height)
         let x = avatar.frame.maxX + 12
         let width = max(0, reaction.frame.minX - x - 4)
         guard detail.text != nil else {

@@ -17,6 +17,7 @@ struct MessageBubbleItem: ListItem {
     var spoilersRevealed = false
     var spoilerInk: UIColor = .gray
     var onRevealSpoiler: (@MainActor () -> Void)?
+    var transfer: (@MainActor () -> TransferProgress?)?
 
     var id: String {
         messageID
@@ -69,7 +70,8 @@ struct MessageBubbleItem: ListItem {
             return
         }
 
-        if let onLinkLongPress, let url = node.linkURL(at: point), url.scheme != MessageBubbleLayout.mentionScheme {
+        let ownSchemes = [MessageBubbleLayout.mentionScheme, MessageBubbleLayout.hashtagScheme]
+        if let onLinkLongPress, let url = node.linkURL(at: point), !ownSchemes.contains(url.scheme ?? "") {
             onLinkLongPress(node, url, point)
         } else {
             onLongPress?(node)
@@ -90,5 +92,6 @@ struct MessageBubbleItem: ListItem {
         node.applySelection(selection, tint: selectionTint, animated: animated)
         node.applySearch(search, tint: selectionTint)
         node.applySpoilers(layout.spoilers, revealed: spoilersRevealed, ink: spoilerInk, onRevealed: onRevealSpoiler)
+        node.applyTransfer(transfer?())
     }
 }

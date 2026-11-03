@@ -1,3 +1,4 @@
+import Device
 import Haptics
 import LiquidUI
 import UIKit
@@ -60,6 +61,7 @@ final class QuickReplyCardView: UIView {
     var scaleBase = CGSize(width: 1, height: 1)
     let keyboardTracker = UIView()
     var island = CGRect.zero
+    var hasIsland = true
     var expiry: Task<Void, Never>?
 
     var isActive: Bool {
@@ -82,8 +84,16 @@ final class QuickReplyCardView: UIView {
         CGPoint(x: island.midX, y: island.maxY)
     }
 
+    var isLarge: Bool {
+        Device.kind != .phone
+    }
+
     var cardWidth: CGFloat {
-        min(430, bounds.width - 28)
+        min(isLarge ? 520 : 430, bounds.width - 28)
+    }
+
+    var hiddenCenter: CGPoint {
+        CGPoint(x: bounds.midX, y: -cardHeight / 2 - 12)
     }
 
     var cardTop: CGFloat {
@@ -133,11 +143,17 @@ final class QuickReplyCardView: UIView {
     func start(in window: UIWindow) {
         window.addSubview(self)
         frame = window.bounds
-        island = DynamicIslandGeometry.frame(in: window).insetBy(dx: 1.5, dy: 1.5)
+        let cutout = DeviceScreen.island(in: window)
+        hasIsland = cutout != nil
+        island = cutout?.insetBy(dx: 1.5, dy: 1.5) ?? CGRect(x: window.bounds.midX - 60, y: -60, width: 120, height: 36)
         canvas.frame = bounds
         dim.frame = bounds
         layoutIfNeeded()
-        centerSpring.position = islandMouth
+        applyFonts()
+        centerSpring.position = hasIsland ? islandMouth : hiddenCenter
+        if !hasIsland {
+            halfSpring.position = CGPoint(x: cardWidth / 2, y: Self.bannerHeight / 2)
+        }
         scaleBase = CGSize(width: cardWidth, height: Self.bannerHeight)
         content.alpha = 0
         animateChange()

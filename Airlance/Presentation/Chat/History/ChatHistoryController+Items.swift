@@ -1,5 +1,6 @@
 import ChatHistory
 import ListUI
+import Observers
 import UIKit
 
 extension ChatHistoryController {
@@ -45,9 +46,11 @@ extension ChatHistoryController {
     }
 
     private func message(_ id: String, layout: MessageBubbleLayout, style: HistoryStyle) -> MessageBubbleItem {
-        let color = layout.videoNote == nil ? style.bubble(outgoing: layout.isOutgoing) : .clear
+        let isBare = layout.videoNote != nil || layout.isBare
+        let color = isBare ? .clear : style.bubble(outgoing: layout.isOutgoing)
+        let transfer = transferProgress(id)
         guard !isReadOnly else {
-            return MessageBubbleItem(layout: layout, color: color, messageID: id)
+            return MessageBubbleItem(layout: layout, color: color, messageID: id, transfer: transfer)
         }
 
         return MessageBubbleItem(
@@ -81,8 +84,18 @@ extension ChatHistoryController {
             spoilerInk: style.text(outgoing: layout.isOutgoing),
             onRevealSpoiler: { [weak self] in
                 self?.revealedSpoilers.insert(id)
-            }
+            },
+            transfer: transfer
         )
+    }
+
+    private func transferProgress(_ id: String) -> @MainActor () -> TransferProgress? {
+        let transfers = store.transfers
+        let key = TransferKey(chatID: chatID, messageID: id)
+
+        return {
+            transfers.progress(key)
+        }
     }
 
     private func perform(_ action: BubbleAction.Kind, messageID: String) {
@@ -111,6 +124,14 @@ extension ChatHistoryController {
             (listView.node(for: messageID) as? MessageBubbleNode)?.toggleVideoNote()
         case .videoReaction(let reactionID):
             onVideoReaction?(messageID, reactionID)
+        case .expand:
+            expandText(messageID)
+        case .effect:
+            playEffect(messageID)
+        case .transcribe:
+            onTranscribe?(messageID)
+        case .forwardSource(let chatID):
+            onOpenChat?(chatID)
         }
     }
 
@@ -125,30 +146,24 @@ extension ChatHistoryController {
             return
         }
 
-        let node = listView.node(for: messageID) as? MessageBubbleNode
-        guard !fileDownloads.isActive(messageID) else {
-            fileDownloads.cancel(messageID)
-            node?.removeDownload()
+        toggleTransfer(messageID)
+    }
 
-            return
-        }
-
-        let duration = fileDownloads.duration(for: file)
-        node?.startDownload(duration: duration)
-        fileDownloads.start(messageID, duration: duration) { [weak self] in
-            self?.markDownloaded(messageID)
+    func toggleTransfer(_ messageID: String) {
+        if store.transfers.progress(TransferKey(chatID: chatID, messageID: messageID)) != nil {
+            store.cancelTransfer(messageID, in: chatID)
+        } else {
+            store.download(messageID, in: chatID)
         }
     }
 
-    private func markDownloaded(_ messageID: String) {
-        (listView.node(for: messageID) as? MessageBubbleNode)?.removeDownload()
-        store.update(messageID, in: chatID) { message in
-            guard case .file(var file, let caption) = message.content else {
+    func bindTransfers() -> ObservationToken {
+        store.transfers.observe { [weak self] event in
+            guard let self, event.key.chatID == self.chatID else {
                 return
             }
 
-            file.isDownloaded = true
-            message.content = .file(file, caption: caption)
+            (self.listView.node(for: event.key.messageID) as? MessageBubbleNode)?.applyTransfer(event.progress)
         }
     }
 

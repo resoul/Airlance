@@ -41,7 +41,7 @@ final class ProfileActionButton: UIControl {
     }
 
     func apply(symbol: String, title: String, theme: AppTheme) {
-        backgroundColor = theme.colors.surface
+        backgroundColor = theme.groupedCell
         let configuration = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
         icon.image = UIImage(systemName: symbol, withConfiguration: configuration)
         icon.tintColor = theme.colors.accent
@@ -90,7 +90,7 @@ final class ProfileInfoCard: UIView {
         if rows.count != values.count {
             rebuild(count: rows.count)
         }
-        backgroundColor = theme.colors.surface
+        backgroundColor = theme.groupedCell
         for (index, row) in rows.enumerated() {
             values[index].text = row.value
             values[index].font = theme.fonts.body

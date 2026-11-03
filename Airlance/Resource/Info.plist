@@ -63,6 +63,8 @@
     </array>
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Airlance turns voice messages into text right on your iPhone.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Contact uses the microphone for voice messages and calls.</string>
     <key>NSCameraUsageDescription</key>

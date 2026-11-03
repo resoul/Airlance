@@ -42,6 +42,8 @@ struct FileBody {
         content.frame = CGRect(origin: .zero, size: size)
         body.size = size
         body.fileIcon = iconFrame
+        let pending = file.isDownloaded ? [] : [iconFrame]
+        body.transfer = TransferSlots(all: [iconFrame], pending: pending, showsIdle: false)
         let row = CGRect(x: 0, y: top, width: width, height: Self.rowHeight)
         body.actions.append(BubbleAction(frame: row, kind: .file))
 
@@ -90,8 +92,8 @@ struct FileBody {
             style: style,
             width: width - padding.left - padding.right
         )
-        text.frame.origin = CGPoint(x: padding.left, y: top)
-        body.content.addSubnode(text)
+        let origin = CGPoint(x: padding.left, y: top)
+        text.place(in: body.content, at: origin, width: width - padding.left - padding.right)
         body.text = text
         meta.place(in: body.content, bottomRight: CGPoint(x: width - padding.right, y: text.frame.maxY))
 

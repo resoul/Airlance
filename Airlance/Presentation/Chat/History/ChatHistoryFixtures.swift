@@ -29,44 +29,13 @@ enum ChatHistoryFixtures {
         "Фото з вихідних, як і обіцяв",
         "Глянь, яке світло було зранку — майже не обробляв",
     ]
+    private static let failedChats: Set<String> = ["sofia"]
     private static let me = Author(id: "me", name: "", isMe: true)
     private static let groupMembers = [
         Author(id: "vika", name: "Віка", isMe: false),
         Author(id: "anna", name: "Анна", isMe: false),
         Author(id: "boris", name: "Борис", isMe: false),
         Author(id: "olena", name: "Олена", isMe: false),
-    ]
-    private static let phrases = [
-        "Привіт! Як ти?",
-        "Все добре, дякую 🙂",
-        "Глянув білд, таббар тепер набагато плавніший",
-        "Ок",
-        "Давай завтра зранку зідзвонимося, я якраз закінчу з дизайном екрана профілю",
-        "Супер!",
-        "А ти бачив нові папки чатів? Здається, свайпи між ними тепер працюють майже як у системних застосунках",
-        "Так, вже тестую",
-        "Скинь, будь ласка, посилання",
-        "Зараз",
-        "Я буду хвилин за десять",
-        "Дякую 🙏",
-        "Подивись, коли буде час. Там кілька дрібниць з відступами і баг з клавіатурою на старих айфонах",
-        "Добре, подивлюся ввечері",
-        "Чудово 👍",
-        "Ти сьогодні в офісі?",
-        "Ні, працюю з дому",
-        "Тоді наберу після обіду",
-        "Окей, домовились",
-        "Бачу, вже виправили",
-        "Можна ще одне питання?",
-        "Звісно",
-        "Який шрифт ми зараз використовуємо в заголовках?",
-        "Montserrat",
-        "Зрозумів, дякую",
-        "Ха-ха, класно вийшло 😄",
-        "Нагадай мені в пʼятницю про звіт",
-        "Нагадаю",
-        "Вибач, не встиг відповісти — був на зустрічі",
-        "Нічого страшного",
     ]
 
     static func history(for chat: ChatSummary, salt: Int = 0) -> History {
@@ -130,7 +99,8 @@ enum ChatHistoryFixtures {
         isLast: Bool,
         entry: Entry
     ) -> HistoryMessage {
-        let delivery: DeliveryState = isLast && chat.outgoingRead == false ? .delivered : .read
+        let unread: DeliveryState = failedChats.contains(chat.id) ? .failed : .delivered
+        let delivery: DeliveryState = isLast && chat.outgoingRead == false ? unread : .read
         var message = HistoryMessage(
             id: "\(chat.id)-\(index)",
             authorID: entry.author.id,
@@ -168,7 +138,9 @@ enum ChatHistoryFixtures {
             return Entry(author: author, content: ChatVoiceFixtures.voice(pick: Int(random.next() % 100)), date: date)
         }
         guard roll < 6 else {
-            return Entry(author: author, content: content(index: index, chatID: chatID, random: &random), date: date)
+            let content = content(index: index, chatID: chatID, isOutgoing: author.isMe, random: &random)
+
+            return Entry(author: author, content: content, date: date)
         }
 
         let link = ChatLinkFixtures.text(site: Int(random.next() % 100), template: Int(random.next() % 100))
@@ -209,7 +181,12 @@ enum ChatHistoryFixtures {
         }
     }
 
-    private static func content(index: Int, chatID: String, random: inout SeededRandom) -> MessageContent {
+    private static func content(
+        index: Int,
+        chatID: String,
+        isOutgoing: Bool,
+        random: inout SeededRandom
+    ) -> MessageContent {
         guard random.next() % 100 < 14 else {
             return .text(phrases[Int(random.next() % UInt64(phrases.count))])
         }
@@ -219,7 +196,7 @@ enum ChatHistoryFixtures {
         let photos = (0..<count).map { photo in
             let id = "\(chatID)-\(index)-\(photo)"
             if random.next() % 4 == 0 {
-                return ChatVideoFixtures.video(id: id, pick: Int(random.next() % 100))
+                return ChatVideoFixtures.video(id: id, pick: Int(random.next() % 100), isOutgoing: isOutgoing)
             }
 
             let size = photoSizes[Int(random.next() % UInt64(photoSizes.count))]

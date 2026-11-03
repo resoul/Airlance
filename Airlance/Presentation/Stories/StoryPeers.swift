@@ -14,11 +14,20 @@ enum StoryPeers {
         )
     }
 
-    static func author(_ story: StorySummary, strings: AppStrings, now: Date) -> StoryAuthor {
+    static func author(
+        _ story: StorySummary,
+        published: [PublishedStory],
+        strings: AppStrings,
+        now: Date
+    ) -> StoryAuthor {
         let formatter = RelativeDateTimeFormatter()
         formatter.locale = strings.pack.locale
         formatter.unitsStyle = .short
-        let items = (0..<story.total).map { index in
+        let all = story.isSelf ? published : []
+        let own = all.filter { item in
+            item.isLive(at: now)
+        }
+        let demo = (0..<max(story.total - all.count, 0)).map { index in
             let hoursAgo = Double(story.total - index) * 2.5
             let timeText = formatter.localizedString(for: now - hoursAgo * 3600, relativeTo: now)
 
@@ -29,7 +38,31 @@ enum StoryPeers {
             )
         }
 
-        return StoryAuthor(peer: peer(story, strings: strings), items: items)
+        let mine = own.map { item in
+            StoryItem(
+                id: item.id,
+                media: media(item.media),
+                timeText: formatter.localizedString(for: item.date, relativeTo: now),
+                widgets: item.widgets,
+                aspect: item.aspect,
+                caption: item.settings.caption,
+                isProtected: item.settings.isProtected,
+                isEditable: item.draft != nil
+            )
+        }
+
+        return StoryAuthor(peer: peer(story, strings: strings), items: demo + mine)
+    }
+
+    private static func media(_ media: PublishedStory.Media) -> StoryMedia {
+        switch media {
+        case .photo(let url):
+            .image { _ in
+                UIImage(contentsOfFile: url.path)
+            }
+        case .video(let url):
+            .video(url)
+        }
     }
 
     private static func media(for peerID: String, index: Int) -> StoryMedia {

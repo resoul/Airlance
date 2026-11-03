@@ -38,6 +38,35 @@ extension AppStrings {
         }
     }
 
+    func title(for fill: BubbleFill) -> String {
+        switch fill {
+        case .solid:
+            chatAppearanceFillSolid
+
+        case .gradient:
+            chatAppearanceFillGradient
+        }
+    }
+
+    func title(for wallpaper: ChatWallpaper) -> String {
+        switch wallpaper {
+        case .none:
+            chatAppearanceWallpaperNone
+
+        case .aurora:
+            chatAppearanceWallpaperAurora
+
+        case .sunset:
+            chatAppearanceWallpaperSunset
+
+        case .mint:
+            chatAppearanceWallpaperMint
+
+        case .night:
+            chatAppearanceWallpaperNight
+        }
+    }
+
     func title(for selection: LanguageSelection) -> String {
         switch selection {
         case .system:

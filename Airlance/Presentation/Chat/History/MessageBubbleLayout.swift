@@ -15,6 +15,14 @@ struct MessageBubbleInput: Sendable, Hashable {
     var reactions: [ReactionChip] = []
     var translationNote: String?
     var pollDraft: Set<Int> = []
+    var expandTitle: String?
+    var transcript: VoiceTranscriptText?
+}
+
+struct VoiceTranscriptText: Sendable, Hashable {
+    let text: String
+    let isShown: Bool
+    let isPending: Bool
 }
 
 struct MessageTranslation: Sendable, Hashable {
@@ -53,6 +61,14 @@ struct BubbleBody {
     var videoNote: VideoNoteParts?
     var voice: VoiceParts?
     var fileIcon: CGRect?
+    var transfer: TransferSlots?
+    var isBare = false
+}
+
+struct TransferSlots {
+    let all: [CGRect]
+    let pending: [CGRect]
+    let showsIdle: Bool
 }
 
 final class MessageBubbleLayout: @unchecked Sendable {
@@ -63,10 +79,6 @@ final class MessageBubbleLayout: @unchecked Sendable {
     static let padding = UIEdgeInsets(top: 7, left: 12, bottom: 7, right: 12)
     static let linkKey = NSAttributedString.Key("AirlanceURL")
     static let mentionScheme = "airlance-mention"
-
-    private static let detector = try? NSDataDetector(
-        types: NSTextCheckingResult.CheckingType.link.rawValue
-    )
 
     let key: Int
     let messageID: String
@@ -86,6 +98,10 @@ final class MessageBubbleLayout: @unchecked Sendable {
     let videoNote: VideoNoteParts?
     let voice: VoiceParts?
     let fileIcon: CGRect?
+    let transfer: TransferSlots?
+    let isBare: Bool
+    let radius: CGFloat
+    let gradient: [UIColor]?
 
     init(_ input: MessageBubbleInput, width: CGFloat, scale: CGFloat, style: HistoryStyle, poll: PollTitles? = nil) {
         let message = input.message
@@ -117,6 +133,10 @@ final class MessageBubbleLayout: @unchecked Sendable {
             .map(\.range)
         voice = body.voice
         fileIcon = body.fileIcon
+        transfer = body.transfer
+        isBare = body.isBare
+        radius = style.bubbleRadius
+        gradient = body.isBare || body.videoNote != nil ? nil : style.gradient(outgoing: message.isOutgoing)
     }
 
     private static func body(
@@ -128,6 +148,8 @@ final class MessageBubbleLayout: @unchecked Sendable {
     ) -> BubbleBody {
         var body: BubbleBody
         switch input.message.content {
+        case .text(let text) where EmojiBody.fits(text, input: input):
+            body = EmojiBody(text: text, input: input).make(style: style)
         case .text(let text):
             body = TextBody(text: text, input: input, scale: scale, maxBubble: maxBubble).make(style: style)
         case .photos(let photos, let caption):
@@ -208,82 +230,11 @@ final class MessageBubbleLayout: @unchecked Sendable {
         return node
     }
 
-    static func text(
-        _ string: String,
-        entities: [MessageEntity] = [],
-        outgoing: Bool,
-        metaWidth: CGFloat,
-        style: HistoryStyle,
-        width: CGFloat
-    ) -> ASTextNode {
-        let attributed = NSMutableAttributedString(
-            string: string,
-            attributes: [.font: style.textFont, .foregroundColor: style.text(outgoing: outgoing)]
-        )
-        let tint = style.tint(outgoing: outgoing)
-        let hasMentions = addMentions(entities, to: attributed, color: tint)
-        let hasLinks = addLinks(to: attributed, color: tint) || hasMentions
-        let spacer = NSAttributedString(
-            string: " \u{00A0}",
-            attributes: [.font: style.metaFont, .foregroundColor: UIColor.clear, .kern: max(0, metaWidth - 2)]
-        )
-        if metaWidth > 0 {
-            attributed.append(spacer)
-        }
-        let node = ASTextNode()
-        node.isLayerBacked = true
-        node.linkAttributeNames = hasLinks ? [linkKey.rawValue] : []
-        node.attributedText = attributed
-        node.frame = CGRect(origin: .zero, size: measure(node, width: width))
-
-        return node
-    }
-
     static func measure(_ node: ASTextNode, width: CGFloat) -> CGSize {
         let range = ASSizeRange(min: .zero, max: CGSize(width: max(1, width), height: .greatestFiniteMagnitude))
         let size = node.layoutThatFits(range).size
 
         return CGSize(width: ceil(size.width), height: ceil(size.height))
-    }
-
-    private static func addMentions(
-        _ entities: [MessageEntity],
-        to text: NSMutableAttributedString,
-        color: UIColor
-    ) -> Bool {
-        var found = false
-        for entity in MessageEntity.valid(entities, in: text.string) {
-            guard case .mention(let userID) = entity.kind, let url = URL(string: "\(mentionScheme):\(userID)") else {
-                continue
-            }
-
-            text.addAttributes([linkKey: url, .foregroundColor: color], range: entity.range)
-            found = true
-        }
-
-        return found
-    }
-
-    private static func addLinks(to text: NSMutableAttributedString, color: UIColor) -> Bool {
-        let string = text.string
-        let matches = detector?.matches(in: string, range: NSRange(string.startIndex..., in: string)) ?? []
-        for match in matches {
-            guard let url = match.url else {
-                continue
-            }
-
-            text.addAttributes(
-                [
-                    linkKey: url,
-                    .foregroundColor: color,
-                    .underlineStyle: NSUnderlineStyle.single.rawValue,
-                    .underlineColor: color.withAlphaComponent(0.5),
-                ],
-                range: match.range
-            )
-        }
-
-        return !matches.isEmpty
     }
 }
 
@@ -293,6 +244,7 @@ struct MessageMeta {
     private let time: ASTextNode
     private let checks: ASImageNode?
     private let background: ASDisplayNode?
+    private let timer: ExpiryPieNode?
 
     init(_ input: MessageBubbleInput, delivery: DeliveryState?, style: HistoryStyle, onMedia: Bool = false) {
         let color = onMedia ? UIColor.white : style.meta(outgoing: delivery != nil)
@@ -306,6 +258,14 @@ struct MessageMeta {
         time.frame = CGRect(origin: .zero, size: CGSize(width: ceil(timeSize.width), height: ceil(timeSize.height)))
 
         var width = time.frame.width
+        if let lifetime = input.message.lifetime, let expiresAt = input.message.expiresAt {
+            let node = ExpiryPieNode(expiresAt: expiresAt, lifetime: lifetime, color: color)
+            node.frame = CGRect(x: 0, y: 0, width: ExpiryPieNode.side, height: ExpiryPieNode.side)
+            timer = node
+            width += ExpiryPieNode.side + 4
+        } else {
+            timer = nil
+        }
         if let delivery, let image = MessageChecks.image(delivery, color: color, failed: style.failed) {
             let node = ASImageNode()
             node.isLayerBacked = true
@@ -337,12 +297,16 @@ struct MessageMeta {
             }
             text.append(NSAttributedString(string: " " + views + "  ", attributes: attributes))
         }
+        if let effect = input.message.effect {
+            text.append(NSAttributedString(string: effect + " ", attributes: attributes))
+        }
         text.append(NSAttributedString(string: input.timeText, attributes: attributes))
 
         return text
     }
 
-    func place(in content: ASDisplayNode, bottomRight: CGPoint) {
+    @discardableResult
+    func place(in content: ASDisplayNode, bottomRight: CGPoint) -> CGRect {
         var x = bottomRight.x - size.width
         let y = bottomRight.y - size.height
         if let background {
@@ -351,15 +315,23 @@ struct MessageMeta {
             background.cornerRadius = frame.height / 2
             content.addSubnode(background)
         }
+        if let timer {
+            timer.frame.origin = CGPoint(x: x, y: y + (size.height - ExpiryPieNode.side) / 2)
+            content.addSubnode(timer)
+            x += ExpiryPieNode.side + 4
+        }
         time.frame.origin = CGPoint(x: x, y: y)
         content.addSubnode(time)
+        let frame = CGRect(x: x, y: y, width: size.width, height: size.height)
         guard let checks else {
-            return
+            return frame
         }
 
         x = time.frame.maxX + 3
         checks.frame.origin = CGPoint(x: x, y: y + (size.height - checks.frame.height) / 2)
         content.addSubnode(checks)
+
+        return frame
     }
 
     private static func mediaBackground() -> ASDisplayNode {

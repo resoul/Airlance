@@ -168,9 +168,24 @@ final class ChatAvatarButton: UIControl {
         fatalError("init(coder:) is not supported")
     }
 
+    var isContentHidden: Bool {
+        get {
+            avatar.view.isHidden
+        }
+        set {
+            avatar.view.isHidden = newValue
+        }
+    }
+
     func apply(_ descriptor: AvatarDescriptor, label: String) {
         avatar.apply(descriptor, presentation: .list)
         accessibilityLabel = label
+    }
+
+    func contentImage() -> UIImage {
+        UIGraphicsImageRenderer(bounds: bounds).image { _ in
+            avatar.view.drawHierarchy(in: bounds, afterScreenUpdates: false)
+        }
     }
 
     override func layoutSubviews() {

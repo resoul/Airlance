@@ -23,7 +23,7 @@ struct LocationBody {
         let mapTop = MediaBody.addHeader(to: &body, input: input, width: width, style: style, scale: scale)
         let mapFrame = CGRect(x: inset, y: mapTop, width: width - inset * 2, height: Self.mapHeight)
         let hasText = location.title != nil
-        let corners = MediaBody.corners(for: input, hasHeader: mapTop > inset, hasCaption: hasText)
+        let corners = MediaBody.corners(for: input, style: style, hasHeader: mapTop > inset, hasCaption: hasText)
         let map = Self.mapNode(frame: mapFrame, style: style)
         content.insertSubnode(map, at: 0)
         content.addSubnode(Self.pin(at: CGPoint(x: mapFrame.midX, y: mapFrame.midY), color: style.name))

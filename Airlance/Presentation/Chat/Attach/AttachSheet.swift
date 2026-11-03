@@ -11,7 +11,8 @@ final class AttachSheet: UIView, UITextFieldDelegate {
     }
 
     var onSendMedia: (@MainActor ([PHAsset], String) -> Void)?
-    var onCamera: (@MainActor () -> Void)?
+    var onCamera: (@MainActor (CGRect?) -> Void)?
+    var onClosed: (@MainActor () -> Void)?
     var onFile: (@MainActor () -> Void)?
     var onLocation: (@MainActor (AttachLocationView.Pick) -> Void)?
     var onPoll: (@MainActor () -> Void)?
@@ -95,8 +96,8 @@ final class AttachSheet: UIView, UITextFieldDelegate {
         gallery.onSelectionChange = { [weak self] count in
             self?.selectionChanged(count)
         }
-        gallery.onCamera = { [weak self] in
-            self?.cameraTapped()
+        gallery.onCamera = { [weak self] frame in
+            self?.cameraTapped(from: frame)
         }
         gallery.onManage = { [weak self] in
             self?.onManage?()
@@ -195,6 +196,7 @@ final class AttachSheet: UIView, UITextFieldDelegate {
         } completion: { _ in
             self.removeFromSuperview()
             completion?()
+            self.onClosed?()
         }
     }
 }

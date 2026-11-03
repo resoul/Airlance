@@ -165,9 +165,9 @@ extension AttachSheet {
         }
     }
 
-    func cameraTapped() {
+    func cameraTapped(from frame: CGRect?) {
         close { [onCamera] in
-            onCamera?()
+            onCamera?(frame)
         }
     }
 

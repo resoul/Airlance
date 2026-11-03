@@ -1,3 +1,5 @@
+import ChatHistory
+import Haptics
 import UIKit
 
 extension ChatViewController {
@@ -14,12 +16,74 @@ extension ChatViewController {
         router.open(.comments(CommentThread(channelID: id, postID: postID).id))
     }
 
+    var discussionGroupID: String? {
+        thread.flatMap { thread in
+            dependencies.historyStore.discussionGroup(of: thread)
+        }
+    }
+
+    var discussionItem: UIBarButtonItem? {
+        guard discussionGroupID != nil else {
+            return nil
+        }
+
+        let item = UIBarButtonItem(
+            image: UIImage(systemName: "person.2"),
+            primaryAction: UIAction { [weak self] _ in
+                self?.openDiscussionGroup()
+            }
+        )
+        item.accessibilityLabel = presentation.strings.chatCommentsGroup
+
+        return item
+    }
+
+    func openDiscussionGroup(focus messageID: String? = nil) {
+        guard let group = discussionGroupID else {
+            return
+        }
+
+        if let messageID {
+            dependencies.historyStore.focusRequests[group] = messageID
+        }
+        inputBar.dismissKeyboard()
+        router.open(.chat(group))
+    }
+
+    func showInGroupItems(for message: HistoryMessage) -> [MenuItem] {
+        guard let thread, discussionGroupID != nil, ChatChannelFixtures.isComment(message, in: thread) else {
+            return []
+        }
+
+        let item = MenuItem(
+            title: presentation.strings.chatCommentsShowInGroup,
+            symbol: "person.2",
+            isDestructive: false,
+            action: .run { [weak self] in
+                self?.openDiscussionGroup(focus: message.id)
+            }
+        )
+
+        return [item]
+    }
+
     var canWrite: Bool {
         guard thread == nil, let chat = dependencies.chatsStore.chat(id), chat.kind == .channel else {
             return true
         }
 
         return chat.canPost
+    }
+
+    func bindForwardSources() {
+        history.onOpenChat = { [weak self] chatID in
+            guard let self, chatID != self.id, self.dependencies.chatsStore.chat(chatID) != nil else {
+                return
+            }
+
+            Haptics.play(.tap)
+            self.router.open(.chat(chatID))
+        }
     }
 
     func placeChannelBar() {
@@ -35,11 +99,24 @@ extension ChatViewController {
                     return
                 }
 
-                self.dependencies.chatsStore.toggleMute(self.id)
+                self.channelBarTapped()
             },
             for: .touchUpInside
         )
         view.addSubview(channelBar)
+    }
+
+    private func channelBarTapped() {
+        let store = dependencies.chatsStore
+        guard store.isJoined(id) else {
+            store.subscribe(id)
+            Haptics.play(.success)
+            showToast(presentation.strings.chatChannelSubscribed, symbol: "checkmark.circle.fill")
+
+            return
+        }
+
+        store.toggleMute(id)
     }
 
     var bottomBarTop: CGFloat {
@@ -73,10 +150,13 @@ extension ChatViewController {
         let theme = presentation.theme
         let strings = presentation.strings
         let isMuted = chat?.isMuted ?? false
-        channelBar.setTitle(isMuted ? strings.chatChannelUnmute : strings.chatChannelMute, for: .normal)
-        channelBar.setTitleColor(theme.colors.accent, for: .normal)
+        let isJoined = dependencies.chatsStore.isJoined(id)
+        let muteTitle = isMuted ? strings.chatChannelUnmute : strings.chatChannelMute
+        let title = isJoined ? muteTitle : strings.chatChannelSubscribe
+        channelBar.setTitle(title, for: .normal)
+        channelBar.setTitleColor(isJoined ? theme.colors.accent : theme.colors.onAccent, for: .normal)
         channelBar.titleLabel?.font = theme.fonts.headline
-        channelBar.backgroundColor = theme.colors.surface
+        channelBar.backgroundColor = isJoined ? theme.colors.surface : theme.colors.accent
     }
 
     static func status(of chat: ChatSummary, strings: AppStrings) -> String {

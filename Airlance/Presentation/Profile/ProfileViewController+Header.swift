@@ -87,6 +87,8 @@ extension ProfileViewController {
             applyActions(presentation)
             let strings = presentation.strings
             showToast(isMuted ? strings.profileMuted : strings.profileUnmuted, symbol: muteSymbol)
+        case .call where isBoostable:
+            presentBoost()
         case .call, .more:
             break
         }
@@ -102,7 +104,11 @@ extension ProfileViewController {
             title: isMuted ? strings.profileUnmute : strings.profileMute,
             theme: theme
         )
-        header.apply(action: .call, symbol: "phone.fill", title: strings.profileCall, theme: theme)
+        if isBoostable {
+            header.apply(action: .call, symbol: "star.fill", title: strings.boostAction, theme: theme)
+        } else {
+            header.apply(action: .call, symbol: "phone.fill", title: strings.profileCall, theme: theme)
+        }
         header.apply(action: .more, symbol: "ellipsis", title: strings.profileMore, theme: theme)
     }
 
@@ -111,7 +117,7 @@ extension ProfileViewController {
     }
 
     func updateMonthPill() {
-        guard pager.selectedIndex == 0, mediaPane.verticalOffset > 0 else {
+        guard pager.selectedIndex == mediaIndex, mediaPane.verticalOffset > 0 else {
             monthPill.alpha = 0
 
             return

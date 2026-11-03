@@ -14,6 +14,8 @@ extension StorageKey where Value == String {
 
 extension StorageKey where Value == Bool {
     static let videoReactions = StorageKey("videoNote.reactions", default: true)
+    static let cameraVolumeZoom = StorageKey("camera.volumeZoom", default: false)
+    static let cameraAutoSubtitles = StorageKey("camera.autoSubtitles", default: false)
 }
 
 @MainActor
@@ -32,6 +34,14 @@ final class VideoNoteSettings {
         storage.value(for: .videoReactions)
     }
 
+    var volumeZoomEnabled: Bool {
+        storage.value(for: .cameraVolumeZoom)
+    }
+
+    var autoSubtitlesEnabled: Bool {
+        storage.value(for: .cameraAutoSubtitles)
+    }
+
     func setStyle(_ style: VideoNoteStyle) {
         let storage = storage
         Task {
@@ -42,12 +52,15 @@ final class VideoNoteSettings {
     }
 
     func setReactionsEnabled(_ isEnabled: Bool) {
-        let storage = storage
-        Task {
-            try? await storage.update(.videoReactions) { value in
-                value = isEnabled
-            }
-        }
+        set(.videoReactions, isEnabled)
+    }
+
+    func setVolumeZoomEnabled(_ isEnabled: Bool) {
+        set(.cameraVolumeZoom, isEnabled)
+    }
+
+    func setAutoSubtitlesEnabled(_ isEnabled: Bool) {
+        set(.cameraAutoSubtitles, isEnabled)
     }
 
     func observe(_ onChange: @escaping @MainActor () -> Void) -> [ObservationToken] {
@@ -58,6 +71,21 @@ final class VideoNoteSettings {
             storage.observe(.videoReactions) { _ in
                 onChange()
             },
+            storage.observe(.cameraVolumeZoom) { _ in
+                onChange()
+            },
+            storage.observe(.cameraAutoSubtitles) { _ in
+                onChange()
+            },
         ]
+    }
+
+    private func set(_ key: StorageKey<Bool>, _ isEnabled: Bool) {
+        let storage = storage
+        Task {
+            try? await storage.update(key) { value in
+                value = isEnabled
+            }
+        }
     }
 }

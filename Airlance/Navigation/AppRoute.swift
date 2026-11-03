@@ -15,6 +15,8 @@ enum AppRoute: Route {
     case invite
     case permissions
     case appearance
+    case chatAppearance
+    case storage
     case profile(String)
     case stories(String)
     case chatFolders
@@ -24,8 +26,9 @@ enum AppRoute: Route {
     case browser(URL)
     case comments(String)
     case videoNotes
-
-    static let tabs: [AppRoute] = [.contacts, .calls, .chats, .settings]
+    case onAir
+    case tabSettings
+    case myOnAir
 
     var segment: RouteSegment {
         switch self {
@@ -51,6 +54,10 @@ enum AppRoute: Route {
             RouteSegment("permissions")
         case .appearance:
             RouteSegment("appearance")
+        case .chatAppearance:
+            RouteSegment("chatAppearance")
+        case .storage:
+            RouteSegment("storage")
         case .profile(let id):
             RouteSegment("profile", argument: id)
         case .stories(let peerID):
@@ -69,36 +76,53 @@ enum AppRoute: Route {
             RouteSegment("comments", argument: id)
         case .videoNotes:
             RouteSegment("videoNotes")
+        case .onAir:
+            RouteSegment("onAir")
+        case .tabSettings:
+            RouteSegment("tabSettings")
+        case .myOnAir:
+            RouteSegment("myOnAir")
         }
     }
 
     var anchor: [AppRoute] {
         switch self {
-        case .contacts, .calls, .chats, .settings:
+        case .contacts, .calls, .chats, .settings, .onAir:
             []
         case .chat, .newChat, .stories, .chatArchive, .browser:
             [.chats]
         case .newContact, .invite:
             [.contacts]
+        case .myOnAir:
+            [.onAir]
         case .media(let id), .profile(let id):
             [.chats, .chat(id)]
         case .comments(let id):
             [.chats] + (CommentThread(id: id).map { thread in
                 [.chat(thread.channelID)]
             } ?? [])
-        case .permissions, .appearance, .chatFolders, .videoNotes:
+        case .permissions, .appearance, .chatAppearance, .storage, .chatFolders, .videoNotes, .tabSettings:
             [.settings]
         case .newChatFolder, .chatFolder:
             [.settings, .chatFolders]
         }
     }
 
+    var isDetail: Bool {
+        switch self {
+        case .chat, .comments, .profile:
+            true
+        default:
+            false
+        }
+    }
+
     var presentation: RoutePresentation {
         switch self {
-        case .contacts, .calls, .chats, .settings:
+        case .contacts, .calls, .chats, .settings, .onAir:
             .tab
-        case .chat, .permissions, .appearance, .profile, .chatFolders, .chatFolder, .chatArchive, .comments,
-             .videoNotes:
+        case .chat, .permissions, .appearance, .chatAppearance, .storage, .profile, .chatFolders, .chatFolder,
+             .chatArchive, .comments, .videoNotes, .tabSettings, .myOnAir:
             .stack
         case .media, .stories:
             .fullScreen
@@ -145,6 +169,10 @@ enum AppRoute: Route {
             self = .permissions
         case "appearance":
             self = .appearance
+        case "chatAppearance":
+            self = .chatAppearance
+        case "storage":
+            self = .storage
         case "chatFolders":
             self = .chatFolders
         case "newChatFolder":
@@ -153,6 +181,12 @@ enum AppRoute: Route {
             self = .chatArchive
         case "videoNotes":
             self = .videoNotes
+        case "onAir":
+            self = .onAir
+        case "tabSettings":
+            self = .tabSettings
+        case "myOnAir":
+            self = .myOnAir
         default:
             return nil
         }

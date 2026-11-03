@@ -35,7 +35,8 @@ final class AccountSession {
             router: router,
             factory: factory,
             presentationContext: scene.presentationContext,
-            accounts: scene
+            accounts: scene,
+            tabSettings: account.tabs
         )
         quickReply = QuickReplyPresenter(
             window: scene.window,

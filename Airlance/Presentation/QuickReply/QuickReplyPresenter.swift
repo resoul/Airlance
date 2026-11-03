@@ -1,4 +1,5 @@
 import AirlanceUI
+import CameraUI
 import ChatHistory
 import Observers
 import UIKit
@@ -50,12 +51,26 @@ final class QuickReplyPresenter {
         )
     }
 
+    private static func isCameraShown(in window: UIWindow) -> Bool {
+        var controller = window.rootViewController?.presentedViewController
+        while let current = controller {
+            if current is CameraViewController {
+                return true
+            }
+
+            controller = current.presentedViewController
+        }
+
+        return false
+    }
+
     private func show(_ incoming: IncomingMessage) {
         guard
             !isClosed,
             let window,
             UIApplication.shared.applicationState == .active,
             !window.hasFocusOverlay,
+            !Self.isCameraShown(in: window),
             let chat = historyStore.chatsStore.chat(incoming.chatID)
         else {
             return

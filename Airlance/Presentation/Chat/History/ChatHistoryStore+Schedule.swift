@@ -4,6 +4,8 @@ import Foundation
 struct SendOptions: Sendable {
     var entities: [MessageEntity] = []
     var isSilent = false
+    var effect: String?
+    var lifetime: TimeInterval?
 }
 
 struct ScheduledMessage: Sendable, Identifiable {

@@ -41,12 +41,20 @@ struct VoiceBody {
             top = padding.top + header.size.height - 2
         }
         body.voice = parts(in: content, top: top, width: width, style: style)
-        let size = CGSize(width: ceil(width), height: ceil(top + Self.height))
+        let buttonFrame = CGRect(x: width - 44, y: top + 12, width: 34, height: 24)
+        content.addSubnode(transcribeButton(frame: buttonFrame, style: style))
+        body.actions.append(BubbleAction(frame: buttonFrame.insetBy(dx: -6, dy: -8), kind: .transcribe))
         let meta = MessageMeta(input, delivery: outgoing ? message.delivery : nil, style: style)
-        meta.place(in: content, bottomRight: CGPoint(x: size.width - 11, y: size.height - 7))
+        var height = top + Self.height
+        if let transcript = input.transcript, transcript.isShown {
+            height = addTranscript(transcript, to: &body, top: top + 48, width: width, meta: meta, style: style)
+        } else {
+            meta.place(in: content, bottomRight: CGPoint(x: width - 11, y: height - 7))
+        }
+        let size = CGSize(width: ceil(width), height: ceil(height))
         content.frame = CGRect(origin: .zero, size: size)
         body.size = size
-        body.actions.append(BubbleAction(frame: CGRect(x: 0, y: top, width: width, height: 46), kind: .voice))
+        body.actions.append(BubbleAction(frame: CGRect(x: 0, y: top, width: width - 50, height: 46), kind: .voice))
 
         return body
     }
@@ -58,7 +66,7 @@ struct VoiceBody {
         let amplitudes = voice.waveform.map { value in
             Float(value) / 31
         }
-        let waveFrame = CGRect(x: 58, y: top + 8, width: width - 68, height: 28)
+        let waveFrame = CGRect(x: 58, y: top + 8, width: width - 108, height: 28)
         let wave = Self.waveNode(amplitudes, frame: waveFrame, color: rest, scale: scale)
         content.addSubnode(wave)
         let iconColor = outgoing ? style.outgoingBubble : UIColor.white
@@ -85,6 +93,65 @@ struct VoiceBody {
             lengthColor: tint,
             lengthFont: style.metaFont
         )
+    }
+
+    private func addTranscript(
+        _ transcript: VoiceTranscriptText,
+        to body: inout BubbleBody,
+        top: CGFloat,
+        width: CGFloat,
+        meta: MessageMeta,
+        style: HistoryStyle
+    ) -> CGFloat {
+        let padding = MessageBubbleLayout.padding
+        let textWidth = width - padding.left - padding.right
+        let text = MessageBubbleLayout.text(
+            transcript.text,
+            outgoing: input.message.isOutgoing,
+            metaWidth: meta.size.width,
+            style: style,
+            width: textWidth
+        )
+        if transcript.isPending {
+            text.alpha = 0.6
+        }
+        text.place(in: body.content, at: CGPoint(x: padding.left, y: top), width: textWidth)
+        body.text = text
+        meta.place(in: body.content, bottomRight: CGPoint(x: width - padding.right, y: text.frame.maxY))
+
+        return text.frame.maxY + padding.bottom
+    }
+
+    private func transcribeButton(frame: CGRect, style: HistoryStyle) -> ASImageNode {
+        let tint = style.tint(outgoing: input.message.isOutgoing)
+        let transcript = input.transcript
+        let node = ASImageNode()
+        node.isLayerBacked = true
+        node.displaysAsynchronously = false
+        node.frame = frame
+        node.cornerRadius = 7
+        node.backgroundColor = tint.withAlphaComponent(0.15)
+        node.contentMode = .center
+        let symbol = transcript?.isShown == true ? "chevron.up" : "text.bubble"
+        let configuration = UIImage.SymbolConfiguration(pointSize: 12, weight: .bold)
+        if transcript == nil {
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = scale
+            node.image = UIGraphicsImageRenderer(size: frame.size, format: format).image { _ in
+                let attributes: [NSAttributedString.Key: Any] = [
+                    .font: UIFont.systemFont(ofSize: 13, weight: .bold),
+                    .foregroundColor: tint,
+                ]
+                let size = ("Aa" as NSString).size(withAttributes: attributes)
+                let origin = CGPoint(x: (frame.width - size.width) / 2, y: (frame.height - size.height) / 2)
+                ("Aa" as NSString).draw(at: origin, withAttributes: attributes)
+            }
+        } else {
+            node.image = UIImage(systemName: symbol, withConfiguration: configuration)?
+                .withTintColor(tint, renderingMode: .alwaysOriginal)
+        }
+
+        return node
     }
 
     private func lengthNode(_ text: String, color: UIColor, style: HistoryStyle) -> ASTextNode {

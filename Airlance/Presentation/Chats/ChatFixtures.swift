@@ -34,6 +34,7 @@ enum ChatFixtures {
             group("stress", "Стрес-тест · 30 000", "Анна: Ок", now - 20 * minute, unread: 40),
             person("boris", "Борис", "Скинь, будь ласка, фото з вихідних", now - 40 * minute, read: true),
             channel("news", "Airlance News", "Папки чатів уже в тестовій збірці", now - 2 * hour, unread: 3),
+            group("news-chat", "Airlance News · Чат", "Віка: Тестую вже другий день", now - 2 * hour - 10 * minute),
             person("vika", "Віка", "Голосове повідомлення", now - 3 * hour, online: true),
             group("family", "Сімʼя", "Мама: не забудь купити хліб", now - 5 * hour, unread: 1, muted: true),
             person("max", "Max", "See you at the meetup!", now - 7 * hour, read: false),
@@ -137,6 +138,13 @@ enum ChatFixtures {
     }
 
     static let ownChannels: Set<String> = ["news"]
+
+    static func previews(now: Date) -> [ChatSummary] {
+        [
+            channel("swift-weekly", "Swift Weekly", "Огляд нових пропозицій Swift Evolution", now - 3_600),
+            channel("design-daily", "Дизайн щодня", "Чому порожні стани — найкращі екрани", now - 7_200),
+        ]
+    }
 
     private static func members(of id: String) -> Int {
         Int(id.unicodeScalars.reduce(UInt32(7)) { hash, scalar in

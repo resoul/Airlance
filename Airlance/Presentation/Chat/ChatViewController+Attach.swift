@@ -20,6 +20,7 @@ extension ChatViewController {
         }
         let sheet = AttachSheet(tabs: tabs, presentation: presentation, host: host)
         bindAttach(sheet)
+        prepareCameraTile(in: sheet)
         sheet.present()
     }
 
@@ -43,8 +44,8 @@ extension ChatViewController {
         sheet.onSendMedia = { [weak self] assets, caption in
             self?.sendAssets(assets, caption: caption)
         }
-        sheet.onCamera = { [weak self] in
-            self?.openCamera()
+        sheet.onCamera = { [weak self] frame in
+            self?.openCamera(from: frame)
         }
         sheet.onFile = { [weak self] in
             self?.pickFiles()
@@ -98,25 +99,6 @@ extension ChatViewController {
         picker.delegate = self
         present(picker, animated: true)
     }
-
-    private func openCamera() {
-        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
-            return
-        }
-
-        let flow = dependencies.permissionFlow
-        Task { [weak self] in
-            guard let self, await flow.authorize(.takePhoto, from: self) else {
-                return
-            }
-
-            let picker = UIImagePickerController()
-            picker.sourceType = .camera
-            picker.mediaTypes = [UTType.image.identifier, UTType.movie.identifier]
-            picker.delegate = self
-            self.present(picker, animated: true)
-        }
-    }
 }
 
 extension ChatViewController: UIDocumentPickerDelegate {
@@ -134,32 +116,5 @@ extension ChatViewController: UIDocumentPickerDelegate {
             )
             postAttachment(.file(file, caption: ""))
         }
-    }
-}
-
-extension ChatViewController: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-    func imagePickerController(
-        _ picker: UIImagePickerController,
-        didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
-    ) {
-        let image = info[.originalImage] as? UIImage
-        let movie = info[.mediaURL] as? URL
-        picker.dismiss(animated: true)
-        let store = dependencies.media
-        Task { [weak self] in
-            var photo: MessagePhoto?
-            if let movie {
-                photo = await AttachExport.video(at: movie, store: store)
-            } else if let image {
-                photo = AttachExport.photo(from: image, store: store)
-            }
-            if let photo {
-                self?.sendPhotos([photo], caption: "")
-            }
-        }
-    }
-
-    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-        picker.dismiss(animated: true)
     }
 }

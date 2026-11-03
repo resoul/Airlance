@@ -4,10 +4,10 @@ import UIKit
 @MainActor
 final class ScreenFactory {
     private let app: ApplicationContext
-    private let scene: SceneContext
-    private let account: AccountContext
+    let scene: SceneContext
+    let account: AccountContext
     private let positions: ChatScrollPositions
-    private let router: AppRouter
+    let router: AppRouter
 
     init(
         app: ApplicationContext,
@@ -62,7 +62,10 @@ final class ScreenFactory {
                 chatsStore: account.chatsStore,
                 historyStore: account.historyStore,
                 storiesStore: account.storiesStore,
-                chatFolders: account.chatFolders
+                chatFolders: account.chatFolders,
+                permissionFlow: scene.permissionFlow,
+                videoNotes: account.videoNotes,
+                media: account.media
             ),
             router: router
         )
@@ -160,7 +163,9 @@ final class ScreenFactory {
             id: id,
             dependencies: ProfileDependencies(
                 presentationContext: scene.presentationContext,
-                chatsStore: account.chatsStore
+                chatsStore: account.chatsStore,
+                groupMembers: account.groupMembers,
+                onAir: account.onAir
             ),
             router: router
         )
@@ -172,7 +177,7 @@ final class ScreenFactory {
         let now = Date()
         let viewer = StoryViewerController(
             authors: store.ordered.map { story in
-                StoryPeers.author(story, strings: strings, now: now)
+                StoryPeers.author(story, published: store.published, strings: strings, now: now)
             },
             startPeerID: peerID
         )
@@ -181,6 +186,10 @@ final class ScreenFactory {
         }
         viewer.onClose = { [router] in
             router.dismiss()
+        }
+        viewer.labels = StoryStudioStrings.labels(strings)
+        viewer.onInteraction = { [router] interaction in
+            StoryInteractions.handle(interaction, router: router, store: store)
         }
 
         return viewer
@@ -211,6 +220,24 @@ final class ScreenFactory {
                 accounts: scene
             ),
             router: router
+        )
+    }
+
+    func makeChatAppearance() -> UIViewController {
+        ChatAppearanceViewController(
+            dependencies: ChatAppearanceDependencies(
+                presentationContext: scene.presentationContext,
+                themeStore: app.themeStore
+            )
+        )
+    }
+
+    func makeStorage() -> UIViewController {
+        StorageViewController(
+            dependencies: StorageDependencies(
+                presentationContext: scene.presentationContext,
+                media: account.media
+            )
         )
     }
 

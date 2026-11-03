@@ -19,6 +19,20 @@ extension ChatHistoryController {
         }
     }
 
+    var expandedTexts: Set<String> {
+        get {
+            store.expandedTexts[chatID] ?? []
+        }
+        set {
+            store.expandedTexts[chatID] = newValue
+        }
+    }
+
+    func expandText(_ messageID: String) {
+        expandedTexts.insert(messageID)
+        reload(animated: true)
+    }
+
     func setTranslation(_ translation: MessageTranslation?, messageID: String) {
         let node = listView.node(for: messageID) as? MessageBubbleNode
         let dissolved = node?.dissolveText() ?? false

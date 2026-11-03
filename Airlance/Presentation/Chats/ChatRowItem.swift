@@ -11,6 +11,7 @@ struct ChatRowItem: AsyncListItem {
     var onPeek: (@MainActor (ListItemNode) -> Void)?
     var draft: ChatRowDraft?
     var typing: String?
+    var onStory: (@MainActor (ChatRowNode) -> Void)?
     let onSelect: @MainActor () -> Void
 
     var id: String {
@@ -37,6 +38,17 @@ struct ChatRowItem: AsyncListItem {
 
     func selected() {
         onSelect()
+    }
+
+    func tapped(node: ListItemNode, at point: CGPoint) {
+        guard let story, story.total > 0, let row = node as? ChatRowNode,
+              row.avatarFrame.insetBy(dx: -6, dy: -6).contains(point) else {
+            selected()
+
+            return
+        }
+
+        onStory?(row)
     }
 
     func longPressed(node: ListItemNode, at point: CGPoint) {
