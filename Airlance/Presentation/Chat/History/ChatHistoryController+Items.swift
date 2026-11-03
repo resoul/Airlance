@@ -141,7 +141,11 @@ extension ChatHistoryController {
         }
 
         guard !file.isDownloaded else {
-            onOpenFile?(file)
+            if file.isAudio {
+                playMusic(messageID)
+            } else {
+                onOpenFile?(file)
+            }
 
             return
         }
@@ -164,27 +168,6 @@ extension ChatHistoryController {
             }
 
             (self.listView.node(for: event.key.messageID) as? MessageBubbleNode)?.applyTransfer(event.progress)
-        }
-    }
-
-    func bindVoice() {
-        voicePlayback.onChange = { [weak self] id, progress, isPlaying in
-            (self?.listView.node(for: id) as? MessageBubbleNode)?.setVoice(progress: progress, isPlaying: isPlaying)
-        }
-    }
-
-    private func toggleVoice(_ messageID: String) {
-        guard
-            let message = message(messageID),
-            case .voice(let voice) = message.content,
-            let url = voice.source.url
-        else {
-            return
-        }
-
-        voicePlayback.toggle(messageID, url: url)
-        if !message.isListened {
-            markListened(messageID)
         }
     }
 

@@ -55,7 +55,7 @@ extension ChatsViewController {
 
         pager.setPageCount(next.count)
         bindLists()
-        tabs.isHidden = !hasFolders
+        tabsHost.isHidden = !hasFolders
         let index = next.firstIndex { page in
             page.id == selectedID
         } ?? next.firstIndex(of: .all) ?? 0

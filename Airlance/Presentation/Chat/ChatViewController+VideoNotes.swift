@@ -11,9 +11,7 @@ extension ChatViewController {
     }
 
     func beginVideoNote(at point: CGPoint) {
-        let style = Self.noteStyle(dependencies.videoNotes.style)
-        let limit: TimeInterval = style == .moment ? 3 : 60
-        startVideoRecorder(VideoNoteRecorderOptions(style: style, tapToStop: false, limit: limit)) { [weak self] note in
+        startVideoRecorder(VideoNoteRecorderOptions(style: .blob, tapToStop: false, limit: 60)) { [weak self] note in
             self?.postAttachment(.videoNote(note))
         }
         recorderStart = point
@@ -77,17 +75,12 @@ extension ChatViewController {
             return
         }
 
-        let isDual = options.style == .dualCamera
-        let stylized = options.style == .anonymous
-        guard let camera = VideoNoteCamera(dual: isDual, stylized: stylized, store: dependencies.media) else {
+        guard let camera = VideoNoteCamera(store: dependencies.media) else {
             showRecordToast(strings.videoNotesNoCamera, symbol: "video.slash.fill")
 
             return
         }
 
-        if options.style == .dualCamera, !camera.isDual {
-            showRecordToast(strings.videoNotesDualUnsupported, symbol: "camera.on.rectangle")
-        }
         view.endEditing(true)
         let recorder = VideoNoteRecorderView(camera: camera, options: options, host: view, presentation: presentation)
         let store = dependencies.media
@@ -117,26 +110,10 @@ extension ChatViewController {
 
         return MessageVideoNote(
             source: .local(main),
-            frontSource: result.front.flatMap { url in
-                store.adopt(url, kind: .video).map(MediaSource.local)
-            },
             duration: result.duration,
             style: style,
             levels: VideoNoteLevels.encode(result.levels)
         )
-    }
-
-    private static func noteStyle(_ style: VideoNoteStyle) -> MessageVideoNote.Style {
-        switch style {
-        case .blob:
-            .blob
-        case .dualCamera:
-            .dualCamera
-        case .anonymous:
-            .anonymous
-        case .moment:
-            .moment
-        }
     }
 
     func showVideoReaction(_ reactionID: String, messageID: String) {

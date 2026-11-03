@@ -161,7 +161,11 @@ final class VoiceRecorderView: UIView {
 
         isFinished = true
         Haptics.play(.tap)
-        onSend?(recording.finish())
+        let recording = recording
+        let onSend = onSend
+        Task {
+            onSend?(await recording.finish())
+        }
         finish()
     }
 
@@ -181,7 +185,7 @@ final class VoiceRecorderView: UIView {
     }
 
     private func buildPanel(bar: CGRect, texts: VoiceRecorderTexts) {
-        panel.frame = CGRect(x: 0, y: bar.minY, width: bar.width, height: 52)
+        panel.frame = CGRect(x: 0, y: bar.minY, width: bar.width, height: max(52, bounds.height - bar.minY))
         panel.backgroundColor = theme.colors.background
         addSubview(panel)
         dot.backgroundColor = theme.colors.destructive

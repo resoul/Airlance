@@ -2,6 +2,7 @@ import AVFoundation
 import ChatHistory
 import Foundation
 import MediaStore
+import MusicPlayer
 
 @MainActor
 final class VoiceRecording {
@@ -25,10 +26,26 @@ final class VoiceRecording {
 
     private let media: LocalMedia
 
-    init?(store: MediaStore) {
-        let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playAndRecord, mode: .spokenAudio, options: [.defaultToSpeaker])
-        try? session.setActive(true)
+    static func start(store: MediaStore) async -> VoiceRecording? {
+        AudioPlayer.shared.pause()
+        guard let recording = VoiceRecording(store: store) else {
+            return nil
+        }
+
+        let box = RecorderBox(recorder: recording.recorder)
+        let started = await AudioSessionQueue.perform {
+            let session = AVAudioSession.sharedInstance()
+            try? session.setCategory(.playAndRecord, mode: .spokenAudio, options: [.defaultToSpeaker])
+            try? session.setAllowHapticsAndSystemSoundsDuringRecording(true)
+            try? session.setActive(true)
+
+            return box.recorder.record()
+        }
+
+        return started ? recording : nil
+    }
+
+    private init?(store: MediaStore) {
         let (media, url) = store.reserve(.voice, extension: "m4a")
         let settings: [String: Any] = [
             AVFormatIDKey: kAudioFormatMPEG4AAC,
@@ -41,24 +58,26 @@ final class VoiceRecording {
         }
 
         recorder.isMeteringEnabled = true
-        guard recorder.record() else {
-            return nil
-        }
-
         self.recorder = recorder
         self.media = media
     }
 
-    func finish() -> MessageVoice {
+    func finish() async -> MessageVoice {
         let duration = recorder.currentTime
-        recorder.stop()
+        let box = RecorderBox(recorder: recorder)
+        await AudioSessionQueue.perform {
+            box.recorder.stop()
+        }
 
         return MessageVoice(source: .local(media), duration: duration, waveform: waveform())
     }
 
     func cancel() {
-        recorder.stop()
-        recorder.deleteRecording()
+        let box = RecorderBox(recorder: recorder)
+        AudioSessionQueue.run {
+            box.recorder.stop()
+            box.recorder.deleteRecording()
+        }
     }
 
     private func waveform() -> [UInt8] {
@@ -79,4 +98,8 @@ final class VoiceRecording {
             UInt8(max(2, min(31, (value / peak * 31).rounded())))
         }
     }
+}
+
+private struct RecorderBox: @unchecked Sendable {
+    let recorder: AVAudioRecorder
 }

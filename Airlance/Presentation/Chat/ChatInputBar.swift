@@ -12,8 +12,6 @@ final class ChatInputBar: UIView, UITextViewDelegate {
     var includesBottomSafeArea = true
     let replyPanel = ChatReplyPanel()
 
-    private let background = UIView()
-    private let separator = UIView()
     let attachButton = UIButton(type: .system)
     let fieldBox = UIView()
     let textView = UITextView()
@@ -21,11 +19,12 @@ final class ChatInputBar: UIView, UITextViewDelegate {
     var composerStyle = ComposerStyle(accent: .systemBlue, spoilerFill: .systemGray5)
     private let placeholder = UILabel()
     let actionIcon = UIImageView()
+    let actionCircle = UIView()
     private let actionButton = UIButton(type: .custom)
     var strings: AppStrings?
     private var theme: AppTheme?
     var isVideoMode = false
-    private var textHeight: CGFloat = 36
+    private var textHeight: CGFloat = 44
     var showsReply = false
     var isEditingMessage = false {
         didSet {
@@ -46,23 +45,23 @@ final class ChatInputBar: UIView, UITextViewDelegate {
     }
 
     private var minimumTextHeight: CGFloat {
-        max(36, ceil((textView.font?.lineHeight ?? 20) + 16))
+        max(Self.controlSize, ceil((textView.font?.lineHeight ?? 20) + 24))
     }
 
     private var maximumTextHeight: CGFloat {
-        ceil((textView.font?.lineHeight ?? 20) * 5 + 16)
+        ceil((textView.font?.lineHeight ?? 20) * 5 + 24)
     }
 
     override var intrinsicContentSize: CGSize {
-        let safeArea = includesBottomSafeArea && !textView.isFirstResponder ? window?.safeAreaInsets.bottom ?? 0 : 0
+        let safeArea = window?.safeAreaInsets.bottom ?? 0
+        let floats = includesBottomSafeArea && !textView.isFirstResponder
+        let bottom = floats ? Self.floatingGap(safeArea: safeArea) : 8
 
-        return CGSize(width: UIView.noIntrinsicMetric, height: panelHeight + textHeight + 16 + safeArea)
+        return CGSize(width: UIView.noIntrinsicMetric, height: panelHeight + 8 + textHeight + bottom)
     }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        addSubview(background)
-        background.addSubview(separator)
         replyPanel.alpha = 0
         addSubview(replyPanel)
         let attachImage = UIImage(systemName: "paperclip", withConfiguration: Self.symbol(21))
@@ -74,12 +73,9 @@ final class ChatInputBar: UIView, UITextViewDelegate {
             for: .touchUpInside
         )
         addSubview(attachButton)
-        fieldBox.layer.cornerRadius = 18
-        fieldBox.layer.cornerCurve = .continuous
-        fieldBox.layer.borderWidth = 0.5
         addSubview(fieldBox)
         textView.backgroundColor = .clear
-        textView.textContainerInset = UIEdgeInsets(top: 8, left: 9, bottom: 8, right: 9)
+        textView.textContainerInset = UIEdgeInsets(top: 12, left: 9, bottom: 12, right: 9)
         textView.showsVerticalScrollIndicator = false
         textView.isScrollEnabled = false
         textView.delegate = self
@@ -88,6 +84,8 @@ final class ChatInputBar: UIView, UITextViewDelegate {
         fieldBox.addSubview(placeholder)
         setupScheduledButton()
         actionIcon.contentMode = .center
+        actionCircle.isUserInteractionEnabled = false
+        addSubview(actionCircle)
         addSubview(actionIcon)
         actionButton.addTarget(self, action: #selector(actionTapped), for: .touchUpInside)
         let hold = UILongPressGestureRecognizer(target: self, action: #selector(held(_:)))
@@ -106,12 +104,9 @@ final class ChatInputBar: UIView, UITextViewDelegate {
         let theme = presentation.theme
         self.theme = theme
         strings = presentation.strings
-        background.backgroundColor = theme.colors.background
-        separator.backgroundColor = theme.colors.separator
+        applyFloating(theme)
         attachButton.tintColor = theme.colors.textSecondary
         attachButton.accessibilityLabel = presentation.strings.chatAttach
-        fieldBox.backgroundColor = theme.colors.surface
-        fieldBox.layer.borderColor = theme.colors.separator.cgColor
         textView.font = theme.fonts.body
         textView.textColor = theme.colors.textPrimary
         textView.tintColor = theme.colors.accent
@@ -153,13 +148,13 @@ final class ChatInputBar: UIView, UITextViewDelegate {
     override func layoutSubviews() {
         super.layoutSubviews()
         let width = bounds.width
-        let top = panelHeight
-        let rowBottom = top + textHeight + 16
-        background.frame = CGRect(x: 0, y: 0, width: width, height: bounds.height + 40)
-        replyPanel.frame = CGRect(x: 0, y: 0, width: width, height: ChatReplyPanel.height)
-        separator.frame = CGRect(x: 0, y: 0, width: width, height: 0.5)
-        attachButton.frame = CGRect(x: 4, y: rowBottom - 48, width: 44, height: 44)
-        fieldBox.frame = CGRect(x: 50, y: top + 8, width: width - 100, height: textHeight)
+        let side = Self.controlSize
+        let gap: CGFloat = 8
+        replyPanel.frame = CGRect(x: gap, y: 0, width: width - gap * 2, height: ChatReplyPanel.height - 4)
+        let fieldX = gap * 2 + side
+        fieldBox.frame = CGRect(x: fieldX, y: panelHeight + 8, width: width - fieldX * 2, height: textHeight)
+        let rowBottom = fieldBox.frame.maxY
+        attachButton.frame = CGRect(x: gap, y: rowBottom - side, width: side, height: side)
         layoutField()
         let placeholderHeight = ceil(placeholder.font?.lineHeight ?? 20)
         placeholder.frame = CGRect(
@@ -168,8 +163,10 @@ final class ChatInputBar: UIView, UITextViewDelegate {
             width: fieldBox.bounds.width - 28,
             height: placeholderHeight
         )
-        actionIcon.frame = CGRect(x: width - 48, y: rowBottom - 48, width: 44, height: 44)
+        actionIcon.frame = CGRect(x: width - gap - side, y: rowBottom - side, width: side, height: side)
+        actionCircle.frame = actionIcon.frame
         actionButton.frame = actionIcon.frame.insetBy(dx: -4, dy: -4)
+        layoutFloating()
     }
 
     func textViewDidChange(_ textView: UITextView) {
@@ -227,10 +224,12 @@ final class ChatInputBar: UIView, UITextViewDelegate {
         }
 
         let sends = hasText || isEditingMessage
-        let sendSymbol = isEditingMessage ? "checkmark.circle.fill" : "arrow.up.circle.fill"
+        let sendSymbol = isEditingMessage ? "checkmark" : "arrow.up"
         let symbol = sends ? sendSymbol : (isVideoMode ? "video" : "mic")
-        let image = UIImage(systemName: symbol, withConfiguration: Self.symbol(sends ? 30 : 22))
-        actionIcon.tintColor = sends ? theme.colors.accent : theme.colors.textSecondary
+        let configuration = sends ? UIImage.SymbolConfiguration(pointSize: 18, weight: .bold) : Self.symbol(22)
+        let image = UIImage(systemName: symbol, withConfiguration: configuration)
+        actionIcon.tintColor = sends ? .white : theme.colors.textSecondary
+        setActionFilled(sends, theme: theme, animated: animated)
         actionButton.accessibilityLabel = sends
             ? (isEditingMessage ? strings.chatEdit : strings.chatSend)
             : (isVideoMode ? strings.chatVideoMessage : strings.chatVoiceMessage)
@@ -267,7 +266,7 @@ final class ChatInputBar: UIView, UITextViewDelegate {
         updateAction(animated: true)
     }
 
-    private static func symbol(_ size: CGFloat) -> UIImage.SymbolConfiguration {
+    static func symbol(_ size: CGFloat) -> UIImage.SymbolConfiguration {
         UIImage.SymbolConfiguration(pointSize: size, weight: .regular)
     }
 }

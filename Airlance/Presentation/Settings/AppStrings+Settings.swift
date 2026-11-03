@@ -16,16 +16,15 @@ extension AppStrings {
     }
 
     func title(for accent: ThemeAccent) -> String {
-        switch accent {
-        case .blue:
-            themeAccentBlue
+        pack.string("theme.accent." + accent.rawValue)
+    }
 
-        case .violet:
-            themeAccentViolet
+    func title(for schedule: NightSchedule) -> String {
+        pack.string("theme.night." + schedule.rawValue)
+    }
 
-        case .green:
-            themeAccentGreen
-        }
+    func title(for style: NightStyle) -> String {
+        pack.string("theme.nightStyle." + style.rawValue)
     }
 
     func title(for font: ThemeFont) -> String {
@@ -49,22 +48,7 @@ extension AppStrings {
     }
 
     func title(for wallpaper: ChatWallpaper) -> String {
-        switch wallpaper {
-        case .none:
-            chatAppearanceWallpaperNone
-
-        case .aurora:
-            chatAppearanceWallpaperAurora
-
-        case .sunset:
-            chatAppearanceWallpaperSunset
-
-        case .mint:
-            chatAppearanceWallpaperMint
-
-        case .night:
-            chatAppearanceWallpaperNight
-        }
+        pack.string("chat.appearance.wallpaper." + wallpaper.rawValue)
     }
 
     func title(for selection: LanguageSelection) -> String {

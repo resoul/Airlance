@@ -10,10 +10,11 @@ DEVICE_MODE ?= opt
 
 export BAZEL SIMULATOR_CONFIG SIMULATOR IOS_VERSION DEVICE SIMULATOR_MODE DEVICE_MODE
 
-.PHONY: help simulator device build-simulator build-device lint clean clean-all list-simulators list-devices check-signing
+.PHONY: help xcode simulator device build-simulator build-device lint clean clean-all list-simulators list-devices check-signing
 
 help:
 	@printf '%s\n' \
+	  'make xcode             Generate Airlance.xcodeproj and open it in Xcode' \
 	  'make simulator         Build and run in an iPhone / iPad simulator' \
 	  'make device            Build, sign, and run on an iPhone / iPad (iOS 17+)' \
 	  'make build-simulator   Build the simulator IPA' \
@@ -27,6 +28,9 @@ help:
 	  'Optional: SIMULATOR="iPhone 17" IOS_VERSION=27.0 DEVICE="device UDID"' \
 	  'Build mode: SIMULATOR_MODE=dbg (default) DEVICE_MODE=opt (default); dbg, opt or fastbuild' \
 	  'Override: BAZEL=bazel'
+
+xcode:
+	@"$$BAZEL" run //:xcodeproj && open Airlance.xcodeproj
 
 simulator:
 	@set -- "$$BAZEL" run //:Airlance "--config=$$SIMULATOR_CONFIG" "--compilation_mode=$$SIMULATOR_MODE"; \

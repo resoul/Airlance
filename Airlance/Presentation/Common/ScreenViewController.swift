@@ -1,5 +1,4 @@
 import AirlanceUI
 
 typealias ScreenViewController = AirlanceViewController<PresentationData>
-typealias ScreenNavigationController = AirlanceNavigationController<PresentationData>
 typealias ScreenTabBarController = TabBarController<PresentationData>

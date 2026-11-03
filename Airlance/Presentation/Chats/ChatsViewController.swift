@@ -38,6 +38,7 @@ final class ChatsViewController: ScreenViewController {
     let router: AppRouter
     let pager = ListPager(theme: ListTheme())
     let tabs = LiquidTabsView()
+    lazy var tabsHost = FloatingTabsHost(tabs: tabs)
     let header = StoriesHeaderView()
     let expansion = StoriesExpansion(rowHeight: StoriesHeaderView.rowHeight)
     var pages: [ChatsPage] = [.all]
@@ -76,8 +77,8 @@ final class ChatsViewController: ScreenViewController {
         pager.setPageCount(pages.count)
         view.addSubnode(pager)
         view.addSubview(header)
-        view.addSubview(tabs)
-        tabs.isHidden = true
+        view.addSubview(tabsHost)
+        tabsHost.isHidden = true
         bindPager()
         bindLists()
         bindStories()
@@ -119,7 +120,7 @@ final class ChatsViewController: ScreenViewController {
             height: safe.top + StoriesHeaderView.barHeight + StoriesHeaderView.rowHeight
         )
         pager.frame = view.bounds
-        expansion.baseInset = safe.top + StoriesHeaderView.barHeight + (hasFolders ? LiquidTabsView.height : 0)
+        expansion.baseInset = safe.top + StoriesHeaderView.barHeight + (hasFolders ? FloatingTabsHost.height : 0)
         updateInsets(top: expansion.topInset)
         updateExpansion()
     }
@@ -143,6 +144,7 @@ final class ChatsViewController: ScreenViewController {
         composeButton.tintColor = theme.colors.accent
         dateFormatter = ListDateFormatter(locale: strings.pack.locale)
         tabs.apply(theme)
+        tabsHost.apply(theme)
         pager.theme = ListTheme(
             background: theme.colors.background,
             rowBackground: theme.colors.background,

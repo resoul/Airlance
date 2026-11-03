@@ -7,9 +7,7 @@ final class ProfileNavigationBar: UIView {
     private let background = UIView()
     private let separator = UIView()
     private let titleLabel = UILabel()
-    private var accent = UIColor.systemBlue
     private var isFilled = false
-    private var isOnPhoto = false
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -36,21 +34,17 @@ final class ProfileNavigationBar: UIView {
         background.backgroundColor = theme.groupedBackground
         separator.backgroundColor = theme.colors.separator
         backButton.accessibilityLabel = back
-        accent = theme.colors.accent
-        updateTint()
+        backButton.tintColor = theme.colors.textPrimary
+        FloatingStyle.style(backButton, theme: theme)
     }
 
-    func setState(filled: Bool, onPhoto: Bool) {
+    func setState(filled: Bool) {
         if filled != isFilled {
             isFilled = filled
             UIView.animate(withDuration: 0.2) {
                 self.background.alpha = filled ? 1 : 0
                 self.titleLabel.alpha = filled ? 1 : 0
             }
-        }
-        if onPhoto != isOnPhoto {
-            isOnPhoto = onPhoto
-            updateTint()
         }
     }
 
@@ -59,7 +53,10 @@ final class ProfileNavigationBar: UIView {
         let top = safeAreaInsets.top
         background.frame = bounds
         separator.frame = CGRect(x: 0, y: bounds.height - 0.5, width: bounds.width, height: 0.5)
-        backButton.frame = CGRect(x: 4, y: top, width: 44, height: 44)
+        let side: CGFloat = 40
+        backButton.frame = CGRect(x: 16, y: top + 2, width: side, height: side)
+        backButton.layer.cornerRadius = side / 2
+        backButton.layer.shadowPath = UIBezierPath(ovalIn: backButton.bounds).cgPath
         titleLabel.frame = CGRect(x: 60, y: top, width: bounds.width - 120, height: 44)
     }
 
@@ -70,9 +67,5 @@ final class ProfileNavigationBar: UIView {
         }
 
         return isFilled ? view : nil
-    }
-
-    private func updateTint() {
-        backButton.tintColor = isOnPhoto ? .white : accent
     }
 }

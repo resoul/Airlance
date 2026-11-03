@@ -115,7 +115,7 @@ final class TabRowNode: ListItemNode {
         let width = max(1, handle.frame.minX - textX - 4)
         let range = ASSizeRange(min: .zero, max: CGSize(width: width, height: 40))
         let titleSize = title.layoutThatFits(range).size
-        let detailSize = detail.attributedText == nil ? .zero : detail.layoutThatFits(range).size
+        let detailSize = (detail.attributedText?.length ?? 0) == 0 ? .zero : detail.layoutThatFits(range).size
         let top = (size.height - titleSize.height - detailSize.height) / 2
         title.frame = CGRect(x: textX, y: top, width: width, height: titleSize.height)
         detail.frame = CGRect(x: textX, y: title.frame.maxY, width: width, height: detailSize.height)

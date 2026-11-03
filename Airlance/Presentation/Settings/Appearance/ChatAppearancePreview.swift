@@ -19,6 +19,12 @@ final class ChatAppearancePreview: UIView {
     private let wallpaper = ChatWallpaperView()
     private let incoming = PreviewBubble(outgoing: false)
     private let outgoing = PreviewBubble(outgoing: true)
+    var contentInsets = UIEdgeInsets.zero {
+        didSet {
+            setNeedsLayout()
+        }
+    }
+    var alignsToBottom = false
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -51,8 +57,11 @@ final class ChatAppearancePreview: UIView {
         let maxWidth = bounds.width * 0.75
         let inset: CGFloat = 16
         let incomingSize = incoming.size(maxWidth: maxWidth)
-        incoming.frame = CGRect(origin: CGPoint(x: inset, y: 24), size: incomingSize)
         let outgoingSize = outgoing.size(maxWidth: maxWidth)
+        let content = bounds.inset(by: contentInsets)
+        let total = incomingSize.height + 12 + outgoingSize.height
+        let top = alignsToBottom ? content.maxY - 24 - total : content.minY + 24
+        incoming.frame = CGRect(origin: CGPoint(x: inset, y: top), size: incomingSize)
         outgoing.frame = CGRect(
             origin: CGPoint(x: bounds.width - inset - outgoingSize.width, y: incoming.frame.maxY + 12),
             size: outgoingSize
@@ -118,5 +127,31 @@ private final class PreviewBubble: UIView {
         var transform = CGAffineTransform(translationX: MessageBubbleLayout.tailWidth, y: 0)
         gradientMask.path = path.copy(using: &transform)
         CATransaction.commit()
+    }
+}
+
+extension ChatPreviewModel {
+    static func make(
+        _ presentation: PresentationData,
+        radius: Int? = nil,
+        textSize: Int? = nil
+    ) -> ChatPreviewModel {
+        let theme = presentation.theme
+        let font = theme.chat.messageFont
+        let saved = CGFloat(max(1, theme.chatAppearance.textSize))
+        let size = CGFloat(textSize ?? Int(saved))
+
+        return ChatPreviewModel(
+            incoming: presentation.strings.chatAppearancePreviewIncoming,
+            outgoing: presentation.strings.chatAppearancePreviewOutgoing,
+            font: font.withSize(font.pointSize * size / saved),
+            radius: radius.map(CGFloat.init) ?? theme.chat.bubbleRadius,
+            outgoingColors: theme.chat.outgoingColors,
+            incomingColor: theme.colors.surface,
+            incomingText: theme.colors.textPrimary,
+            outgoingText: theme.colors.onAccent,
+            background: theme.colors.background,
+            wallpaper: theme.chat.wallpaper
+        )
     }
 }

@@ -3,24 +3,9 @@ import UIKit
 
 extension VideoNoteRecorderView {
     private func attachFeed() {
-        if let stylized = camera.stylized {
-            stylizedLayer.frame = container.bounds
-            stylizedLayer.contentsGravity = .resizeAspectFill
-            stylizedLayer.backgroundColor = UIColor.black.cgColor
-            container.layer.addSublayer(stylizedLayer)
-            stylized.onPreview = { [weak self] image in
-                let frame = SendableFrame(image: image)
-                DispatchQueue.main.async {
-                    MainActor.assumeIsolated {
-                        self?.stylizedLayer.contents = frame.image
-                    }
-                }
-            }
-        } else {
-            camera.mainPreview.videoGravity = .resizeAspectFill
-            camera.mainPreview.frame = container.bounds
-            container.layer.addSublayer(camera.mainPreview)
-        }
+        camera.mainPreview.videoGravity = .resizeAspectFill
+        camera.mainPreview.frame = container.bounds
+        container.layer.addSublayer(camera.mainPreview)
     }
 
     func buildPreview(_ presentation: PresentationData) {
@@ -35,14 +20,6 @@ extension VideoNoteRecorderView {
         container.layer.mask = shape
         addSubview(container)
         addSwitchButton(presentation)
-        if let preview = camera.frontPreview {
-            front.frame = CGRect(x: container.frame.maxX - 104, y: container.frame.minY + 12, width: 92, height: 92)
-            preview.videoGravity = .resizeAspectFill
-            preview.frame = front.bounds
-            front.layer.addSublayer(preview)
-            front.layer.mask = frontShape
-            addSubview(front)
-        }
         ring.fillColor = UIColor.clear.cgColor
         ring.strokeColor = presentation.theme.colors.accent.cgColor
         ring.lineWidth = 4
@@ -91,8 +68,4 @@ extension VideoNoteRecorderView {
 
         return view === switchButton ? view : nil
     }
-}
-
-private struct SendableFrame: @unchecked Sendable {
-    let image: CGImage
 }

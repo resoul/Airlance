@@ -2,7 +2,7 @@ import CoreGraphics
 
 struct ProfileHeaderGeometry {
     static let avatarSize: CGFloat = 100
-    static let buttonHeight: CGFloat = 58
+    static let buttonHeight: CGFloat = 62
 
     var width: CGFloat = 0
     var navHeight: CGFloat = 0
@@ -10,6 +10,7 @@ struct ProfileHeaderGeometry {
     var progress: CGFloat = 0
     var stretch: CGFloat = 0
     var infoHeight: CGFloat = 0
+    var audioHeight: CGFloat = 0
 
     var avatarTop: CGFloat {
         navHeight + 4
@@ -31,12 +32,24 @@ struct ProfileHeaderGeometry {
         extra * openness
     }
 
+    var dockLift: CGFloat {
+        (Self.buttonHeight / 2 + 14) * openness
+    }
+
+    var titleLift: CGFloat {
+        (Self.buttonHeight / 2 + 4) * openness
+    }
+
     var buttonsTop: CGFloat {
-        nameBottom + 14 + expansion
+        nameBottom + expansion + 14 - dockLift
+    }
+
+    var audioTop: CGFloat {
+        buttonsTop + Self.buttonHeight + 12
     }
 
     var infoTop: CGFloat {
-        buttonsTop + Self.buttonHeight + 16
+        audioHeight > 0 ? audioTop + audioHeight + 12 : buttonsTop + Self.buttonHeight + 16
     }
 
     var contentHeight: CGFloat {

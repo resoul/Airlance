@@ -52,7 +52,7 @@ extension ChatViewController {
     }
 
     var visibleHistoryFrame: CGRect {
-        let top = view.safeAreaInsets.top + pinnedHeight
+        let top = view.safeAreaInsets.top + topBarsHeight
 
         return CGRect(x: 0, y: top, width: view.bounds.width, height: max(0, bottomBarTop - top))
     }

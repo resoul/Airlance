@@ -61,7 +61,8 @@ final class ChatHistoryController {
     private var layouts = LayoutCache()
     let avatars = StickyAvatars()
     private(set) lazy var replySwipe = MessageReplySwipe(list: listView)
-    let voicePlayback = VoicePlayback()
+    var audioObservation: ObservationToken?
+    var playingVoiceID: String?
 
     init(store: ChatHistoryStore, positions: ChatScrollPositions? = nil) {
         self.store = store

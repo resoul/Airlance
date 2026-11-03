@@ -14,24 +14,15 @@ struct VideoNoteBody {
 
     static func size(for style: MessageVideoNote.Style) -> CGSize {
         switch style {
-        case .dualCamera:
-            CGSize(width: 220, height: 292)
         case .reaction:
             CGSize(width: 180, height: 180)
-        case .blob, .anonymous, .moment:
+        case .blob:
             CGSize(width: 220, height: 220)
         }
     }
 
     static func cornerRadius(for style: MessageVideoNote.Style, size: CGSize) -> CGFloat {
-        switch style {
-        case .dualCamera:
-            22
-        case .moment:
-            28
-        case .blob, .anonymous, .reaction:
-            min(size.width, size.height) / 2
-        }
+        min(size.width, size.height) / 2
     }
 
     func make(style: HistoryStyle) -> BubbleBody {

@@ -36,7 +36,7 @@ extension ChatInputBar {
 
     func setRecording(_ isRecording: Bool) {
         UIView.animate(withDuration: 0.2) {
-            for view in [self.attachButton, self.fieldBox, self.actionIcon] as [UIView] {
+            for view in [self.attachButton, self.fieldBox, self.actionCircle, self.actionIcon] as [UIView] {
                 view.alpha = isRecording ? 0 : 1
             }
         }

@@ -18,7 +18,7 @@ extension ChatViewController {
 
         switch gesture.state {
         case .began:
-            beginRecording(at: gesture.location(in: view))
+            beginRecording(gesture)
         case .changed:
             let point = gesture.location(in: view)
             recorder?.drag(CGPoint(x: point.x - recorderStart.x, y: point.y - recorderStart.y))
@@ -31,8 +31,8 @@ extension ChatViewController {
         }
     }
 
-    private func beginRecording(at point: CGPoint) {
-        let strings = presentation.strings
+    private func beginRecording(_ gesture: UILongPressGestureRecognizer) {
+        let point = gesture.location(in: view)
         guard !inputBar.isVideoMessage else {
             beginVideoNote(at: point)
 
@@ -52,10 +52,26 @@ extension ChatViewController {
             return
         }
 
-        guard let recording = VoiceRecording(store: dependencies.media) else {
-            return
-        }
+        let store = dependencies.media
+        Task { [weak self] in
+            let recording = await VoiceRecording.start(store: store)
+            guard let self, let recording else {
+                return
+            }
 
+            guard gesture.state == .began || gesture.state == .changed else {
+                recording.cancel()
+                self.showRecordToast(self.presentation.strings.chatHoldToRecord, symbol: "mic.fill")
+
+                return
+            }
+
+            self.showRecorder(recording, at: point)
+        }
+    }
+
+    private func showRecorder(_ recording: VoiceRecording, at point: CGPoint) {
+        let strings = presentation.strings
         view.endEditing(true)
         let recorder = VoiceRecorderView(
             recording: recording,

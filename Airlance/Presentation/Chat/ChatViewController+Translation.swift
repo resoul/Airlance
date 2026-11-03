@@ -17,8 +17,9 @@ extension ChatViewController {
             return [original]
         }
 
-        guard case .text(let text) = message.content, MessageTranslator.isSupported,
-              let source = MessageTranslator.language(of: text), source != targetLanguage else {
+        guard dependencies.translation.showsButton, case .text(let text) = message.content,
+              MessageTranslator.isSupported, let source = MessageTranslator.language(of: text),
+              source != targetLanguage, !dependencies.translation.skips(source) else {
             return []
         }
 

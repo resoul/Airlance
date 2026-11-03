@@ -9,7 +9,7 @@ final class ProfileMediaGrid: UIView {
 
     let pinch = UIPinchGestureRecognizer()
 
-    private let gap: CGFloat = 1.5
+    private let gap: CGFloat = 2.5
     private var cells: [UIImageView] = []
     private var columns: CGFloat = 3
     private var pinchStart: CGFloat = 3
@@ -27,6 +27,8 @@ final class ProfileMediaGrid: UIView {
             let cell = UIImageView(image: StoryArt.render(seed: index * 7 + 3, size: size))
             cell.contentMode = .scaleAspectFill
             cell.clipsToBounds = true
+            cell.layer.cornerRadius = 7
+            cell.layer.cornerCurve = .continuous
             cell.isAccessibilityElement = true
             cell.accessibilityTraits = .image
             addSubview(cell)

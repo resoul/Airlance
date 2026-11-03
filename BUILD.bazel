@@ -3,6 +3,7 @@ load("@rules_apple//apple:resources.bzl", "apple_metal_library")
 load("@rules_swift//swift:swift_library.bzl", "swift_library")
 load("@rules_cc//cc:objc_library.bzl", "objc_library")
 load("@rules_swift//swift:swift_interop_hint.bzl", "swift_interop_hint")
+load("@rules_xcodeproj//xcodeproj:defs.bzl", "top_level_target", "xcodeproj")
 
 config_setting(
     name = "ios_device",
@@ -51,6 +52,7 @@ swift_library(
         "//submodules/ListUI",
         "//submodules/MediaLoader",
         "//submodules/MediaStore",
+        "//submodules/MusicPlayer",
         "//submodules/Localization",
         "//submodules/Observers",
         "//submodules/ParticlesUI",
@@ -89,4 +91,16 @@ ios_application(
     }),
     deps = [":AirlanceSources"],
     visibility = ["//visibility:public"],
+)
+
+xcodeproj(
+    name = "xcodeproj",
+    project_name = "Airlance",
+    tags = ["manual"],
+    top_level_targets = [
+        top_level_target(
+            ":Airlance",
+            target_environments = ["device", "simulator"],
+        ),
+    ],
 )

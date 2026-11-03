@@ -13,6 +13,7 @@ struct ChatDependencies {
     let permissionFlow: PermissionFlow
     let videoNotes: VideoNoteSettings
     let media: MediaStore
+    let translation: TranslationSettings
 }
 
 final class ChatViewController: ScreenViewController {
@@ -44,6 +45,13 @@ final class ChatViewController: ScreenViewController {
     var editTarget: HistoryMessage?
     var draftBeforeEdit: String?
     let pinnedBar = PinnedMessageBar()
+    let translationBar = ChatTranslationBar()
+    let topHeader = ChatHeaderParts()
+    var chatLanguage: String?
+    var isChatTranslated = false
+    var isTranslationDismissed = false
+    var messageLanguages: [String: String?] = [:]
+    var chatTranslationTask: Task<Void, Never>?
     var isJumpingToPin = false
     weak var recorder: VoiceRecorderView?
     weak var videoNoteRecorder: VideoNoteRecorderView?
@@ -88,6 +96,8 @@ final class ChatViewController: ScreenViewController {
         placeChannelBar()
         placeScrollDown()
         placePinnedBar()
+        placeTranslationBar()
+        placeHeader()
         placeMetrics()
         NotificationCenter.default.addObserver(
             self,
@@ -113,6 +123,8 @@ final class ChatViewController: ScreenViewController {
         scrollDown.apply(presentation)
         history.apply(presentation)
         applyPinned(presentation)
+        applyTranslationBar(presentation)
+        applyHeader(presentation)
         render(presentation)
     }
 
@@ -124,16 +136,16 @@ final class ChatViewController: ScreenViewController {
         let list = history.listView
         list.frame = view.bounds
         list.contentInsets = UIEdgeInsets(
-            top: view.safeAreaInsets.top + pinnedHeight + 4,
+            top: view.safeAreaInsets.top + topBarsHeight + 4,
             left: 0,
             bottom: max(0, view.bounds.height - bottomBarTop) + 4,
             right: 0
         )
         history.setWidth(view.bounds.width)
         history.layoutChanged()
-        layoutPinnedBar()
+        layoutHeader()
         layoutMentions()
-        let metricsOrigin = CGPoint(x: 8, y: view.safeAreaInsets.top + pinnedHeight + 8)
+        let metricsOrigin = CGPoint(x: 8, y: view.safeAreaInsets.top + topBarsHeight + 8)
         metricsView?.place(at: metricsOrigin, maxWidth: view.bounds.width - 16)
         let size = ChatScrollDownButton.size
         scrollDown.frame = CGRect(
@@ -154,7 +166,6 @@ final class ChatViewController: ScreenViewController {
         super.viewWillDisappear(animated)
         viewing = nil
         history.savePosition()
-        history.voicePlayback.stop()
         history.metrics?.stop()
         dependencies.chatsStore.setDraft(editTarget == nil ? inputBar.text : draftBeforeEdit ?? "", for: id)
     }

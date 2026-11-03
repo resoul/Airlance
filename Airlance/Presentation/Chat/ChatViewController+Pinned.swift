@@ -18,6 +18,7 @@ extension ChatViewController {
         history.onUpdate = { [weak self] in
             self?.updatePinned()
             self?.updateScheduled()
+            self?.updateChatTranslation()
         }
     }
 
@@ -29,15 +30,6 @@ extension ChatViewController {
                 total > 1 ? strings.chatPinnedCounter(current) : strings.chatPinned
             },
             unpinLabel: strings.chatUnpin
-        )
-    }
-
-    func layoutPinnedBar() {
-        pinnedBar.frame = CGRect(
-            x: 0,
-            y: view.safeAreaInsets.top,
-            width: view.bounds.width,
-            height: PinnedMessageBar.height
         )
     }
 

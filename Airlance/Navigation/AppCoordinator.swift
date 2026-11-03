@@ -20,6 +20,7 @@ final class AppCoordinator: NSObject, RouteNavigator {
     let accounts: any AccountSwitching
     let tabSettings: TabSettings
     let tabBarController: ScreenTabBarController
+    let audioAccessory = TabBarAudioAccessory()
     var tabs: [AppRoute] = []
     var tabNavigations: [ScreenNavigationController] = []
     var modalNavigations: [ScreenNavigationController] = []
@@ -76,6 +77,7 @@ final class AppCoordinator: NSObject, RouteNavigator {
             )
         }
         setUpDetail()
+        audioAccessory.attach(to: tabBarController, presentation: presentationContext)
         window.rootViewController = tabBarController
         router.attach(self)
 
@@ -388,7 +390,7 @@ extension AppCoordinator {
             factory.makeNewContact()
         case .invite:
             factory.makeInvite()
-        case .permissions, .appearance, .chatAppearance, .storage, .videoNotes, .chatFolders, .newChatFolder,
+        case .permissions, .appearance, .storage, .chatFolders, .newChatFolder,
              .chatFolder, .tabSettings:
             settingsScreen(for: route)
         case .profile(let id):
@@ -399,6 +401,8 @@ extension AppCoordinator {
             factory.makeChatArchive()
         case .browser(let url):
             factory.makeBrowser(url: url)
+        case .settingsPage(let page):
+            factory.makeSettingsPage(page)
         }
         routes[ObjectIdentifier(controller)] = route
 
@@ -409,10 +413,6 @@ extension AppCoordinator {
         switch route {
         case .permissions:
             factory.makePermissions()
-        case .videoNotes:
-            factory.makeVideoNotes()
-        case .chatAppearance:
-            factory.makeChatAppearance()
         case .storage:
             factory.makeStorage()
         case .chatFolders:

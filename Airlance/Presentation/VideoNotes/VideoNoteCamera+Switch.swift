@@ -6,7 +6,7 @@ extension VideoNoteCamera {
             return
         }
 
-        if stylized == nil, mainOutput.isRecording {
+        if mainOutput.isRecording {
             isSwitching = true
             mainOutput.stopRecording()
         } else {

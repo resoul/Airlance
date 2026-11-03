@@ -3,14 +3,11 @@ import UIKit
 
 final class ChatWallpaperView: UIView {
     private static let tileSize = CGSize(width: 180, height: 180)
-    private static let symbols = [
-        "bubble.left.fill", "heart.fill", "star.fill", "paperplane.fill", "camera.fill",
-        "music.note", "sparkles", "moon.fill", "leaf.fill", "face.smiling",
-    ]
     @MainActor private static var tiles: [ThemeWallpaper: UIImage] = [:]
 
     private let gradient = CAGradientLayer()
     private let pattern = UIView()
+    private let photo = UIImageView()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -18,6 +15,9 @@ final class ChatWallpaperView: UIView {
         gradient.startPoint = CGPoint(x: 0, y: 0)
         gradient.endPoint = CGPoint(x: 1, y: 1)
         layer.addSublayer(gradient)
+        photo.contentMode = .scaleAspectFill
+        photo.clipsToBounds = true
+        addSubview(photo)
         addSubview(pattern)
     }
 
@@ -33,7 +33,12 @@ final class ChatWallpaperView: UIView {
         }
 
         gradient.colors = wallpaper.colors.map(\.cgColor)
-        pattern.backgroundColor = UIColor(patternImage: Self.tile(for: wallpaper))
+        photo.isHidden = wallpaper.kind != .photo
+        photo.image = wallpaper.kind == .photo ? ChatWallpaperFiles.image : nil
+        pattern.isHidden = wallpaper.kind == .photo || wallpaper.kind == .color
+        if !pattern.isHidden {
+            pattern.backgroundColor = UIColor(patternImage: Self.tile(for: wallpaper))
+        }
     }
 
     override func layoutSubviews() {
@@ -42,6 +47,7 @@ final class ChatWallpaperView: UIView {
         CATransaction.setDisableActions(true)
         gradient.frame = bounds
         CATransaction.commit()
+        photo.frame = bounds
         pattern.frame = bounds
     }
 
@@ -52,6 +58,7 @@ final class ChatWallpaperView: UIView {
 
         let tile = UIGraphicsImageRenderer(size: tileSize).image { _ in
             var random = SeededRandom(seed: ChatHistoryFixtures.seed(wallpaper.kind.rawValue))
+            let symbols = wallpaper.kind.symbols
             let columns = 3
             let cell = tileSize.width / CGFloat(columns)
             for index in 0..<columns * columns {

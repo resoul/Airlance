@@ -58,3 +58,25 @@ extension ChatHistoryController {
         node.revealText()
     }
 }
+
+extension ChatHistoryController {
+    func setTranslations(_ results: [String: MessageTranslation]) {
+        guard !results.isEmpty else {
+            return
+        }
+
+        translations.merge(results) { _, new in
+            new
+        }
+        reload(animated: true)
+    }
+
+    func clearTranslations() {
+        guard !translations.isEmpty else {
+            return
+        }
+
+        translations = [:]
+        reload(animated: true)
+    }
+}

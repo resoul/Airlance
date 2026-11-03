@@ -31,6 +31,7 @@ final class ProfileViewController: ScreenViewController {
     }
 
     var geometry = ProfileHeaderGeometry()
+    var audioObservation: ObservationToken?
     var openSpring = Spring(0, stiffness: 15, dampingRatio: 0.78)
     var isExpanded = false
     var isMuted = false
@@ -44,6 +45,7 @@ final class ProfileViewController: ScreenViewController {
     }
 
     private let tabs = LiquidTabsView()
+    private lazy var tabsHost = FloatingTabsHost(tabs: tabs)
     private var savedPopGesture: Bool?
     private var membersObservation: ObservationToken?
     private static var didShowHint = false
@@ -65,8 +67,10 @@ final class ProfileViewController: ScreenViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        bindAudio()
         view.addSubview(container.view)
-        pager.setTabsView(tabs, height: LiquidTabsView.height)
+        pager.setTabsView(tabsHost, height: FloatingTabsHost.height)
+        pager.overlaysTabs = true
         let members: [any ScrollablePane] = membersPane.map { pane in
             [pane]
         } ?? []
@@ -138,10 +142,12 @@ final class ProfileViewController: ScreenViewController {
         container.frame = view.bounds
         navigationBar.frame = CGRect(x: 0, y: 0, width: view.bounds.width, height: geometry.navHeight)
         mediaPane.bottomInset = safe.bottom
+        mediaPane.topInset = FloatingTabsHost.height
         for pane in listPanes + (membersPane.map { pane in
             [pane]
         } ?? []) {
             pane.list.contentInsets.bottom = safe.bottom
+            pane.list.contentInsets.top = FloatingTabsHost.height
         }
         updateHeaderHeight()
         layoutHeader()
@@ -162,9 +168,10 @@ final class ProfileViewController: ScreenViewController {
         applyActions(presentation)
         header.info.apply(infoRows(strings), theme: theme)
         navigationBar.apply(title: peer.name, back: strings.profileBack, theme: theme)
+        applyAudioPanel(theme)
         tabs.fillsWidth = true
-        tabs.background = theme.groupedBackground
         tabs.apply(theme)
+        tabsHost.apply(theme)
         let members = membersPane == nil ? [] : [strings.profileMembers]
         let titles = members + [strings.profileMedia, strings.profileFiles, strings.profileLinks, strings.profileVoice]
         tabs.setTabs(titles.map { title in
@@ -207,6 +214,9 @@ final class ProfileViewController: ScreenViewController {
         }
         header.onAction = { [weak self] action, button in
             self?.perform(action, from: button)
+        }
+        header.info.onCopy = { [weak self] text in
+            self?.copyInfo(text)
         }
         navigationBar.backButton.addAction(
             UIAction { [router] _ in

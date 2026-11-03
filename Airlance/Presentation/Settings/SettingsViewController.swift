@@ -158,7 +158,7 @@ final class SettingsViewController: ScreenViewController {
         case .passcode:
             return strings.settingsOff
         case .appearance:
-            return strings.title(for: dependencies.themeStore.settings.mode)
+            return strings.title(for: dependencies.themeStore.settings.night.schedule)
         case .language:
             return strings.title(for: dependencies.localizationStore.settings.selection)
         default:

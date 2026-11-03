@@ -15,7 +15,6 @@ enum AppRoute: Route {
     case invite
     case permissions
     case appearance
-    case chatAppearance
     case storage
     case profile(String)
     case stories(String)
@@ -25,10 +24,10 @@ enum AppRoute: Route {
     case chatArchive
     case browser(URL)
     case comments(String)
-    case videoNotes
     case onAir
     case tabSettings
     case myOnAir
+    case settingsPage(SettingsPage)
 
     var segment: RouteSegment {
         switch self {
@@ -54,8 +53,6 @@ enum AppRoute: Route {
             RouteSegment("permissions")
         case .appearance:
             RouteSegment("appearance")
-        case .chatAppearance:
-            RouteSegment("chatAppearance")
         case .storage:
             RouteSegment("storage")
         case .profile(let id):
@@ -74,14 +71,14 @@ enum AppRoute: Route {
             RouteSegment("browser", argument: Self.encode(url))
         case .comments(let id):
             RouteSegment("comments", argument: id)
-        case .videoNotes:
-            RouteSegment("videoNotes")
         case .onAir:
             RouteSegment("onAir")
         case .tabSettings:
             RouteSegment("tabSettings")
         case .myOnAir:
             RouteSegment("myOnAir")
+        case .settingsPage(let page):
+            RouteSegment("settingsPage", argument: page.rawValue)
         }
     }
 
@@ -101,10 +98,12 @@ enum AppRoute: Route {
             [.chats] + (CommentThread(id: id).map { thread in
                 [.chat(thread.channelID)]
             } ?? [])
-        case .permissions, .appearance, .chatAppearance, .storage, .chatFolders, .videoNotes, .tabSettings:
+        case .permissions, .appearance, .storage, .chatFolders, .tabSettings:
             [.settings]
         case .newChatFolder, .chatFolder:
             [.settings, .chatFolders]
+        case .settingsPage(let page):
+            [.settings] + page.parents
         }
     }
 
@@ -121,8 +120,8 @@ enum AppRoute: Route {
         switch self {
         case .contacts, .calls, .chats, .settings, .onAir:
             .tab
-        case .chat, .permissions, .appearance, .chatAppearance, .storage, .profile, .chatFolders, .chatFolder,
-             .chatArchive, .comments, .videoNotes, .tabSettings, .myOnAir:
+        case .chat, .permissions, .appearance, .storage, .profile, .chatFolders, .chatFolder,
+             .chatArchive, .comments, .tabSettings, .myOnAir, .settingsPage:
             .stack
         case .media, .stories:
             .fullScreen
@@ -136,6 +135,8 @@ enum AppRoute: Route {
             self = .stories(argument)
         } else if segment.name == "chatFolder", let argument = segment.argument {
             self = .chatFolder(argument)
+        } else if segment.name == "settingsPage", let page = segment.argument.flatMap(SettingsPage.init) {
+            self = .settingsPage(page)
         } else if segment.name == "browser", let argument = segment.argument {
             guard let url = Self.decode(argument) else {
                 return nil
@@ -169,8 +170,6 @@ enum AppRoute: Route {
             self = .permissions
         case "appearance":
             self = .appearance
-        case "chatAppearance":
-            self = .chatAppearance
         case "storage":
             self = .storage
         case "chatFolders":
@@ -179,8 +178,6 @@ enum AppRoute: Route {
             self = .newChatFolder
         case "chatArchive":
             self = .chatArchive
-        case "videoNotes":
-            self = .videoNotes
         case "onAir":
             self = .onAir
         case "tabSettings":

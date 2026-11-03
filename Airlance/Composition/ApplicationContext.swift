@@ -19,6 +19,8 @@ final class ApplicationContext {
     let permissionStore: PermissionStore
     let contactsSync: ContactsSync
     let accounts: AccountManager
+    let translation: TranslationSettings
+    let powerSaving: PowerSaving
 
     init() throws {
         MediaRenderer.generatedArt = { seed, size in
@@ -40,6 +42,8 @@ final class ApplicationContext {
         permissionStore = PermissionStore(providers: AppPermissions.makeProviders())
         contactsSync = ContactsSync(storage: sharedStorage, permissionStore: permissionStore)
         accounts = AccountManager(storage: sharedStorage, keychain: keychain)
+        translation = TranslationSettings(storage: sharedStorage)
+        powerSaving = PowerSaving(storage: sharedStorage)
     }
 
     private static func sharedDirectory() throws -> URL {

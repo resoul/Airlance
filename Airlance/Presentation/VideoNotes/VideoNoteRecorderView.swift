@@ -22,9 +22,6 @@ final class VideoNoteRecorderView: UIView {
     let container = UIView()
     let shape = CAShapeLayer()
     let ring = CAShapeLayer()
-    let front = UIView()
-    let frontShape = CAShapeLayer()
-    let stylizedLayer = CALayer()
     let switchButton = UIButton(type: .system)
     private let timeLabel = UILabel()
     private let hintLabel = UILabel()
@@ -75,11 +72,9 @@ final class VideoNoteRecorderView: UIView {
 
     var previewSize: CGSize {
         switch options.style {
-        case .dualCamera:
-            CGSize(width: 260, height: 346)
         case .reaction:
             CGSize(width: 220, height: 220)
-        case .blob, .anonymous, .moment:
+        case .blob:
             CGSize(width: 260, height: 260)
         }
     }
@@ -175,7 +170,6 @@ final class VideoNoteRecorderView: UIView {
         } else {
             shape.path = UIBezierPath(roundedRect: bounds, cornerRadius: radius).cgPath
         }
-        frontShape.path = BlobShape.path(in: front.bounds, phase: phase + 2, level: level)
         let ringRect = container.frame.insetBy(dx: -8, dy: -8)
         ring.path = UIBezierPath(roundedRect: ringRect, cornerRadius: radius + 8).cgPath
         CATransaction.commit()
@@ -216,7 +210,6 @@ final class VideoNoteRecorderView: UIView {
         UIView.animate(withDuration: 0.25) {
             self.backdrop.effect = nil
             self.container.alpha = 0
-            self.front.alpha = 0
             self.timeLabel.alpha = 0
             self.hintLabel.alpha = 0
             self.cancelButton.alpha = 0

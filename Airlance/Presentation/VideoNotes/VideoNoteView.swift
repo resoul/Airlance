@@ -2,6 +2,7 @@ import AVFoundation
 import ChatHistory
 import LiquidUI
 import MediaLoader
+import MusicPlayer
 import UIKit
 
 @MainActor
@@ -14,13 +15,7 @@ final class VideoNoteView: UIView {
     private let playerLayer = AVPlayerLayer()
     private let shape = CAShapeLayer()
     private let ring = CAShapeLayer()
-    private let front = UIView()
-    private let frontLayer = AVPlayerLayer()
-    private let frontShape = CAShapeLayer()
-    private let badge = UIImageView()
     private var player: AVPlayer?
-    private var frontPlayer: AVPlayer?
-    private var looper: AVPlayerLooper?
     private var endObserver: NSObjectProtocol?
     private var phase: CGFloat = 0
     private(set) var isPlaying = false
@@ -44,21 +39,6 @@ final class VideoNoteView: UIView {
         ring.lineCap = .round
         ring.strokeEnd = 0
         layer.addSublayer(ring)
-        if note.frontSource != nil {
-            frontLayer.videoGravity = .resizeAspectFill
-            front.layer.addSublayer(frontLayer)
-            front.layer.mask = frontShape
-            addSubview(front)
-        }
-        if note.style == .anonymous {
-            badge.image = UIImage(systemName: "theatermasks.fill")
-            badge.tintColor = .white
-            badge.backgroundColor = UIColor.black.withAlphaComponent(0.4)
-            badge.contentMode = .center
-            badge.layer.cornerRadius = 13
-            badge.clipsToBounds = true
-            addSubview(badge)
-        }
         loadPoster()
     }
 
@@ -72,10 +52,6 @@ final class VideoNoteView: UIView {
         container.frame = bounds
         poster.frame = bounds
         playerLayer.frame = bounds
-        let side: CGFloat = 78
-        front.frame = CGRect(x: bounds.width - side - 8, y: 8, width: side, height: side)
-        frontLayer.frame = front.bounds
-        badge.frame = CGRect(x: 10, y: bounds.height - 36, width: 26, height: 26)
         updateShape()
     }
 
@@ -89,15 +65,10 @@ final class VideoNoteView: UIView {
         }
 
         driver.start()
-        if note.style == .moment {
-            startLoop()
-        }
     }
 
     func toggle() {
-        if note.style == .moment {
-            toggleMomentSound()
-        } else if isPlaying {
+        if isPlaying {
             pause()
         } else {
             play()
@@ -122,12 +93,6 @@ final class VideoNoteView: UIView {
             return nil
         }
 
-        if let frontURL = note.frontSource?.url {
-            let frontPlayer = AVPlayer(url: frontURL)
-            frontPlayer.isMuted = true
-            frontLayer.player = frontPlayer
-            self.frontPlayer = frontPlayer
-        }
         let player = AVPlayer(url: url)
         playerLayer.player = player
         endObserver = NotificationCenter.default.addObserver(
@@ -151,17 +116,18 @@ final class VideoNoteView: UIView {
 
         Self.playing?.pause()
         Self.playing = self
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
-        try? AVAudioSession.sharedInstance().setActive(true)
+        AudioPlayer.shared.pause()
+        AudioSessionQueue.run {
+            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+            try? AVAudioSession.sharedInstance().setActive(true)
+        }
         player.isMuted = false
         player.play()
-        frontPlayer?.play()
         isPlaying = true
     }
 
     private func pause() {
         player?.pause()
-        frontPlayer?.pause()
         isPlaying = false
     }
 
@@ -169,57 +135,25 @@ final class VideoNoteView: UIView {
         isPlaying = false
         ring.strokeEnd = 0
         player?.seek(to: .zero)
-        frontPlayer?.seek(to: .zero)
     }
 
     private func stop() {
         pause()
-        looper = nil
         if let endObserver {
             NotificationCenter.default.removeObserver(endObserver)
         }
         endObserver = nil
         player = nil
-        frontPlayer = nil
         playerLayer.player = nil
-        frontLayer.player = nil
-    }
-
-    private func startLoop() {
-        guard looper == nil, let url = note.source.url else {
-            return
-        }
-
-        let queue = AVQueuePlayer()
-        queue.isMuted = true
-        looper = AVPlayerLooper(player: queue, templateItem: AVPlayerItem(url: url))
-        playerLayer.player = queue
-        player = queue
-        queue.play()
-    }
-
-    private func toggleMomentSound() {
-        guard let player else {
-            return
-        }
-
-        if player.isMuted {
-            Self.playing?.pause()
-            Self.playing = self
-            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
-            player.seek(to: .zero)
-        }
-        player.isMuted.toggle()
-        isPlaying = !player.isMuted
     }
 
     private func step(_ deltaTime: CFTimeInterval) {
         phase += CGFloat(deltaTime) * (isPlaying ? 2.4 : 0.8)
-        if note.style != .moment, let player, note.duration > 0 {
+        if let player, note.duration > 0 {
             let progress = CMTimeGetSeconds(player.currentTime()) / note.duration
             ring.strokeEnd = isPlaying ? CGFloat(min(1, max(0, progress))) : ring.strokeEnd
         }
-        if note.style == .blob || note.frontSource != nil {
+        if note.style == .blob {
             updateShape()
         }
     }
@@ -239,14 +173,11 @@ final class VideoNoteView: UIView {
         switch note.style {
         case .blob:
             shape.path = BlobShape.path(in: bounds, phase: phase, level: level)
-        case .dualCamera, .moment, .anonymous, .reaction:
+        case .reaction:
             shape.path = UIBezierPath(roundedRect: bounds, cornerRadius: radius).cgPath
         }
-        if note.frontSource != nil {
-            frontShape.path = BlobShape.path(in: front.bounds, phase: phase + 2, level: level)
-        }
         ring.path = UIBezierPath(roundedRect: bounds.insetBy(dx: 3, dy: 3), cornerRadius: max(0, radius - 3)).cgPath
-        ring.isHidden = note.style == .moment || note.style == .blob
+        ring.isHidden = note.style == .blob
         CATransaction.commit()
     }
 }

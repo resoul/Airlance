@@ -11,10 +11,9 @@ enum SettingsEntry: String, CaseIterable {
     case permissions
     case passcode
     case appearance
-    case chatAppearance
     case tabs
     case storage
-    case videoNotes
+    case powerSaving
     case language
     case about
 
@@ -22,8 +21,8 @@ enum SettingsEntry: String, CaseIterable {
         switch self {
         case .profile, .saved, .calls, .devices, .folders:
             0
-        case .notifications, .privacy, .permissions, .passcode, .appearance, .chatAppearance, .tabs, .storage,
-             .videoNotes, .language:
+        case .notifications, .privacy, .permissions, .passcode, .appearance, .tabs, .storage,
+             .powerSaving, .language:
             1
         case .about:
             2
@@ -52,14 +51,12 @@ enum SettingsEntry: String, CaseIterable {
             "lock.shield.fill"
         case .appearance:
             "paintbrush.fill"
-        case .chatAppearance:
-            "bubble.left.and.bubble.right.fill"
         case .tabs:
             "square.grid.3x1.below.line.grid.1x2.fill"
         case .storage:
             "internaldrive.fill"
-        case .videoNotes:
-            "video.bubble.fill"
+        case .powerSaving:
+            "battery.75percent"
         case .language:
             "globe"
         case .about:
@@ -75,9 +72,9 @@ enum SettingsEntry: String, CaseIterable {
             .systemBlue
         case .calls, .passcode, .storage:
             .systemGreen
-        case .devices, .videoNotes:
+        case .devices, .powerSaving:
             .systemOrange
-        case .folders, .chatAppearance:
+        case .folders:
             .systemTeal
         case .privacy:
             .systemGray
@@ -92,14 +89,14 @@ enum SettingsEntry: String, CaseIterable {
         switch self {
         case .permissions:
             .permissions
-        case .appearance, .language:
+        case .appearance:
             .appearance
+        case .language:
+            .settingsPage(.language)
+        case .powerSaving:
+            .settingsPage(.powerSaving)
         case .folders:
             .chatFolders
-        case .videoNotes:
-            .videoNotes
-        case .chatAppearance:
-            .chatAppearance
         case .storage:
             .storage
         case .tabs:
@@ -131,14 +128,12 @@ enum SettingsEntry: String, CaseIterable {
             strings.settingsPasscode
         case .appearance:
             strings.settingsAppearance
-        case .chatAppearance:
-            strings.settingsChatAppearance
         case .tabs:
             strings.tabsTitle
         case .storage:
             strings.settingsStorage
-        case .videoNotes:
-            strings.videoNotesTitle
+        case .powerSaving:
+            strings.powerTitle
         case .language:
             strings.settingsLanguage
         case .about:

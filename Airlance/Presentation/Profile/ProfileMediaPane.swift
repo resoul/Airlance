@@ -13,6 +13,15 @@ final class ProfileMediaPane: ScrollablePane {
     private var contentHeight: CGFloat = 0
     private var size = CGSize.zero
 
+    var topInset: CGFloat = 0 {
+        didSet {
+            if topInset != oldValue {
+                placeGrid()
+                onGeometryChange?()
+            }
+        }
+    }
+
     var bottomInset: CGFloat = 0 {
         didSet {
             if bottomInset != oldValue {
@@ -26,7 +35,7 @@ final class ProfileMediaPane: ScrollablePane {
     }
 
     var maximumVerticalOffset: CGFloat {
-        max(0, contentHeight + bottomInset - size.height)
+        max(0, topInset + contentHeight + bottomInset - size.height)
     }
 
     var blocksPaging: Bool {
@@ -34,7 +43,7 @@ final class ProfileMediaPane: ScrollablePane {
     }
 
     var month: Int {
-        grid.month(at: max(0, verticalOffset))
+        grid.month(at: max(0, verticalOffset - topInset))
     }
 
     init() {
@@ -74,7 +83,7 @@ final class ProfileMediaPane: ScrollablePane {
     }
 
     private func placeGrid() {
-        grid.frame = CGRect(x: 0, y: -verticalOffset, width: size.width, height: contentHeight)
+        grid.frame = CGRect(x: 0, y: topInset - verticalOffset, width: size.width, height: contentHeight)
     }
 }
 

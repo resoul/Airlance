@@ -8,6 +8,37 @@ enum ProfileAction: CaseIterable {
     case more
 }
 
+final class ProfileActionDock: UIView {
+    static let inset: CGFloat = 5
+
+    func apply(_ theme: AppTheme) {
+        FloatingStyle.style(self, theme: theme)
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        layer.cornerRadius = bounds.height / 2
+        layer.shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: bounds.height / 2).cgPath
+        let buttons = subviews.compactMap { view in
+            view as? ProfileActionButton
+        }
+        guard !buttons.isEmpty else {
+            return
+        }
+
+        let inset = Self.inset
+        let width = (bounds.width - inset * 2) / CGFloat(buttons.count)
+        for (index, button) in buttons.enumerated() {
+            button.frame = CGRect(
+                x: inset + CGFloat(index) * width,
+                y: inset,
+                width: width,
+                height: bounds.height - inset * 2
+            )
+        }
+    }
+}
+
 final class ProfileActionButton: UIControl {
     let action: ProfileAction
 
@@ -23,7 +54,6 @@ final class ProfileActionButton: UIControl {
     init(action: ProfileAction) {
         self.action = action
         super.init(frame: .zero)
-        layer.cornerRadius = 12
         layer.cornerCurve = .continuous
         icon.contentMode = .center
         label.textAlignment = .center
@@ -41,20 +71,24 @@ final class ProfileActionButton: UIControl {
     }
 
     func apply(symbol: String, title: String, theme: AppTheme) {
-        backgroundColor = theme.groupedCell
+        let isPrimary = action == .chat
+        let color = isPrimary ? UIColor.white : theme.colors.accent
+        backgroundColor = isPrimary ? theme.colors.accent : .clear
         let configuration = UIImage.SymbolConfiguration(pointSize: 18, weight: .medium)
         icon.image = UIImage(systemName: symbol, withConfiguration: configuration)
-        icon.tintColor = theme.colors.accent
+        icon.tintColor = color
         label.text = title
         label.font = theme.fonts.caption
-        label.textColor = theme.colors.accent
+        label.textColor = color
         accessibilityLabel = title
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        icon.frame = CGRect(x: 0, y: 8, width: bounds.width, height: 24)
-        label.frame = CGRect(x: 4, y: 34, width: bounds.width - 8, height: 16)
+        layer.cornerRadius = bounds.height / 2
+        let top = (bounds.height - 40) / 2
+        icon.frame = CGRect(x: 0, y: top, width: bounds.width, height: 24)
+        label.frame = CGRect(x: 4, y: top + 24, width: bounds.width - 8, height: 16)
     }
 }
 
@@ -65,6 +99,7 @@ final class ProfileInfoCard: UIView {
         let isAccent: Bool
     }
 
+    var onCopy: (@MainActor (String) -> Void)?
     private var values: [UILabel] = []
     private var keys: [UILabel] = []
     private var separators: [UIView] = []
@@ -76,9 +111,9 @@ final class ProfileInfoCard: UIView {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        layer.cornerRadius = 12
+        layer.cornerRadius = 18
         layer.cornerCurve = .continuous
-        clipsToBounds = true
+        addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(pressed(_:))))
     }
 
     @available(*, unavailable)
@@ -90,6 +125,7 @@ final class ProfileInfoCard: UIView {
         if rows.count != values.count {
             rebuild(count: rows.count)
         }
+        FloatingStyle.style(self, theme: theme)
         backgroundColor = theme.groupedCell
         for (index, row) in rows.enumerated() {
             values[index].text = row.value
@@ -108,6 +144,7 @@ final class ProfileInfoCard: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        layer.shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: layer.cornerRadius).cgPath
         let width = bounds.width - 32
         for index in values.indices {
             let top = CGFloat(index) * rowHeight
@@ -123,6 +160,20 @@ final class ProfileInfoCard: UIView {
         for (index, separator) in separators.enumerated() {
             separator.frame = CGRect(x: 16, y: CGFloat(index + 1) * rowHeight, width: bounds.width - 16, height: 0.5)
         }
+    }
+
+    @objc
+    private func pressed(_ gesture: UILongPressGestureRecognizer) {
+        guard gesture.state == .began, rowHeight > 0 else {
+            return
+        }
+
+        let index = Int(gesture.location(in: self).y / rowHeight)
+        guard values.indices.contains(index), let text = values[index].text, !text.isEmpty else {
+            return
+        }
+
+        onCopy?(text)
     }
 
     private func rebuild(count: Int) {

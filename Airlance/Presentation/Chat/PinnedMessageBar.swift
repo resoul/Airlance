@@ -9,6 +9,12 @@ struct PinnedMessageItem: Equatable {
 final class PinnedMessageBar: UIControl {
     static let height: CGFloat = 46
 
+    var showsSeparator = true {
+        didSet {
+            setNeedsLayout()
+        }
+    }
+
     var onUnpin: (@MainActor () -> Void)?
 
     private let separator = UIView()
@@ -117,6 +123,7 @@ final class PinnedMessageBar: UIControl {
         super.layoutSubviews()
         let height = bounds.height
         separator.frame = CGRect(x: 0, y: height - 0.5, width: bounds.width, height: 0.5)
+        separator.isHidden = !showsSeparator
         track.frame = CGRect(x: 12, y: 7, width: 2, height: height - 14)
         let gap: CGFloat = 2
         let count = CGFloat(max(segments.count, 1))

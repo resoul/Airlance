@@ -3,7 +3,7 @@ import UIKit
 
 @MainActor
 final class ScreenFactory {
-    private let app: ApplicationContext
+    let app: ApplicationContext
     let scene: SceneContext
     let account: AccountContext
     private let positions: ChatScrollPositions
@@ -103,18 +103,10 @@ final class ScreenFactory {
                 chatPositions: positions,
                 permissionFlow: scene.permissionFlow,
                 videoNotes: account.videoNotes,
-                media: account.media
+                media: account.media,
+                translation: app.translation
             ),
             router: router
-        )
-    }
-
-    func makeVideoNotes() -> UIViewController {
-        VideoNoteSettingsController(
-            dependencies: VideoNoteSettingsDependencies(
-                presentationContext: scene.presentationContext,
-                settings: account.videoNotes
-            )
         )
     }
 
@@ -223,15 +215,6 @@ final class ScreenFactory {
         )
     }
 
-    func makeChatAppearance() -> UIViewController {
-        ChatAppearanceViewController(
-            dependencies: ChatAppearanceDependencies(
-                presentationContext: scene.presentationContext,
-                themeStore: app.themeStore
-            )
-        )
-    }
-
     func makeStorage() -> UIViewController {
         StorageViewController(
             dependencies: StorageDependencies(
@@ -242,12 +225,6 @@ final class ScreenFactory {
     }
 
     func makeAppearance() -> UIViewController {
-        AppearanceViewController(
-            dependencies: AppearanceDependencies(
-                presentationContext: scene.presentationContext,
-                themeStore: app.themeStore,
-                localizationStore: app.localizationStore
-            )
-        )
+        AppearanceViewController(dependencies: appearanceDependencies, router: router)
     }
 }

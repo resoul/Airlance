@@ -3,7 +3,7 @@ import Foundation
 import MediaStore
 
 enum ChatVideoNoteFixtures {
-    private static let styles: [MessageVideoNote.Style] = [.blob, .moment, .dualCamera, .anonymous]
+    private static let styles: [MessageVideoNote.Style] = [.blob, .blob]
     private static let clips = ["message-video-square", "message-video-portrait", "message-video-landscape"]
 
     static func decorate(_ messages: inout [HistoryMessage], chat: ChatSummary) {
@@ -32,14 +32,12 @@ enum ChatVideoNoteFixtures {
 
     private static func note(_ style: MessageVideoNote.Style, random: inout SeededRandom) -> MessageVideoNote {
         let clip = clips[Int(random.next() % UInt64(clips.count))]
-        let front = style == .dualCamera ? MediaSource.bundle(name: clips[0], ext: "mp4") : nil
         let levels = (0..<64).map { _ in
             UInt8(40 + random.next() % 200)
         }
 
         return MessageVideoNote(
             source: .bundle(name: clip, ext: "mp4"),
-            frontSource: front,
             duration: 5,
             style: style,
             levels: levels

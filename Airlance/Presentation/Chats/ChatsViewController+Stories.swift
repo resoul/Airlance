@@ -50,7 +50,8 @@ extension ChatsViewController {
     func updateExpansion() {
         let offset = pager.currentList?.contentOffset ?? -expansion.topInset
         header.setExpansion(expansion.fraction(offset: offset))
-        tabs.frame = CGRect(x: 0, y: header.visibleHeight, width: view.bounds.width, height: LiquidTabsView.height)
+        let height = FloatingTabsHost.height
+        tabsHost.frame = CGRect(x: 0, y: header.visibleHeight, width: view.bounds.width, height: height)
     }
 
     func updateInsets(top: CGFloat) {

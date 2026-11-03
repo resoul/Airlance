@@ -1,5 +1,6 @@
 @preconcurrency import AsyncDisplayKit
 import AvatarUI
+import MusicPlayer
 import Theme
 import UIKit
 
@@ -9,12 +10,15 @@ final class ProfileHeaderView: UIView {
 
     let photo = UIView()
     let info = ProfileInfoCard()
+    let audioPanel = AudioPanelView()
+    private let audioCard = FloatingCard()
 
     private let avatar = AvatarNode()
     private let shade = CAGradientLayer()
     private let segments = UIStackView()
     private let nameLabel = UILabel()
     private let statusLabel = UILabel()
+    private let dock = ProfileActionDock()
     private let buttons = ProfileAction.allCases.map { action in
         ProfileActionButton(action: action)
     }
@@ -39,6 +43,11 @@ final class ProfileHeaderView: UIView {
         addSubview(segments)
         addSubview(nameLabel)
         addSubview(statusLabel)
+        audioPanel.showsSeparator = false
+        audioCard.content.addSubview(audioPanel)
+        audioCard.setRows([(audioPanel, AudioPanelView.height)])
+        addSubview(audioCard)
+        addSubview(dock)
         for button in buttons {
             button.addAction(
                 UIAction { [weak self, weak button] _ in
@@ -50,7 +59,7 @@ final class ProfileHeaderView: UIView {
                 },
                 for: .touchUpInside
             )
-            addSubview(button)
+            dock.addSubview(button)
         }
         addSubview(info)
     }
@@ -69,6 +78,8 @@ final class ProfileHeaderView: UIView {
         textColor = theme.colors.textPrimary
         statusColor = isOnline ? theme.colors.accent : theme.colors.textSecondary
         backgroundColor = theme.groupedBackground
+        dock.apply(theme)
+        audioCard.apply(theme)
     }
 
     func apply(action: ProfileAction, symbol: String, title: String, theme: AppTheme) {
@@ -109,16 +120,11 @@ final class ProfileHeaderView: UIView {
         segments.frame = CGRect(x: 8, y: segmentsTop, width: width - 16, height: 3)
         segments.alpha = max(0, min(1, (geometry.progress - 0.85) / 0.15))
 
-        let buttonWidth = (width - 32 - 24) / CGFloat(buttons.count)
-        for (index, button) in buttons.enumerated() {
-            button.frame = CGRect(
-                x: 16 + CGFloat(index) * (buttonWidth + 8),
-                y: geometry.buttonsTop,
-                width: buttonWidth,
-                height: ProfileHeaderGeometry.buttonHeight
-            )
-        }
+        let dockHeight = ProfileHeaderGeometry.buttonHeight
+        dock.frame = CGRect(x: 16, y: geometry.buttonsTop, width: width - 32, height: dockHeight)
         info.frame = CGRect(x: 16, y: geometry.infoTop, width: width - 32, height: geometry.infoHeight)
+        audioCard.isHidden = geometry.audioHeight <= 0
+        audioCard.frame = CGRect(x: 16, y: geometry.audioTop, width: width - 32, height: geometry.audioHeight)
     }
 
     private func layoutTitles(_ geometry: ProfileHeaderGeometry) {
@@ -132,12 +138,12 @@ final class ProfileHeaderView: UIView {
         statusLabel.frame.size = CGSize(width: min(statusSize.width, width - 32), height: statusSize.height)
         nameLabel.frame.origin = ProfileHeaderGeometry.lerp(
             CGPoint(x: (width - nameLabel.frame.width) / 2, y: folded.maxY + 12),
-            CGPoint(x: 16, y: bottom - 60),
+            CGPoint(x: 16, y: bottom - 60 - geometry.titleLift),
             openness
         )
         statusLabel.frame.origin = ProfileHeaderGeometry.lerp(
             CGPoint(x: (width - statusLabel.frame.width) / 2, y: folded.maxY + 44),
-            CGPoint(x: 16, y: bottom - 30),
+            CGPoint(x: 16, y: bottom - 30 - geometry.titleLift),
             openness
         )
         let onPhoto = openness > 0.5

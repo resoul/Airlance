@@ -27,7 +27,7 @@ extension ProfileViewController {
         header.layout(geometry)
         let visibleBottom = coordinator.topStretch - coordinator.headerOffset + geometry.nameBottom + geometry.expansion
         let isUnder = visibleBottom < geometry.navHeight + 20
-        navigationBar.setState(filled: isUnder, onPhoto: geometry.openness > 0.5 && !isUnder)
+        navigationBar.setState(filled: isUnder)
     }
 
     func stepOpen(_ deltaTime: CFTimeInterval) {
@@ -112,6 +112,12 @@ extension ProfileViewController {
         header.apply(action: .more, symbol: "ellipsis", title: strings.profileMore, theme: theme)
     }
 
+    func copyInfo(_ text: String) {
+        UIPasteboard.general.string = text
+        Haptics.play(.success)
+        showToast(presentation.strings.chatCopied, symbol: "doc.on.doc")
+    }
+
     func showToast(_ text: String, symbol: String) {
         Toast(text, symbol: symbol, edge: .bottom).show(theme: presentation.theme, in: view)
     }
@@ -127,7 +133,7 @@ extension ProfileViewController {
         monthPill.text = monthFormatter.string(from: date)
         let width = ceil(monthPill.intrinsicContentSize.width) + 22
         let height = ceil(monthPill.font.lineHeight + 8)
-        let top = geometry.navHeight + 56
+        let top = geometry.navHeight + FloatingTabsHost.height + 8
         monthPill.frame = CGRect(x: (view.bounds.width - width) / 2, y: top, width: width, height: height)
         if monthPill.alpha < 1 {
             UIView.animate(withDuration: 0.15) {
