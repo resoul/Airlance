@@ -4,6 +4,12 @@ public struct MessageEntity: Sendable, Hashable {
     public enum Kind: Sendable, Hashable {
         case spoiler
         case mention(userID: String)
+        case bold
+        case italic
+        case strikethrough
+        case code
+        case pre
+        case quote
     }
 
     public let kind: Kind
@@ -23,6 +29,14 @@ public struct MessageEntity: Sendable, Hashable {
     public var isSpoiler: Bool {
         kind == .spoiler
     }
+
+    public var isBlock: Bool {
+        kind == .pre || kind == .quote
+    }
+
+    public var isCode: Bool {
+        kind == .code || kind == .pre
+    }
 }
 
 extension MessageEntity {
@@ -41,5 +55,26 @@ extension MessageEntity {
         }
 
         return string as String
+    }
+
+    public static func merged(_ entities: [MessageEntity]) -> [MessageEntity] {
+        let sorted = entities.sorted { lhs, rhs in
+            lhs.location < rhs.location
+        }
+        var result: [MessageEntity] = []
+        for entity in sorted {
+            let index = result.lastIndex { other in
+                other.kind == entity.kind
+            }
+            if let index, result[index].location + result[index].length >= entity.location {
+                let last = result[index]
+                let end = max(last.location + last.length, entity.location + entity.length)
+                result[index] = MessageEntity(last.kind, location: last.location, length: end - last.location)
+            } else {
+                result.append(entity)
+            }
+        }
+
+        return result
     }
 }

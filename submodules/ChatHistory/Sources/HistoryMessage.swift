@@ -17,13 +17,25 @@ public struct MessagePhoto: Sendable, Hashable {
     public let height: Int
     public let source: MediaSource
     public let video: MessageVideo?
+    public var size: Int64
+    public var isDownloaded: Bool
 
-    public init(id: String, width: Int, height: Int, source: MediaSource, video: MessageVideo? = nil) {
+    public init(
+        id: String,
+        width: Int,
+        height: Int,
+        source: MediaSource,
+        video: MessageVideo? = nil,
+        size: Int64 = 0,
+        isDownloaded: Bool = true
+    ) {
         self.id = id
         self.width = width
         self.height = height
         self.source = source
         self.video = video
+        self.size = size
+        self.isDownloaded = isDownloaded
     }
 
     public var aspectRatio: Double {
@@ -97,7 +109,7 @@ public struct HistoryMessage: Identifiable, Sendable, Hashable {
     public let authorID: String
     public let authorName: String
     public let isOutgoing: Bool
-    public let date: Date
+    public var date: Date
     public var content: MessageContent
     public var delivery: DeliveryState
     public var isListened = true
@@ -112,6 +124,9 @@ public struct HistoryMessage: Identifiable, Sendable, Hashable {
     public var entities: [MessageEntity] = []
     public var isSilent = false
     public var videoReactions: [MessageVideoReaction] = []
+    public var effect: String?
+    public var lifetime: TimeInterval?
+    public var expiresAt: Date?
 
     public init(
         id: String,

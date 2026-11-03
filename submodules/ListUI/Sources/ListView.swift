@@ -14,6 +14,7 @@ public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecog
     public var onWillEndDragging: (@MainActor (ListView, CGFloat) -> CGFloat)?
     public var onContentSizeChange: (@MainActor (ListView) -> Void)?
     public var onLongPressMove: (@MainActor (UILongPressGestureRecognizer) -> Void)?
+    public var onMove: (@MainActor (_ id: String, _ index: Int) -> Void)?
 
     public var theme: ListTheme {
         didSet {
@@ -112,6 +113,7 @@ public final class ListView: ASDisplayNode, UIScrollViewDelegate, UIGestureRecog
     var pendingAnchor: ListAnchor?
     var preparations: [String: ListPreparation] = [:]
     var shownRange: Range<Int>?
+    var reorder: ListReorder?
 
     public var contentOffset: CGFloat {
         scrollView.contentOffset.y

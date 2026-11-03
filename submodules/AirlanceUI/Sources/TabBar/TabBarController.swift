@@ -13,11 +13,16 @@ open class TabBarController<Presentation: ThemedPresentation>:
         }
     }
 
+    public var onSplitChange: (@MainActor (Bool) -> Void)?
+
     public private(set) var viewControllers: [UIViewController] = []
     public private(set) var selectedIndex = 0
     public private(set) var isTabBarHidden = false
+    public internal(set) var detailViewController: UIViewController?
+    public internal(set) var isSplit = false
 
-    private let tabBarView = TabBarView()
+    let tabBarView = TabBarView()
+    let separator = UIView()
     private weak var trackedScrollView: UIScrollView?
     private var scrollObservation: NSKeyValueObservation?
     private var scrollDistance: CGFloat = 0
@@ -33,14 +38,19 @@ open class TabBarController<Presentation: ThemedPresentation>:
             self?.onSelect?(index)
         }
         view.addSubview(tabBarView)
+        separator.isUserInteractionEnabled = false
+        view.addSubview(separator)
         showSelected()
     }
 
     override open func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        tabBarView.bounds = CGRect(origin: .zero, size: view.bounds.size)
-        tabBarView.center = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
-        selectedViewController?.view.frame = view.bounds
+        updateSplit()
+        let primary = primaryFrame
+        tabBarView.bounds = CGRect(origin: .zero, size: primary.size)
+        tabBarView.center = CGPoint(x: primary.midX, y: primary.midY)
+        selectedViewController?.view.frame = primary
+        layoutDetail()
 
         let reserved = isTabBarHidden ? 0 : TabBarLayout.reservedHeight(bottomInset: view.safeAreaInsets.bottom)
         for controller in viewControllers where controller.additionalSafeAreaInsets.bottom != reserved {
@@ -52,6 +62,7 @@ open class TabBarController<Presentation: ThemedPresentation>:
     override open func apply(_ presentation: Presentation) {
         super.apply(presentation)
         tabBarView.apply(presentation.theme)
+        applySplitTheme(presentation.theme)
     }
 
     public func setTabs(_ controllers: [UIViewController], items: [TabBarItem], selectedIndex: Int) {
@@ -196,13 +207,13 @@ open class TabBarController<Presentation: ThemedPresentation>:
         }
 
         addChild(controller)
-        controller.view.frame = view.bounds
+        controller.view.frame = primaryFrame
         view.insertSubview(controller.view, belowSubview: tabBarView)
         controller.didMove(toParent: self)
         updateTrackedScrollView()
     }
 
-    private func remove(_ controller: UIViewController) {
+    func remove(_ controller: UIViewController) {
         guard controller.parent === self else {
             return
         }

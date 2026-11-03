@@ -39,7 +39,7 @@ public final class VerticalScrollCoordinator {
 
     public func setHeaderHeight(_ height: CGFloat, preservingContentPosition: Bool) {
         let next = max(0, height)
-        let wasCollapsed = !isHeaderVisible
+        let wasCollapsed = headerHeight > 0 && !isHeaderVisible
         let difference = next - headerHeight
         headerHeight = next
         if preservingContentPosition, headerOffset > 0 {
