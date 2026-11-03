@@ -20,6 +20,8 @@ public final class Router<RouteType: Route> {
         RouteLayer.layers(of: stack)
     }
 
+    public var tabs: [RouteType] = []
+
     public var tab: RouteType? {
         stack.first { route in
             route.presentation == .tab
@@ -119,6 +121,22 @@ public final class Router<RouteType: Route> {
     }
 
     private func normalized(_ target: [RouteType]) -> [RouteType] {
+        available(anchored(target))
+    }
+
+    private func available(_ target: [RouteType]) -> [RouteType] {
+        guard let first = target.first, first.presentation == .tab, !tabs.isEmpty, !tabs.contains(first) else {
+            return target
+        }
+
+        let fallback = tab.flatMap { tab in
+            tabs.contains(tab) ? tab : nil
+        } ?? tabs[0]
+
+        return [fallback] + target.dropFirst()
+    }
+
+    private func anchored(_ target: [RouteType]) -> [RouteType] {
         guard let tab else {
             return target
         }

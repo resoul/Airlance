@@ -11,6 +11,8 @@ public enum HapticEvent: Sendable {
     case success
     case warning
     case error
+    case charge(CGFloat)
+    case burst
 }
 
 @MainActor
@@ -25,6 +27,8 @@ public final class Haptics {
     private let light = UIImpactFeedbackGenerator(style: .light)
     private let medium = UIImpactFeedbackGenerator(style: .medium)
     private let soft = UIImpactFeedbackGenerator(style: .soft)
+    private let rigid = UIImpactFeedbackGenerator(style: .rigid)
+    private let heavy = UIImpactFeedbackGenerator(style: .heavy)
     private let notification = UINotificationFeedbackGenerator()
 
     private init() {
@@ -61,6 +65,10 @@ public final class Haptics {
             notification.notificationOccurred(.warning)
         case .error:
             notification.notificationOccurred(.error)
+        case .charge(let intensity):
+            rigid.impactOccurred(intensity: min(max(intensity, 0.1), 1))
+        case .burst:
+            heavy.impactOccurred()
         }
         prepare(event)
         #endif
@@ -83,6 +91,10 @@ public final class Haptics {
             soft.prepare()
         case .success, .warning, .error:
             notification.prepare()
+        case .charge:
+            rigid.prepare()
+        case .burst:
+            heavy.prepare()
         }
         #endif
     }

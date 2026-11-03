@@ -5,4 +5,5 @@ public enum Permission: String, CaseIterable, Sendable {
     case photos
     case contacts
     case location
+    case speech
 }
