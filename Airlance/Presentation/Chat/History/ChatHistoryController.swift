@@ -102,14 +102,16 @@ final class ChatHistoryController {
     func apply(_ presentation: PresentationData) {
         let theme = presentation.theme
         let strings = presentation.strings
-        style = HistoryStyle(theme: theme)
+        let channel = store.chatsStore.channelSettings.settings(CommentThread(id: chatID)?.channelID ?? chatID)
+        let style = HistoryStyle(theme: theme).applying(channel)
+        self.style = style
         titles = HistorySnapshot.Titles(strings: strings)
         locale = strings.pack.locale
         if !isReadOnly {
             replySwipe.apply(theme)
         }
         listView.theme = ListTheme(
-            background: theme.chat.wallpaper == nil ? theme.colors.background : .clear,
+            background: style.hasWallpaper ? .clear : theme.colors.background,
             rowBackground: .clear,
             primary: theme.colors.textPrimary,
             secondary: theme.colors.textSecondary,

@@ -1,3 +1,4 @@
+import CryptoKit
 import DatabaseAPI
 import Foundation
 
@@ -17,6 +18,21 @@ struct AccountID: RawRepresentable, Hashable, Codable, Sendable, CustomStringCon
     static func make() -> AccountID {
         AccountID(rawValue: "demo-" + UUID().uuidString.prefix(8).lowercased())
     }
+
+    static func user(subject: String) -> AccountID {
+        let digest = SHA256.hash(data: Data(subject.utf8)).prefix(16)
+        let hex = digest.map { byte in
+            String(format: "%02x", byte)
+        }
+
+        return AccountID(rawValue: "user-" + hex.joined())
+    }
+}
+
+enum AccountStatus: String, Codable, Sendable {
+    case needsProfile
+    case active
+    case signedOut
 }
 
 struct AccountRecord: Codable, Sendable, Hashable, Identifiable {
@@ -25,6 +41,12 @@ struct AccountRecord: Codable, Sendable, Hashable, Identifiable {
     let isDemo: Bool
     let fixtureVariant: Int
     let createdAt: Date
+    var subject: String?
+    var status: AccountStatus?
+
+    var currentStatus: AccountStatus {
+        status ?? .active
+    }
 }
 
 extension StorageKey where Value == [AccountRecord] {

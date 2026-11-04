@@ -44,7 +44,7 @@ struct GroupEvent: Sendable {
 @MainActor
 final class GroupMembersStore {
     static let me = MessageCommenter(id: "me", name: "Ти")
-    private static let ownGroups: Set<String> = ["team", "family"]
+    private static let ownGroups: Set<String> = ChatFixtures.ownChannels.union(["team", "family"])
 
     private var members: [String: [GroupMember]] = [:]
     private var permissions: [String: Set<GroupRight>] = [:]
@@ -98,6 +98,11 @@ final class GroupMembersStore {
         members[chatID] = members(in: chatID).filter { member in
             member.id != memberID
         }
+        observers.notify(GroupEvent(chatID: chatID))
+    }
+
+    func add(_ member: GroupMember, to chatID: String) {
+        members[chatID] = Self.sorted(members(in: chatID) + [member])
         observers.notify(GroupEvent(chatID: chatID))
     }
 

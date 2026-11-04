@@ -391,7 +391,8 @@ extension AppCoordinator {
         case .invite:
             factory.makeInvite()
         case .permissions, .appearance, .storage, .chatFolders, .newChatFolder,
-             .chatFolder, .tabSettings:
+             .chatFolder, .tabSettings,
+             .settingsPage, .channelSettings:
             settingsScreen(for: route)
         case .profile(let id):
             factory.makeProfile(id: id)
@@ -401,8 +402,6 @@ extension AppCoordinator {
             factory.makeChatArchive()
         case .browser(let url):
             factory.makeBrowser(url: url)
-        case .settingsPage(let page):
-            factory.makeSettingsPage(page)
         }
         routes[ObjectIdentifier(controller)] = route
 
@@ -423,6 +422,10 @@ extension AppCoordinator {
             factory.makeChatFolderEditor(id: id)
         case .tabSettings:
             factory.makeTabSettings()
+        case .settingsPage(let page):
+            factory.makeSettingsPage(page)
+        case .channelSettings(let id, let page):
+            factory.makeChannelSettings(id: id, page: page)
         default:
             factory.makeAppearance()
         }

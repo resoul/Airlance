@@ -11,6 +11,7 @@ struct SettingsDependencies {
     let themeStore: ThemeStore
     let localizationStore: LocalizationStore
     let accounts: any AccountSwitching
+    let myProfile: MyProfileStore
 }
 
 final class SettingsViewController: ScreenViewController {
@@ -18,6 +19,10 @@ final class SettingsViewController: ScreenViewController {
 
     var accounts: any AccountSwitching {
         dependencies.accounts
+    }
+
+    var myProfile: MyProfileStore {
+        dependencies.myProfile
     }
 
     private let router: AppRouter
@@ -49,6 +54,10 @@ final class SettingsViewController: ScreenViewController {
             dependencies.accounts.observeAccounts { [weak self] in
                 self?.render()
             },
+            dependencies.myProfile.observe { [weak self] _ in
+                self?.updateHeader()
+                self?.render()
+            },
         ]
     }
 
@@ -64,6 +73,7 @@ final class SettingsViewController: ScreenViewController {
 
         navigationItem.title = presentation.strings.settingsTitle
         header.apply(presentation)
+        updateHeader()
         listView.theme = ListTheme(
             background: theme.colors.background,
             rowBackground: theme.colors.surface,
@@ -75,13 +85,29 @@ final class SettingsViewController: ScreenViewController {
             subtitleFont: theme.fonts.subheadline
         )
         let isDark = theme.appearance == .dark
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
+        let themeItem = UIBarButtonItem(
             image: UIImage(systemName: isDark ? "sun.max.fill" : "moon.fill"),
             primaryAction: UIAction { [weak self] _ in
                 self?.toggleTheme(isDark: isDark)
             }
         )
+        let router = router
+        let editItem = UIBarButtonItem(
+            title: presentation.strings.profileEditAction,
+            primaryAction: UIAction { _ in
+                router.open(.settingsPage(.editProfile))
+            }
+        )
+        navigationItem.rightBarButtonItems = [editItem, themeItem]
         render()
+    }
+
+    private func updateHeader() {
+        let profile = dependencies.myProfile.profile
+        header.update(
+            profile,
+            avatar: dependencies.myProfile.avatar(for: profile)
+        )
     }
 
     private func toggleTheme(isDark: Bool) {
@@ -101,7 +127,7 @@ final class SettingsViewController: ScreenViewController {
             return CGPoint(x: window.bounds.maxX - 36, y: window.safeAreaInsets.top + 22)
         }
 
-        return bar.convert(CGPoint(x: bar.bounds.maxX - 36, y: bar.bounds.midY), to: window)
+        return bar.convert(CGPoint(x: bar.bounds.maxX - 96, y: bar.bounds.midY), to: window)
     }
 
     private func render() {

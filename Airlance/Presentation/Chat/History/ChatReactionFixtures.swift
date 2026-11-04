@@ -29,7 +29,8 @@ enum ChatReactionFixtures {
             case .group:
                 messages[index].reactions = group(random: &random)
             case .channel:
-                messages[index].reactions = channel(views: messages[index].views ?? 0, random: &random)
+                let pool = ChatFixtures.reactionRules[chat.id]?.allowed ?? Reactions.quick
+                messages[index].reactions = channel(views: messages[index].views ?? 0, pool: pool, random: &random)
             }
         }
     }
@@ -80,16 +81,16 @@ enum ChatReactionFixtures {
         return reactions
     }
 
-    private static func channel(views: Int, random: inout SeededRandom) -> [MessageReaction] {
-        guard views > 0, random.next() % 100 < 75 else {
+    private static func channel(views: Int, pool: [String], random: inout SeededRandom) -> [MessageReaction] {
+        guard views > 0, !pool.isEmpty, random.next() % 100 < 75 else {
             return []
         }
 
-        let kinds = 2 + Int(random.next() % 3)
+        let kinds = min(pool.count, 2 + Int(random.next() % 3))
         var budget = max(kinds, views * (1 + Int(random.next() % 4)) / 100)
         var reactions: [MessageReaction] = []
         let chosen = random.next() % 10 < 2 ? Int(random.next() % UInt64(kinds)) : -1
-        for (index, emoji) in Reactions.quick.shuffledPrefix(kinds, random: &random).enumerated() {
+        for (index, emoji) in pool.shuffledPrefix(kinds, random: &random).enumerated() {
             let total = max(1, budget / 2 + Int(random.next() % UInt64(max(1, budget / 4))))
             budget = max(1, budget - total)
             reactions.append(MessageReaction(emoji: emoji, total: total, isChosen: index == chosen))

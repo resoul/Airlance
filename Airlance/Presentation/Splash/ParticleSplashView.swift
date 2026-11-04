@@ -4,7 +4,6 @@ import UIKit
 
 @MainActor
 final class ParticleSplashView: UIView {
-    private static let word = "AIRLANCE"
     private static let particleCount = 9_000
     private static let firstLetter: TimeInterval = 0.15
     private static let letterStep: TimeInterval = 0.12
@@ -15,18 +14,26 @@ final class ParticleSplashView: UIView {
     private let backdrop = UIView()
     private let chart = ParticleChartView()
     private let tint: UIColor
-    private var letters: [CGPath] = []
-    private var counts: [Int] = []
+    private var wordmark: ParticleWordmark?
     private var timeline: Task<Void, Never>?
     private var startTime = CACurrentMediaTime()
     private var isBursting = false
 
-    static func present(in window: UIWindow, tint: UIColor) {
+    static func claimFirstShow() -> Bool {
         guard !didShow else {
-            return
+            return false
         }
 
         didShow = true
+
+        return true
+    }
+
+    static func present(in window: UIWindow, tint: UIColor) {
+        guard claimFirstShow() else {
+            return
+        }
+
         let splash = ParticleSplashView(frame: window.bounds, tint: tint)
         splash.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         window.addSubview(splash)
@@ -67,11 +74,18 @@ final class ParticleSplashView: UIView {
             return
         }
 
-        prepareLetters()
+        let wordmark = ParticleWordmark(
+            center: focus,
+            width: bounds.width * 0.84,
+            maxFontSize: 96,
+            particleCount: Self.particleCount,
+            tint: tint
+        )
+        self.wordmark = wordmark
         startTime = CACurrentMediaTime()
         chart.show([cloud(count: Self.particleCount)], from: focus)
         timeline = Task { [weak self] in
-            for index in 0..<Self.word.count {
+            for index in 0..<wordmark.letterCount {
                 let at = Self.firstLetter + Self.letterStep * Double(index)
                 await self?.wait(until: at)
                 guard !Task.isCancelled else {
@@ -87,26 +101,13 @@ final class ParticleSplashView: UIView {
         }
     }
 
-    private func prepareLetters() {
-        let probe = UIFont.systemFont(ofSize: 100, weight: .black)
-        let width = (Self.word as NSString).size(withAttributes: [.font: probe]).width
-        let size = min(100 * bounds.width * 0.84 / max(width, 1), 96)
-        letters = ParticleShapes.letters(Self.word, font: .systemFont(ofSize: size, weight: .black), center: focus)
-        let areas = letters.map { path in
-            Double(path.boundingBoxOfPath.width * path.boundingBoxOfPath.height)
-        }
-        counts = ParticleSegment.split(Self.particleCount, weights: areas)
-    }
-
     private func reveal(upTo shown: Int) {
-        guard !isBursting else {
+        guard !isBursting, let wordmark else {
             return
         }
 
-        var segments = letters.prefix(shown).enumerated().map { index, path in
-            letter(index, path: path)
-        }
-        let rest = Self.particleCount - counts.prefix(shown).reduce(0, +)
+        var segments = wordmark.segments(shown: shown)
+        let rest = Self.particleCount - wordmark.placedCount(shown: shown)
         if rest > 0 {
             segments.append(cloud(count: rest))
         }
@@ -115,31 +116,19 @@ final class ParticleSplashView: UIView {
         Haptics.play(.selection)
     }
 
-    private func letter(_ index: Int, path: CGPath?) -> ParticleSegment {
-        ParticleSegment(
-            path: path,
-            count: counts[index],
-            color: Self.shifted(tint, by: CGFloat(index) * 0.025),
-            pointSize: 1.7,
-            stiffness: 1.6,
-            order: .horizontal
-        )
-    }
-
     private func cloud(count: Int) -> ParticleSegment {
-        let radius = min(bounds.width, bounds.height) * 0.18
-        let path = CGPath(
-            ellipseIn: CGRect(x: focus.x - radius, y: focus.y - radius, width: radius * 2, height: radius * 2),
-            transform: nil
+        ParticleWordmark.cloud(
+            center: focus,
+            radius: min(bounds.width, bounds.height) * 0.18,
+            count: count,
+            tint: tint
         )
-
-        return ParticleSegment(path: path, count: count, color: tint, alpha: 0.35, pointSize: 1.2, stiffness: 0.5)
     }
 
     @objc
     private func skip() {
         timeline?.cancel()
-        if letters.isEmpty {
+        if wordmark == nil {
             finish(after: 0)
         } else {
             burst()
@@ -147,16 +136,13 @@ final class ParticleSplashView: UIView {
     }
 
     private func burst() {
-        guard !isBursting else {
+        guard !isBursting, let wordmark else {
             return
         }
 
         isBursting = true
         isUserInteractionEnabled = false
-        let segments = letters.indices.map { index in
-            letter(index, path: nil)
-        }
-        chart.show(segments, release: .burst, around: focus, duration: Self.burstDuration)
+        chart.show(wordmark.releasedSegments(), release: .burst, around: focus, duration: Self.burstDuration)
         Haptics.play(.tap)
         UIView.animate(withDuration: 0.45, delay: 0.1, options: .curveEaseOut) {
             self.backdrop.alpha = 0
@@ -166,7 +152,7 @@ final class ParticleSplashView: UIView {
 
     private func showStill() {
         let label = UILabel(frame: bounds)
-        label.text = Self.word
+        label.text = ParticleWordmark.word
         label.font = .systemFont(ofSize: 44, weight: .black)
         label.textColor = tint
         label.textAlignment = .center
@@ -193,19 +179,5 @@ final class ParticleSplashView: UIView {
         if remaining > 0 {
             try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
         }
-    }
-
-    private static func shifted(_ color: UIColor, by amount: CGFloat) -> UIColor {
-        var hue: CGFloat = 0
-        var saturation: CGFloat = 0
-        var brightness: CGFloat = 0
-        var alpha: CGFloat = 0
-        guard color.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha) else {
-            return color
-        }
-
-        let shifted = (hue + amount).truncatingRemainder(dividingBy: 1)
-
-        return UIColor(hue: shifted, saturation: saturation, brightness: brightness, alpha: alpha)
     }
 }

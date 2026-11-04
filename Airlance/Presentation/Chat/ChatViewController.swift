@@ -1,6 +1,7 @@
 import AirlanceUI
 import CameraUI
 import ChatHistory
+import DeviceContacts
 import MediaStore
 import Observers
 import UIKit
@@ -14,6 +15,7 @@ struct ChatDependencies {
     let videoNotes: VideoNoteSettings
     let media: MediaStore
     let translation: TranslationSettings
+    let contacts: DeviceContactsStore
 }
 
 final class ChatViewController: ScreenViewController {
@@ -40,6 +42,8 @@ final class ChatViewController: ScreenViewController {
     weak var activeMenu: MessageMenuView?
     weak var activeLinkMenu: PopupMenu?
     weak var activeSendMenu: PopupMenu?
+    weak var messagesPopup: ChatMessagesPopupController?
+    var channelSettingsObservation: ObservationToken?
     var replyTarget: HistoryMessage?
     var replyQuote: MessageQuote?
     var editTarget: HistoryMessage?
@@ -118,7 +122,7 @@ final class ChatViewController: ScreenViewController {
     override func apply(_ presentation: PresentationData) {
         super.apply(presentation)
         view.backgroundColor = presentation.theme.colors.background
-        wallpaper.apply(presentation.theme.chat.wallpaper)
+        wallpaper.apply(channelWallpaper(presentation) ?? presentation.theme.chat.wallpaper)
         inputBar.apply(presentation)
         scrollDown.apply(presentation)
         history.apply(presentation)
@@ -193,6 +197,7 @@ final class ChatViewController: ScreenViewController {
         bindSend()
         bindMentions()
         bindPolls()
+        bindChannelSettings()
         bindVideoNotes()
         bindVoice()
         bindFailed()

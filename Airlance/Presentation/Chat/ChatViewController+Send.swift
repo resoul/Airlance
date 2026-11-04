@@ -10,7 +10,10 @@ extension ChatViewController {
             self?.trackSendMenu(gesture)
         }
         inputBar.onScheduled = { [weak self] in
-            self?.showScheduled()
+            self?.scheduledTapped()
+        }
+        inputBar.onScheduledHold = { [weak self] in
+            self?.scheduledHeld()
         }
         inputBar.onAttach = { [weak self] in
             self?.showAttachMenu()
@@ -20,7 +23,23 @@ extension ChatViewController {
     func updateScheduled() {
         let count = dependencies.historyStore.scheduledMessages(in: id).count
         let colors = presentation.theme.colors
-        inputBar.setScheduledCount(count, tint: colors.accent, label: presentation.strings.chatScheduled)
+        inputBar.setScheduledCount(count, tint: colors.textSecondary, label: presentation.strings.chatScheduled)
+    }
+
+    private func scheduledTapped() {
+        if inputBar.hasText, !inputBar.isEditingMessage {
+            pickScheduleDate()
+        } else {
+            showScheduledPopup()
+        }
+    }
+
+    private func scheduledHeld() {
+        if dependencies.historyStore.scheduledMessages(in: id).isEmpty {
+            pickScheduleDate()
+        } else {
+            showScheduledPopup()
+        }
     }
 
     private func trackSendMenu(_ gesture: UILongPressGestureRecognizer) {
@@ -48,7 +67,7 @@ extension ChatViewController {
             PopupMenuItem(title: strings.chatSendSilent, symbol: "bell.slash") { [weak self] in
                 self?.sendSilently()
             },
-            PopupMenuItem(title: strings.chatScheduleTitle, symbol: "calendar.badge.clock") { [weak self] in
+            PopupMenuItem(title: strings.chatScheduleLater, symbol: "clock.arrow.circlepath") { [weak self] in
                 self?.pickScheduleDate()
             },
             PopupMenuItem(title: strings.chatSendEffect, symbol: "sparkles") { [weak self] in
@@ -92,18 +111,19 @@ extension ChatViewController {
     }
 
     private func pickScheduleDate() {
-        let sheet = ScheduleSheetController(presentation: presentation)
-        if let controller = sheet.sheetPresentationController {
-            controller.detents = [.medium()]
-            controller.prefersGrabberVisible = true
+        let peerName = dependencies.chatsStore.chat(peerID)?.name ?? ""
+        let content = ScheduleSheetController(presentation: presentation, peerName: peerName)
+        content.onPick = { [weak self] choice in
+            self?.schedule(choice)
         }
-        sheet.onPick = { [weak self] date in
-            self?.schedule(at: date)
+        inputBar.dismissKeyboard()
+        let sheet = FloatingSheetController(content: content, theme: presentation.theme) { _ in
+            ScheduleSheetController.height
         }
-        present(sheet, animated: true)
+        present(sheet, animated: false)
     }
 
-    private func schedule(at date: Date) {
+    private func schedule(_ choice: ScheduleChoice) {
         let composed = ComposedText(attributed: inputBar.textView.attributedText)
         guard !composed.text.isEmpty else {
             return
@@ -112,21 +132,22 @@ extension ChatViewController {
         let message = ScheduledMessage(
             id: UUID().uuidString,
             text: composed.text,
-            date: date,
+            date: choice.date,
             replyTo: replyTarget,
             quote: replyQuote,
-            options: SendOptions(entities: composed.entities)
+            options: SendOptions(entities: composed.entities, isSilent: choice.isSilent),
+            repeatRule: choice.repeatRule
         )
         dependencies.historyStore.schedule(message, in: id)
         cancelReply()
         inputBar.clear()
         updateScheduled()
         Haptics.play(.success)
-        let text = presentation.strings.chatScheduledAt(scheduleFormatter.string(from: date))
-        Toast(text, symbol: "calendar.badge.clock").show(theme: presentation.theme, in: view)
+        let text = presentation.strings.chatScheduledAt(scheduleFormatter.string(from: choice.date))
+        Toast(text, symbol: "clock.arrow.circlepath").show(theme: presentation.theme, in: view)
     }
 
-    private var scheduleFormatter: DateFormatter {
+    var scheduleFormatter: DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = presentation.strings.pack.locale
         formatter.doesRelativeDateFormatting = true
@@ -134,44 +155,5 @@ extension ChatViewController {
         formatter.timeStyle = .short
 
         return formatter
-    }
-
-    private func showScheduled() {
-        guard let host = view.window else {
-            return
-        }
-
-        let formatter = scheduleFormatter
-        let items = dependencies.historyStore.scheduledMessages(in: id).map { message in
-            let text = MessageEntity.masked(message.text, entities: message.options.entities)
-                .replacingOccurrences(of: "\n", with: " ")
-            let title = "\(formatter.string(from: message.date)) · \(text.prefix(28))"
-
-            return PopupMenuItem(title: title, symbol: "clock") { [weak self] in
-                self?.confirmScheduled(message)
-            }
-        }
-        let anchor = inputBar.fieldBox.convert(inputBar.scheduledButton.frame, to: host)
-        let header = presentation.strings.chatScheduled
-        PopupMenu.show(items, theme: presentation.theme, from: anchor, in: host, header: header)
-    }
-
-    private func confirmScheduled(_ message: ScheduledMessage) {
-        let strings = presentation.strings
-        let store = dependencies.historyStore
-        let chatID = id
-        let actions = [
-            PopupAlertAction(title: strings.chatScheduledSendNow) { [weak self] in
-                store.sendScheduled(message.id, in: chatID)
-                self?.updateScheduled()
-            },
-            PopupAlertAction(title: strings.chatScheduledDelete, style: .destructive) { [weak self] in
-                store.cancelScheduled(message.id, in: chatID)
-                self?.updateScheduled()
-            },
-            PopupAlertAction(title: strings.chatScheduledCancel, style: .cancel),
-        ]
-        let title = strings.chatScheduledAt(scheduleFormatter.string(from: message.date))
-        PopupAlert.show(title: title, message: message.text, actions: actions, theme: presentation.theme, in: view)
     }
 }

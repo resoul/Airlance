@@ -40,6 +40,9 @@ extension ChatHistoryStore {
             link: message.link
         )
         post.views = 1
+        if chatsStore.channelSettings.settings(id).signsMessages {
+            post.signature = chatsStore.channelSettings.signatureName()
+        }
         post.comments = MessageComments(total: 0, recent: [])
 
         return post

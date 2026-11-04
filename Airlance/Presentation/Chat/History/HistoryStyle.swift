@@ -10,17 +10,17 @@ struct HistoryStyle: Sendable, Hashable {
     let outgoingBubble: UIColor
     let outgoingColors: [UIColor]
     let bubbleRadius: CGFloat
-    let hasWallpaper: Bool
+    private(set) var hasWallpaper: Bool
     let incomingText: UIColor
     let outgoingText: UIColor
     let incomingMeta: UIColor
     let outgoingMeta: UIColor
-    let name: UIColor
+    private(set) var name: UIColor
     let failed: UIColor
     let success: UIColor
     let mediaPlaceholder: UIColor
-    let serviceBackground: UIColor
-    let serviceText: UIColor
+    private(set) var serviceBackground: UIColor
+    private(set) var serviceText: UIColor
     let isDark: Bool
 
     init(theme: AppTheme) {
@@ -45,6 +45,20 @@ struct HistoryStyle: Sendable, Hashable {
         serviceBackground = hasWallpaper ? UIColor.black.withAlphaComponent(0.24) : colors.surface
         serviceText = hasWallpaper ? .white : colors.textSecondary
         isDark = theme.appearance == .dark
+    }
+
+    func applying(_ channel: ChannelSettings) -> HistoryStyle {
+        var style = self
+        if let color = channel.color {
+            style.name = ChannelPalette.color(color)
+        }
+        if channel.wallpaper != nil {
+            style.hasWallpaper = true
+            style.serviceBackground = UIColor.black.withAlphaComponent(0.24)
+            style.serviceText = .white
+        }
+
+        return style
     }
 
     func bubble(outgoing: Bool) -> UIColor {

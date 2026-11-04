@@ -11,7 +11,7 @@ struct ChatSummary: Identifiable, Sendable, Equatable {
     static let outgoingPrefix = "Ти: "
 
     let id: String
-    let name: String
+    var name: String
     let kind: ChatKind
     var message: String
     var date: Date
@@ -27,6 +27,7 @@ struct ChatSummary: Identifiable, Sendable, Equatable {
     var memberCount = 0
     var typing: String?
     var canPost = true
+    var isPublic = false
 
     var activityDate: Date {
         max(date, draftDate ?? date)

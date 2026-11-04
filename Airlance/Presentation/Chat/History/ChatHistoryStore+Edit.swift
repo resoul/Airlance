@@ -17,7 +17,7 @@ extension ChatHistoryStore {
             message.content = .photos(photos, caption: text)
         case .file(let file, _):
             message.content = .file(file, caption: text)
-        case .voice, .location, .service, .poll, .videoNote:
+        case .voice, .location, .service, .poll, .videoNote, .contact:
             return
         }
         message.entities = MessageEntity.valid(entities, in: text)

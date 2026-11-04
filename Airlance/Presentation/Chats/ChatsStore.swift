@@ -8,9 +8,22 @@ final class ChatsStore {
 
     private let observers = ObserverList<[ChatSummary]>()
     private var previews: [String: ChatSummary]
+    let channelSettings: ChannelSettingsStore
+    private var reportedPosts: Set<String> = []
+    private var reportedChannels: Set<String> = []
 
-    init(chats: [ChatSummary], previews: [ChatSummary] = []) {
-        self.chats = chats
+    init(chats: [ChatSummary], previews: [ChatSummary] = [], channelSettings: ChannelSettingsStore) {
+        self.channelSettings = channelSettings
+        self.chats = chats.map { chat in
+            let settings = channelSettings.settings(chat.id)
+            var chat = chat
+            chat.name = settings.name ?? chat.name
+            if let isPrivate = settings.isPrivate {
+                chat.isPublic = !isPrivate
+            }
+
+            return chat
+        }
         self.previews = Dictionary(uniqueKeysWithValues: previews.map { chat in
             (chat.id, chat)
         })
@@ -20,6 +33,50 @@ final class ChatsStore {
         chats.first { chat in
             chat.id == id
         } ?? previews[id]
+    }
+
+    func reactionRule(for id: String) -> ChannelReactionRule {
+        channelSettings.reactionRule(id)
+    }
+
+    func setReactionRule(_ rule: ChannelReactionRule, for id: String) {
+        channelSettings.update(id, log: .reactionsChanged) { settings in
+            settings.reactionRule = rule
+        }
+    }
+
+    func rename(_ id: String, to name: String) {
+        mutate(id) { chat in
+            chat.name = name
+        }
+    }
+
+    func setPublic(_ isPublic: Bool, id: String) {
+        mutate(id) { chat in
+            chat.isPublic = isPublic
+        }
+    }
+
+    func unsubscribe(_ id: String) {
+        guard var chat = chat(id), isJoined(id) else {
+            return
+        }
+
+        chat.memberCount = max(0, chat.memberCount - 1)
+        previews[id] = chat
+        delete(id)
+    }
+
+    func isPostReported(_ id: String) -> Bool {
+        reportedPosts.contains(id)
+    }
+
+    func reportPost(_ id: String) {
+        reportedPosts.insert(id)
+    }
+
+    func reportChannel(_ id: String) {
+        reportedChannels.insert(id)
     }
 
     func isJoined(_ id: String) -> Bool {
@@ -102,6 +159,8 @@ final class ChatsStore {
             location.title.map { title in
                 "📍 \(title)"
             } ?? "📍"
+        case .contact(let contact):
+            "👤 \(contact.name)"
         case .videoNote:
             "🎥"
         case .poll(let poll):

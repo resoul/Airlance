@@ -30,6 +30,22 @@ extension ChatHistoryStore {
         }
     }
 
+    func audioFiles() -> [(chatID: String, message: HistoryMessage, file: MessageFile)] {
+        let found = histories.flatMap { chatID, history in
+            history.messages.compactMap { message -> (String, HistoryMessage, MessageFile)? in
+                guard case .file(let file, _) = message.content, file.isAudio, file.source.url != nil else {
+                    return nil
+                }
+
+                return (chatID, message, file)
+            }
+        }
+
+        return found.sorted { lhs, rhs in
+            lhs.1.date > rhs.1.date
+        }
+    }
+
     func forward(_ source: HistoryMessage, authorName: String, to id: String) {
         let origin = source.forward ?? MessageForward(fromID: source.authorID, fromName: authorName)
         var link = source.link

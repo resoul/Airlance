@@ -16,6 +16,7 @@ final class PinnedMessageBar: UIControl {
     }
 
     var onUnpin: (@MainActor () -> Void)?
+    var onHold: (@MainActor () -> Void)?
 
     private let separator = UIView()
     private let track = UIView()
@@ -60,6 +61,7 @@ final class PinnedMessageBar: UIControl {
         )
         addSubview(unpin)
         addSubview(separator)
+        addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(held(_:))))
     }
 
     @available(*, unavailable)
@@ -141,6 +143,13 @@ final class PinnedMessageBar: UIControl {
         clip.frame = CGRect(x: 24, y: top + titleHeight, width: bounds.width - 76, height: textHeight)
         text.frame = clip.bounds
         unpin.frame = CGRect(x: bounds.width - 48, y: (height - 44) / 2, width: 44, height: 44)
+    }
+
+    @objc
+    private func held(_ gesture: UILongPressGestureRecognizer) {
+        if gesture.state == .began {
+            onHold?()
+        }
     }
 
     private func rebuildSegments() {

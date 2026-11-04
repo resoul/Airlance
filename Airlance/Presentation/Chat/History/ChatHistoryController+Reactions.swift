@@ -3,8 +3,20 @@ import QuartzCore
 
 extension ChatHistoryController {
     func react(_ emoji: String, messageID: String) {
-        Haptics.play(.selection)
         let wasChosen = message(messageID)?.chosenReaction == emoji
+        let limit = store.chatsStore.channelSettings.settings(chatID).reactionsPerPost ?? .max
+        let reactions = message(messageID)?.reactions ?? []
+        let hasEmoji = reactions.contains { reaction in
+            reaction.emoji == emoji
+        }
+        let fits = hasEmoji || reactions.count < limit
+        guard wasChosen || (fits && store.chatsStore.reactionRule(for: chatID).allows(emoji)) else {
+            Haptics.play(.warning)
+
+            return
+        }
+
+        Haptics.play(.selection)
         store.toggleReaction(emoji, messageID: messageID, in: chatID)
         guard !wasChosen else {
             return
@@ -40,6 +52,8 @@ extension ChatHistoryController {
         }
 
         lastBubbleTap = nil
-        react(Reactions.doubleTap, messageID: messageID)
+        if let emoji = store.chatsStore.reactionRule(for: chatID).doubleTapEmoji(default: Reactions.doubleTap) {
+            react(emoji, messageID: messageID)
+        }
     }
 }

@@ -89,7 +89,9 @@ extension ProfileViewController {
             showToast(isMuted ? strings.profileMuted : strings.profileUnmuted, symbol: muteSymbol)
         case .call where isBoostable:
             presentBoost()
-        case .call, .more:
+        case .more:
+            showMoreMenu(from: button)
+        case .call:
             break
         }
     }

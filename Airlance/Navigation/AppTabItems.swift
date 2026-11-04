@@ -109,8 +109,8 @@ enum AppTabItems {
                 }
             }
         }
-        items.append(PopupMenuItem(title: strings.accountAdd, symbol: "plus.circle") {
-            accounts.addDemoAccount()
+        items.append(PopupMenuItem(title: strings.authAddAccount, symbol: "plus.circle") {
+            accounts.addAccount()
         })
 
         return items

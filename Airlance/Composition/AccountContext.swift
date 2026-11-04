@@ -17,6 +17,7 @@ final class AccountContext {
     let storage: any KeyValueStore
     let chatFolders: ChatFolderStore
     let chatsStore: ChatsStore
+    let channelSettings: ChannelSettingsStore
     let historyStore: ChatHistoryStore
     let groupMembers = GroupMembersStore()
     let callsStore: CallsStore
@@ -25,12 +26,37 @@ final class AccountContext {
     let tabs: TabSettings
     let onAir: OnAirStore
     let media: MediaStore
+    let myProfile: MyProfileStore
 
     private let database: AccountDatabase
     private var isClosed = false
 
     var accountID: AccountID {
         record.id
+    }
+
+    private static func previews(now: Date) -> [ChatSummary] {
+        let previews = ChatFixtures.previews(now: now)
+        let onAirPreviews = OnAirFixtures.summaries(now: now).filter { summary in
+            !previews.contains { preview in
+                preview.id == summary.id
+            }
+        }
+
+        return previews + onAirPreviews
+    }
+
+    private static func profileStore(
+        storage: any KeyValueStore,
+        media: MediaStore,
+        channelSettings: ChannelSettingsStore
+    ) -> MyProfileStore {
+        let store = MyProfileStore(storage: storage, media: media)
+        channelSettings.signatureName = {
+            store.profile.fullName
+        }
+
+        return store
     }
 
     init(record: AccountRecord, keychain: Keychain) throws {
@@ -46,15 +72,12 @@ final class AccountContext {
         self.database = database
         storage = database.keyValue
         chatFolders = ChatFolderStore(tables: database.tables)
-        let previews = ChatFixtures.previews(now: now)
-        let onAirPreviews = OnAirFixtures.summaries(now: now).filter { summary in
-            !previews.contains { preview in
-                preview.id == summary.id
-            }
-        }
+        let channelSettings = ChannelSettingsStore(storage: database.keyValue)
+        self.channelSettings = channelSettings
         chatsStore = ChatsStore(
             chats: ChatFixtures.make(now: now, variant: record.fixtureVariant),
-            previews: previews + onAirPreviews
+            previews: Self.previews(now: now),
+            channelSettings: channelSettings
         )
         onAir = OnAirStore(
             channels: OnAirFixtures.channels(),
@@ -68,6 +91,7 @@ final class AccountContext {
         tabs = TabSettings(storage: database.keyValue)
         let media = MediaStore(account: record.id.rawValue)
         self.media = media
+        myProfile = Self.profileStore(storage: database.keyValue, media: media, channelSettings: channelSettings)
         Task.detached(priority: .background) {
             media.trim(to: Self.mediaLimit)
         }
@@ -94,6 +118,14 @@ final class AccountContext {
         MediaStore(account: accountID.rawValue).removeAll()
         MediaDiskCache.shared.remove(account: accountID.rawValue)
         try AccountDatabaseKey.remove(accountID: accountID.rawValue, keychain: keychain)
+    }
+
+    static func hasData(accountID: AccountID) -> Bool {
+        guard let directory = try? directory(accountID: accountID) else {
+            return false
+        }
+
+        return FileManager.default.fileExists(atPath: directory.path)
     }
 
     private static func directory(accountID: AccountID) throws -> URL {

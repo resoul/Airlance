@@ -14,12 +14,19 @@ extension ChatViewController {
         }
 
         inputBar.dismissKeyboard()
-        var tabs: [AttachSheet.Tab] = [.gallery, .file, .location]
+        var tabs: [AttachSheet.Tab] = [.gallery, .location]
         if canCreatePolls {
             tabs.append(.poll)
         }
-        let sheet = AttachSheet(tabs: tabs, presentation: presentation, host: host)
+        tabs += [.sound, .contact, .file]
+        let sheet = AttachSheet(
+            tabs: tabs,
+            presentation: presentation,
+            contacts: dependencies.contacts,
+            host: host
+        )
         bindAttach(sheet)
+        sheet.sound.setFiles(attachSoundFiles())
         prepareCameraTile(in: sheet)
         sheet.present()
     }
@@ -31,7 +38,14 @@ extension ChatViewController {
                 return false
             }
 
-            return await flow.authorize(tab == .location ? .sendLocation : .attachMedia, from: self)
+            switch tab {
+            case .location:
+                return await flow.authorize(.sendLocation, from: self)
+            case .contact:
+                return await flow.authorize(.shareContact, from: self)
+            default:
+                return await flow.authorize(.attachMedia, from: self)
+            }
         }
         sheet.isLimited = {
             PHPhotoLibrary.authorizationStatus(for: .readWrite) == .limited
@@ -48,8 +62,9 @@ extension ChatViewController {
             self?.openCamera(from: frame)
         }
         sheet.onFile = { [weak self] in
-            self?.pickFiles()
+            self?.pickFiles(types: [.item])
         }
+        bindAttachSound(sheet)
         sheet.onLocation = { [weak self] pick in
             self?.sendLocation(pick)
         }
@@ -91,13 +106,6 @@ extension ChatViewController {
     private func sendLocation(_ pick: AttachLocationView.Pick) {
         let location = MessageLocation(latitude: pick.coordinate.latitude, longitude: pick.coordinate.longitude)
         postAttachment(.location(location))
-    }
-
-    private func pickFiles() {
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
-        picker.allowsMultipleSelection = true
-        picker.delegate = self
-        present(picker, animated: true)
     }
 }
 

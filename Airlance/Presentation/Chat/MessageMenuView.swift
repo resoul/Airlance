@@ -5,6 +5,7 @@ import UIKit
 
 struct MessageMenuReactions {
     let chosen: String?
+    var allowed: [String]?
     let pick: @MainActor (String) -> Void
 }
 
@@ -183,9 +184,11 @@ final class MessageMenuView: UIView, FocusOverlay {
     }
 
     private func addReactionBar(_ reactions: MessageMenuReactions, presentation: PresentationData) {
+        let emojis = reactions.allowed ?? Reactions.quick + Reactions.more
+        let quickCount = reactions.allowed == nil ? Reactions.quick.count : min(emojis.count, Reactions.quick.count)
         let bar = ReactionBarView(
-            quick: Reactions.quick,
-            more: Reactions.more,
+            quick: Array(emojis.prefix(quickCount)),
+            more: Array(emojis.dropFirst(quickCount)),
             chosen: reactions.chosen,
             theme: presentation.theme
         )
@@ -202,8 +205,10 @@ final class MessageMenuView: UIView, FocusOverlay {
         bar.onExpand = { [weak self] expanded in
             UIView.animate(withDuration: 0.2) {
                 self?.menu.alpha = expanded ? 0 : 1
+                self?.receiptsPanel?.alpha = expanded ? 0 : 1
             }
             self?.menu.isUserInteractionEnabled = !expanded
+            self?.receiptsPanel?.isUserInteractionEnabled = !expanded
         }
         addSubview(bar)
         reactionBar = bar

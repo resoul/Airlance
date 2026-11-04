@@ -2,36 +2,27 @@ import Haptics
 import UIKit
 
 extension AttachSheet {
-    func setupTabs() {
-        tabBar.axis = .horizontal
-        tabBar.distribution = .fillEqually
-        for tab in tabs {
-            let button = UIButton(type: .system)
-            var configuration = UIButton.Configuration.plain()
-            configuration.image = UIImage(
-                systemName: symbol(of: tab),
-                withConfiguration: UIImage.SymbolConfiguration(pointSize: 20)
+    static func makeTabBar(_ tabs: [Tab], presentation: PresentationData) -> AttachTabBar {
+        let items = tabs.map { tab in
+            AttachTabBar.Item(
+                tag: tab.rawValue,
+                title: title(of: tab, strings: presentation.strings),
+                symbol: symbol(of: tab)
             )
-            configuration.title = title(of: tab)
-            configuration.imagePlacement = .top
-            configuration.imagePadding = 4
-            let font = presentation.theme.fonts.caption.withSize(11)
-            configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
-                var attributes = attributes
-                attributes.font = font
+        }
 
-                return attributes
+        return AttachTabBar(items: items, theme: presentation.theme)
+    }
+
+    func setupTabs() {
+        tabBar.onSelect = { [weak self] tag in
+            guard let tab = Tab(rawValue: tag) else {
+                return
             }
-            button.configuration = configuration
-            button.tag = tab.rawValue
-            button.addAction(
-                UIAction { [weak self] _ in
-                    Haptics.play(.selection)
-                    self?.select(tab)
-                },
-                for: .touchUpInside
-            )
-            tabBar.addArrangedSubview(button)
+
+            Haptics.play(.selection)
+            self?.endEditing(true)
+            self?.select(tab)
         }
         sheet.addSubview(tabBar)
     }
@@ -79,15 +70,12 @@ extension AttachSheet {
 
     func select(_ tab: Tab) {
         selected = tab
-        let colors = presentation.theme.colors
-        for case let button as UIButton in tabBar.arrangedSubviews {
-            button.tintColor = button.tag == tab.rawValue ? colors.accent : colors.textSecondary
-        }
+        tabBar.select(tab.rawValue, animated: true)
         setTitle(gallery.selection.isEmpty || tab != .gallery
             ? title(of: tab)
             : presentation.strings.attachSelected(String(gallery.selection.count)))
         showContent()
-        guard tab == .gallery || tab == .location, let authorize else {
+        guard tab == .gallery || tab == .location || tab == .contact, let authorize else {
             return
         }
 
@@ -114,6 +102,9 @@ extension AttachSheet {
         if allowed, tab == .location {
             location.start()
         }
+        if allowed, tab == .contact {
+            contacts.start()
+        }
         if selected == tab {
             showContent()
         }
@@ -139,16 +130,42 @@ extension AttachSheet {
             )
         case .poll:
             placeholder.show(symbol: "chart.bar.fill", text: strings.attachPollHint, action: strings.attachCreatePoll)
+        case .contact:
+            placeholder.show(
+                symbol: "person.crop.circle.fill",
+                text: strings.attachContactLocked,
+                action: strings.attachAllow
+            )
+        case .sound:
+            break
         }
-        let showsGallery = selected == .gallery && !locked
-        let showsLocation = selected == .location && !locked
+        let active = activeContent(isLocked: locked)
         UIView.animate(withDuration: 0.25) {
-            self.gallery.alpha = showsGallery ? 1 : 0
-            self.location.alpha = showsLocation ? 1 : 0
-            self.placeholder.alpha = showsGallery || showsLocation ? 0 : 1
+            for view in [self.gallery, self.location, self.sound, self.contacts, self.placeholder] as [UIView] {
+                view.alpha = view === active ? 1 : 0
+            }
         }
         let showsSend = selected == .gallery && !gallery.selection.isEmpty
         setSendBarShown(showsSend)
+    }
+
+    private func activeContent(isLocked: Bool) -> UIView {
+        guard !isLocked else {
+            return placeholder
+        }
+
+        switch selected {
+        case .gallery:
+            return gallery
+        case .location:
+            return location
+        case .sound:
+            return sound
+        case .contact:
+            return contacts
+        case .file, .poll:
+            return placeholder
+        }
     }
 
     func selectionChanged(_ count: Int) {
@@ -181,7 +198,9 @@ extension AttachSheet {
             close { [onPoll] in
                 onPoll?()
             }
-        case .gallery, .location:
+        case .sound:
+            break
+        case .gallery, .location, .contact:
             if let url = URL(string: UIApplication.openSettingsURLString) {
                 UIApplication.shared.open(url)
             }
@@ -196,30 +215,41 @@ extension AttachSheet {
         }
     }
 
-    private func symbol(of tab: Tab) -> String {
+    private static func symbol(of tab: Tab) -> String {
         switch tab {
         case .gallery:
             "photo.on.rectangle"
-        case .file:
-            "doc"
         case .location:
-            "location"
+            "mappin.and.ellipse"
         case .poll:
             "chart.bar.xaxis"
+        case .sound:
+            "play.circle"
+        case .contact:
+            "person.crop.circle"
+        case .file:
+            "doc"
         }
     }
 
     func title(of tab: Tab) -> String {
-        let strings = presentation.strings
+        Self.title(of: tab, strings: presentation.strings)
+    }
+
+    private static func title(of tab: Tab, strings: AppStrings) -> String {
         switch tab {
         case .gallery:
-            return strings.attachGallery
-        case .file:
-            return strings.attachFile
+            strings.attachGallery
         case .location:
-            return strings.attachLocation
+            strings.attachLocation
         case .poll:
-            return strings.pollAttach
+            strings.pollAttach
+        case .sound:
+            strings.attachSound
+        case .contact:
+            strings.attachContact
+        case .file:
+            strings.attachFile
         }
     }
 }

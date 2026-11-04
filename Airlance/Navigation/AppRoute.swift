@@ -28,6 +28,7 @@ enum AppRoute: Route {
     case tabSettings
     case myOnAir
     case settingsPage(SettingsPage)
+    case channelSettings(String, ChannelSettingsPage)
 
     var segment: RouteSegment {
         switch self {
@@ -79,6 +80,8 @@ enum AppRoute: Route {
             RouteSegment("myOnAir")
         case .settingsPage(let page):
             RouteSegment("settingsPage", argument: page.rawValue)
+        case .channelSettings(let id, let page):
+            RouteSegment("channelSettings", argument: "\(page.rawValue):\(id)")
         }
     }
 
@@ -104,12 +107,14 @@ enum AppRoute: Route {
             [.settings, .chatFolders]
         case .settingsPage(let page):
             [.settings] + page.parents
+        case .channelSettings(let id, let page):
+            [.chats, .chat(id), .profile(id)] + (page == .main ? [] : [.channelSettings(id, .main)])
         }
     }
 
     var isDetail: Bool {
         switch self {
-        case .chat, .comments, .profile:
+        case .chat, .comments, .profile, .channelSettings:
             true
         default:
             false
@@ -121,7 +126,7 @@ enum AppRoute: Route {
         case .contacts, .calls, .chats, .settings, .onAir:
             .tab
         case .chat, .permissions, .appearance, .storage, .profile, .chatFolders, .chatFolder,
-             .chatArchive, .comments, .tabSettings, .myOnAir, .settingsPage:
+             .chatArchive, .comments, .tabSettings, .myOnAir, .settingsPage, .channelSettings:
             .stack
         case .media, .stories:
             .fullScreen
@@ -137,6 +142,13 @@ enum AppRoute: Route {
             self = .chatFolder(argument)
         } else if segment.name == "settingsPage", let page = segment.argument.flatMap(SettingsPage.init) {
             self = .settingsPage(page)
+        } else if segment.name == "channelSettings", let argument = segment.argument {
+            let parts = argument.split(separator: ":", maxSplits: 1).map(String.init)
+            guard parts.count == 2, let page = ChannelSettingsPage(rawValue: parts[0]) else {
+                return nil
+            }
+
+            self = .channelSettings(parts[1], page)
         } else if segment.name == "browser", let argument = segment.argument {
             guard let url = Self.decode(argument) else {
                 return nil

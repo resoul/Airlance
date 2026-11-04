@@ -104,7 +104,8 @@ final class ScreenFactory {
                 permissionFlow: scene.permissionFlow,
                 videoNotes: account.videoNotes,
                 media: account.media,
-                translation: app.translation
+                translation: app.translation,
+                contacts: app.contactsSync.store
             ),
             router: router
         )
@@ -209,7 +210,8 @@ final class ScreenFactory {
                 presentationContext: scene.presentationContext,
                 themeStore: app.themeStore,
                 localizationStore: app.localizationStore,
-                accounts: scene
+                accounts: scene,
+                myProfile: account.myProfile
             ),
             router: router
         )

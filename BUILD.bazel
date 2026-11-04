@@ -36,6 +36,7 @@ swift_library(
     deps = [
         "//submodules/AirlanceUI",
         "//submodules/AsyncDisplayKit",
+        "//submodules/Auth",
         "//submodules/AvatarUI",
         "//submodules/BrowserUI",
         "//submodules/CameraUI",

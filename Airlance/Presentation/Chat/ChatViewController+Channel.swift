@@ -1,5 +1,6 @@
 import ChatHistory
 import Haptics
+import Theme
 import UIKit
 
 extension ChatViewController {
@@ -73,6 +74,23 @@ extension ChatViewController {
         }
 
         return chat.canPost
+    }
+
+    func channelWallpaper(_ presentation: PresentationData) -> ThemeWallpaper? {
+        let kind = dependencies.chatsStore.channelSettings.settings(peerID).wallpaper
+
+        return kind?.resolved(for: presentation.theme.appearance)
+    }
+
+    func bindChannelSettings() {
+        let channelID = peerID
+        channelSettingsObservation = dependencies.chatsStore.channelSettings.observe { [weak self] changed in
+            guard let self, changed == channelID else {
+                return
+            }
+
+            self.apply(self.presentation)
+        }
     }
 
     func bindForwardSources() {

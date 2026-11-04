@@ -158,6 +158,12 @@ extension ChatViewController {
         }
 
         history.endSelecting()
+        guard !isCopyingRestricted else {
+            showToast(presentation.strings.channelSettingsCopyDenied, symbol: "nosign")
+
+            return
+        }
+
         showForward(messages)
     }
 }

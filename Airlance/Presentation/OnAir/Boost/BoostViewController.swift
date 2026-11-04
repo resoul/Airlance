@@ -11,6 +11,7 @@ final class BoostViewController: ScreenViewController {
     let placeLabel = UILabel()
     let levelLabel = UILabel()
     let levelBar = UIProgressView(progressViewStyle: .default)
+    let levelsButton = UIButton(type: .system)
     let star = BoostStarButton()
     let hintLabel = UILabel()
     let costLabel = UILabel()
@@ -49,6 +50,13 @@ final class BoostViewController: ScreenViewController {
         placeLabel.numberOfLines = 3
         resultLabel.alpha = 0
         view.addSubview(levelBar)
+        levelsButton.addAction(
+            UIAction { [weak self] _ in
+                self?.showLevels()
+            },
+            for: .touchUpInside
+        )
+        view.addSubview(levelsButton)
         view.addSubview(star)
         view.addSubview(budgetBar)
         view.bringSubviewToFront(resultLabel)
@@ -75,6 +83,8 @@ final class BoostViewController: ScreenViewController {
         y = place(levelLabel, x: left, y: y, width: width) + 4
         levelBar.isHidden = levelLabel.isHidden
         levelBar.frame = CGRect(x: view.bounds.midX - 60, y: y, width: 120, height: 4)
+        levelsButton.isHidden = levelBar.isHidden
+        levelsButton.frame = CGRect(x: left, y: y + 8, width: width, height: 28)
         y += levelBar.isHidden ? 40 : 48
         star.frame = CGRect(x: view.bounds.midX - 100, y: y, width: 200, height: 200)
         resultLabel.frame = CGRect(x: left, y: star.frame.minY - 36, width: width, height: 28)
@@ -108,8 +118,23 @@ final class BoostViewController: ScreenViewController {
         budgetBar.progressTintColor = theme.colors.accent
         budgetBar.trackTintColor = theme.colors.separator
         levelBar.trackTintColor = theme.colors.separator
+        levelsButton.setTitle(presentation.strings.boostLevelsLink, for: .normal)
+        levelsButton.titleLabel?.font = theme.fonts.caption
+        levelsButton.tintColor = theme.colors.accent
         star.baseColor = theme.colors.textPrimary
         update()
+    }
+
+    private func showLevels() {
+        guard let channelID else {
+            return
+        }
+
+        let content = ChannelLevelsController(channelID: channelID, store: store, presentation: presentation)
+        let sheet = FloatingSheetController(content: content, theme: presentation.theme) { _ in
+            720
+        }
+        present(sheet, animated: false)
     }
 
     private func boost(isSuper: Bool) {

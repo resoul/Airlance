@@ -163,6 +163,8 @@ final class MessageBubbleLayout: @unchecked Sendable {
         case .location(let location):
             let map = LocationBody(location: location, input: input, scale: scale, maxBubble: maxBubble)
             body = map.make(style: style)
+        case .contact(let contact):
+            body = ContactBody(contact: contact, input: input, scale: scale, maxBubble: maxBubble).make(style: style)
         case .videoNote(let note):
             body = VideoNoteBody(note: note, input: input, scale: scale).make(style: style)
         case .poll(let poll):

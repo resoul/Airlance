@@ -25,11 +25,7 @@ final class SettingsHeaderView: UIView {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        let profile = ProfileFixture.current
-        avatar.apply(PeerAvatars.descriptor(id: profile.id, name: profile.name), presentation: .profile)
-        nameLabel.text = profile.name
         nameLabel.textAlignment = .center
-        detailLabel.text = "\(profile.phone) · \(profile.username)"
         detailLabel.textAlignment = .center
         addSubview(avatar.view)
         addSubview(nameLabel)
@@ -39,6 +35,12 @@ final class SettingsHeaderView: UIView {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) is not supported")
+    }
+
+    func update(_ profile: MyProfile, avatar descriptor: AvatarDescriptor) {
+        avatar.apply(descriptor, presentation: .profile)
+        nameLabel.text = profile.fullName
+        detailLabel.text = profile.contactLine
     }
 
     func apply(_ presentation: PresentationData) {

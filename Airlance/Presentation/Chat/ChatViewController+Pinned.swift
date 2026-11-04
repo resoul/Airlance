@@ -14,11 +14,15 @@ extension ChatViewController {
         pinnedBar.onUnpin = { [weak self] in
             self?.confirmUnpin()
         }
+        pinnedBar.onHold = { [weak self] in
+            self?.showPinnedPopup()
+        }
         view.addSubview(pinnedBar)
         history.onUpdate = { [weak self] in
             self?.updatePinned()
             self?.updateScheduled()
             self?.updateChatTranslation()
+            self?.messagesPopup?.reload()
         }
     }
 

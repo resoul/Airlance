@@ -1,3 +1,4 @@
+import Auth
 import BrowserUI
 import DatabaseAPI
 import Foundation
@@ -27,6 +28,7 @@ final class AccountManager {
 
     private let storage: any KeyValueStore
     private let keychain: Keychain
+    private let auth: AuthTokenStore
     private let observers = ObserverList<AccountEvent>()
     private var stored: [AccountRecord]
     private var removing: Set<AccountID> = []
@@ -34,9 +36,10 @@ final class AccountManager {
     private var users: [AccountID: Set<UUID>] = [:]
     private var saving: Task<Void, Never>?
 
-    init(storage: any KeyValueStore, keychain: Keychain) {
+    init(storage: any KeyValueStore, keychain: Keychain, auth: AuthTokenStore) {
         self.storage = storage
         self.keychain = keychain
+        self.auth = auth
         stored = storage.value(for: .accounts)
         lastSelected = storage.value(for: .selectedAccount).map(AccountID.init(rawValue:))
         if !storage.value(for: .accountsMigrated) {
@@ -144,6 +147,45 @@ final class AccountManager {
         return record
     }
 
+    func addSignedIn(subject: String, email: String?) -> AccountID {
+        let id = AccountID.user(subject: subject)
+        if let record = record(id) {
+            if record.currentStatus == .signedOut {
+                setStatus(.active, for: id)
+            }
+
+            return id
+        }
+
+        let variant = (stored.map(\.fixtureVariant).max() ?? 0) + 1
+        stored.append(AccountRecord(
+            id: id,
+            name: email ?? "",
+            isDemo: false,
+            fixtureVariant: variant,
+            createdAt: Date(),
+            subject: subject,
+            status: .needsProfile
+        ))
+        save(records: stored)
+        observers.notify(.changed)
+
+        return id
+    }
+
+    func setStatus(_ status: AccountStatus, for id: AccountID) {
+        let index = stored.firstIndex { record in
+            record.id == id
+        }
+        guard let index, stored[index].currentStatus != status else {
+            return
+        }
+
+        stored[index].status = status
+        save(records: stored)
+        observers.notify(.changed)
+    }
+
     func remove(_ id: AccountID) async {
         guard isAvailable(id) else {
             return
@@ -153,6 +195,7 @@ final class AccountManager {
         await enqueue(saveRemoving()).value
         observers.notify(.willRemove(id))
         users[id] = nil
+        await auth.signOut(account: id.rawValue)
         if let context = contexts.removeValue(forKey: id) {
             await context.close()
         }
@@ -164,6 +207,7 @@ final class AccountManager {
     private func finishRemoval(_ id: AccountID) {
         do {
             try AccountContext.remove(accountID: id, keychain: keychain)
+            try auth.remove(account: id.rawValue)
         } catch {
             Self.logger.error("Can't remove data of account \(id.rawValue), retrying next launch: \(error)")
 
@@ -183,7 +227,7 @@ final class AccountManager {
     }
 
     private func migrateLegacyAccount() {
-        if stored.isEmpty {
+        if stored.isEmpty, AccountContext.hasData(accountID: .legacyLocal) {
             stored = [
                 AccountRecord(id: .legacyLocal, name: "", isDemo: true, fixtureVariant: 0, createdAt: Date()),
             ]

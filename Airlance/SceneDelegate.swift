@@ -38,6 +38,10 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         open(URLContexts, animated: true)
     }
 
+    func sceneWillEnterForeground(_ scene: UIScene) {
+        context?.revalidate()
+    }
+
     func sceneDidDisconnect(_ scene: UIScene) {
         context = nil
     }

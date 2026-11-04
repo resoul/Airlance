@@ -133,6 +133,8 @@ enum MessageSnippet {
             return "📊 " + poll.question
         case .videoNote:
             return strings.videoNotesPreview
+        case .contact(let contact):
+            return contact.name
         case .text, .photos, .service:
             break
         }

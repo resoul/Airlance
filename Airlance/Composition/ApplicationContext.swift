@@ -1,3 +1,4 @@
+import Auth
 import Database
 import DatabaseAPI
 import Foundation
@@ -14,6 +15,7 @@ final class ApplicationContext {
 
     let sharedStorage: any KeyValueStore
     let keychain: Keychain
+    let auth: AuthTokenStore
     let themeStore: ThemeStore
     let localizationStore: LocalizationStore
     let permissionStore: PermissionStore
@@ -41,7 +43,8 @@ final class ApplicationContext {
         )
         permissionStore = PermissionStore(providers: AppPermissions.makeProviders())
         contactsSync = ContactsSync(storage: sharedStorage, permissionStore: permissionStore)
-        accounts = AccountManager(storage: sharedStorage, keychain: keychain)
+        auth = AuthTokenStore(configuration: .airlance, keychain: keychain)
+        accounts = AccountManager(storage: sharedStorage, keychain: keychain, auth: auth)
         translation = TranslationSettings(storage: sharedStorage)
         powerSaving = PowerSaving(storage: sharedStorage)
     }
@@ -56,4 +59,13 @@ final class ApplicationContext {
 
         return applicationSupport.appendingPathComponent("Shared", isDirectory: true)
     }
+}
+
+extension AuthConfiguration {
+    static let airlance = AuthConfiguration(
+        issuer: "https://auth.airlance.org",
+        clientID: "airlance-ios",
+        redirectScheme: "airlance",
+        redirectURI: "airlance://auth/callback"
+    )
 }

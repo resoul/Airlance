@@ -6,6 +6,8 @@ final class ChatInputBar: UIView, UITextViewDelegate {
     var onSend: (@MainActor (ComposedText) -> Void)?
     var onSendMenu: (@MainActor (UILongPressGestureRecognizer) -> Void)?
     var onScheduled: (@MainActor () -> Void)?
+    var onScheduledHold: (@MainActor () -> Void)?
+    var scheduledCount = 0
     var onMentionQuery: (@MainActor (String?) -> Void)?
     var onAttach: (@MainActor () -> Void)?
     var onHold: (@MainActor (UILongPressGestureRecognizer) -> Void)?
@@ -29,6 +31,7 @@ final class ChatInputBar: UIView, UITextViewDelegate {
     var isEditingMessage = false {
         didSet {
             updateAction(animated: true)
+            updateScheduledVisibility()
         }
     }
 
@@ -189,7 +192,9 @@ final class ChatInputBar: UIView, UITextViewDelegate {
     private func textChanged(animated: Bool) {
         placeholder.isHidden = !text.isEmpty
         updateAction(animated: animated)
-        let width = max(fieldBox.bounds.width, 100)
+        updateScheduledVisibility()
+        let inset = scheduledButton.isHidden ? 0 : Self.scheduledInset
+        let width = max(fieldBox.bounds.width - inset, 100)
         let fitting = ceil(textView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height)
         let height = min(max(minimumTextHeight, fitting), maximumTextHeight)
         textView.isScrollEnabled = fitting > maximumTextHeight

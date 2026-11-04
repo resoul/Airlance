@@ -133,11 +133,19 @@ enum ChatFixtures {
         )
         chat.memberCount = 800 + members(of: id) % 60_000
         chat.canPost = ownChannels.contains(id)
+        chat.isPublic = !privateChannels.contains(id)
 
         return chat
     }
 
     static let ownChannels: Set<String> = ["news"]
+    static let privateChannels: Set<String> = ["sport"]
+    static let protectedChannels: Set<String> = ["tech"]
+    static let reactionRules: [String: ChannelReactionRule] = [
+        "design": .some(["🔥", "❤️", "👍", "🤯", "👏", "🎉"]),
+        "tech": .some(["👍", "🔥", "🤯", "🤔"]),
+        "music": .none,
+    ]
 
     static func previews(now: Date) -> [ChatSummary] {
         [

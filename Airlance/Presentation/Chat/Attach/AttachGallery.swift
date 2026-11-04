@@ -13,6 +13,12 @@ final class AttachGallery: UIView, UICollectionViewDataSource, UICollectionViewD
         }
     }
     var onManage: (@MainActor () -> Void)?
+    var bottomInset: CGFloat = 0 {
+        didSet {
+            collection.contentInset.bottom = bottomInset
+            collection.verticalScrollIndicatorInsets.bottom = bottomInset
+        }
+    }
 
     private(set) var selection: [String] = []
     private let collection: UICollectionView

@@ -16,6 +16,7 @@ enum OnAirFixtures {
         ("new-sound", "Новий звук", .music, 41_300, 6_200, 760, 6, 5, 1_020),
         ("football-ua", "Футбол UA", .sport, 188_000, 5_940, 1_020, 7, 9, 1_800),
         ("motion-lab", "Motion Lab", .design, 9_800, 5_310, 690, nil, 82, 9),
+        ("news", "Airlance News", .tech, 12_400, 4_880, 620, nil, 18, 300),
         ("indie-games", "Інді-ігри", .games, 27_400, 4_870, 540, 8, 4, 680),
         ("science-plain", "Наука без формул", .science, 35_100, 4_520, 610, 9, 7, 430),
         ("economy-easy", "Економіка просто", .news, 63_800, 4_100, 480, 10, 1, 1_250),
@@ -62,6 +63,7 @@ enum OnAirFixtures {
             )
             chat.memberCount = channel.subscribers
             chat.canPost = false
+            chat.isPublic = true
 
             return chat
         }

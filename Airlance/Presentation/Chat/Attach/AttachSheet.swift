@@ -1,3 +1,5 @@
+import ChatHistory
+import DeviceContacts
 import Haptics
 import Photos
 import UIKit
@@ -5,9 +7,11 @@ import UIKit
 final class AttachSheet: UIView, UITextFieldDelegate {
     enum Tab: Int, CaseIterable {
         case gallery
-        case file
         case location
         case poll
+        case sound
+        case contact
+        case file
     }
 
     var onSendMedia: (@MainActor ([PHAsset], String) -> Void)?
@@ -16,6 +20,9 @@ final class AttachSheet: UIView, UITextFieldDelegate {
     var onFile: (@MainActor () -> Void)?
     var onLocation: (@MainActor (AttachLocationView.Pick) -> Void)?
     var onPoll: (@MainActor () -> Void)?
+    var onSoundFile: (@MainActor (MessageFile) -> Void)?
+    var onPickSoundFiles: (@MainActor () -> Void)?
+    var onContact: (@MainActor (DeviceContact) -> Void)?
     var onManage: (@MainActor () -> Void)?
     var authorize: (@MainActor (Tab) async -> Bool)?
     var isLimited: (@MainActor () -> Bool)?
@@ -25,8 +32,10 @@ final class AttachSheet: UIView, UITextFieldDelegate {
     let sheet = UIView()
     let gallery = AttachGallery()
     let location: AttachLocationView
+    let sound: AttachSoundView
+    let contacts: AttachContactsView
     let placeholder = AttachPlaceholder()
-    let tabBar = UIStackView()
+    let tabBar: AttachTabBar
     let sendBar = UIView()
     let caption = UITextField()
     let sendButton = UIButton(type: .system)
@@ -38,11 +47,15 @@ final class AttachSheet: UIView, UITextFieldDelegate {
     private let dim = UIView()
     private let grabber = UIView()
     private let titleLabel = UILabel()
+    private let closeButton = UIButton(type: .system)
 
-    init(tabs: [Tab], presentation: PresentationData, host: UIView) {
+    init(tabs: [Tab], presentation: PresentationData, contacts store: DeviceContactsStore, host: UIView) {
         self.tabs = tabs
         self.presentation = presentation
         location = AttachLocationView(presentation: presentation)
+        sound = AttachSoundView(presentation: presentation)
+        contacts = AttachContactsView(store: store, presentation: presentation)
+        tabBar = Self.makeTabBar(tabs, presentation: presentation)
         super.init(frame: host.bounds)
         host.addSubview(self)
         dim.backgroundColor = UIColor(white: 0, alpha: 0.35)
@@ -50,7 +63,7 @@ final class AttachSheet: UIView, UITextFieldDelegate {
         dim.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(dimTapped)))
         addSubview(dim)
         sheet.backgroundColor = presentation.theme.colors.surface
-        sheet.layer.cornerRadius = 16
+        sheet.layer.cornerRadius = 28
         sheet.layer.cornerCurve = .continuous
         sheet.addGestureRecognizer(UIPanGestureRecognizer(target: self, action: #selector(dragged(_:))))
         addSubview(sheet)
@@ -59,13 +72,15 @@ final class AttachSheet: UIView, UITextFieldDelegate {
         sheet.addSubview(grabber)
         titleLabel.font = HistoryStyle.bold(presentation.theme.fonts.body)
         titleLabel.textColor = presentation.theme.colors.textPrimary
+        titleLabel.textAlignment = .center
         sheet.addSubview(titleLabel)
         gallery.apply(presentation)
         placeholder.apply(presentation)
         bindContent()
-        for view in [gallery, location, placeholder] as [UIView] {
+        for view in [gallery, location, sound, contacts, placeholder] as [UIView] {
             sheet.addSubview(view)
         }
+        setupCloseButton()
         setupTabs()
         setupSendBar()
         NotificationCenter.default.addObserver(
@@ -110,21 +125,61 @@ final class AttachSheet: UIView, UITextFieldDelegate {
         placeholder.onAction = { [weak self] in
             self?.placeholderTapped()
         }
+        sound.onSend = { [weak self] file in
+            self?.close {
+                self?.onSoundFile?(file)
+            }
+        }
+        sound.onPickFiles = { [weak self] in
+            self?.close {
+                self?.onPickSoundFiles?()
+            }
+        }
+        contacts.onPick = { [weak self] contact in
+            self?.close {
+                self?.onContact?(contact)
+            }
+        }
+    }
+
+    private func setupCloseButton() {
+        let colors = presentation.theme.colors
+        let configuration = UIImage.SymbolConfiguration(pointSize: 15, weight: .semibold)
+        closeButton.setImage(UIImage(systemName: "xmark", withConfiguration: configuration), for: .normal)
+        closeButton.tintColor = colors.textPrimary
+        closeButton.backgroundColor = colors.textSecondary.withAlphaComponent(0.14)
+        closeButton.layer.cornerRadius = 20
+        closeButton.accessibilityLabel = presentation.strings.chatCancel
+        closeButton.addAction(
+            UIAction { [weak self] _ in
+                self?.close(nil)
+            },
+            for: .touchUpInside
+        )
+        sheet.addSubview(closeButton)
     }
 
     private func layoutSheet(in host: UIView) {
         dim.frame = bounds
-        sheetHeight = bounds.height * 0.64
+        sheetHeight = bounds.height * 0.82
         let width = bounds.width
         sheet.frame = CGRect(x: 0, y: bounds.height, width: width, height: sheetHeight + 40)
         grabber.frame = CGRect(x: (width - 36) / 2, y: 6, width: 36, height: 5)
-        titleLabel.frame = CGRect(x: 16, y: 16, width: width - 32, height: 24)
-        let tabsHeight: CGFloat = 64 + host.safeAreaInsets.bottom
-        let content = CGRect(x: 0, y: 50, width: width, height: sheetHeight - 50 - tabsHeight)
-        for view in [gallery, location, placeholder] as [UIView] {
-            view.frame = content
+        closeButton.frame = CGRect(x: 14, y: 14, width: 40, height: 40)
+        titleLabel.frame = CGRect(x: 62, y: 16, width: width - 124, height: 36)
+        let top: CGFloat = 62
+        let tabsHeight = AttachTabBar.height + 12 + host.safeAreaInsets.bottom
+        let full = CGRect(x: 0, y: top, width: width, height: sheetHeight - top)
+        for view in [gallery, sound, contacts] as [UIView] {
+            view.frame = full
         }
-        tabBar.frame = CGRect(x: 8, y: sheetHeight - tabsHeight + 6, width: width - 16, height: 52)
+        gallery.bottomInset = tabsHeight
+        sound.bottomInset = tabsHeight
+        contacts.bottomInset = tabsHeight
+        for view in [location, placeholder] as [UIView] {
+            view.frame = CGRect(x: 0, y: top, width: width, height: sheetHeight - top - tabsHeight)
+        }
+        tabBar.frame = CGRect(x: 12, y: sheetHeight - tabsHeight + 6, width: width - 24, height: AttachTabBar.height)
         sendBar.frame = CGRect(x: 0, y: sheetHeight - tabsHeight, width: width, height: tabsHeight)
         caption.superview?.frame = CGRect(x: 12, y: 10, width: width - 80, height: 38)
         caption.frame = CGRect(x: 14, y: 0, width: width - 108, height: 38)
@@ -144,12 +199,18 @@ final class AttachSheet: UIView, UITextFieldDelegate {
 
     @objc
     private func keyboardWillChange(_ notification: Notification) {
-        guard caption.isFirstResponder || sheet.transform != .identity,
-              let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
+        guard let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
             return
         }
 
-        let overlap = max(0, bounds.height - convert(frame, from: nil).minY - safeAreaInsets.bottom)
+        let height = max(0, bounds.height - convert(frame, from: nil).minY)
+        sound.keyboardInset = height
+        contacts.keyboardInset = height
+        guard caption.isFirstResponder || sheet.transform != .identity else {
+            return
+        }
+
+        let overlap = max(0, height - safeAreaInsets.bottom)
         let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
         UIView.animate(withDuration: duration, delay: 0, options: [.beginFromCurrentState, .curveEaseOut]) {
             self.sheet.transform = CGAffineTransform(translationX: 0, y: -overlap)
@@ -188,6 +249,7 @@ final class AttachSheet: UIView, UITextFieldDelegate {
 
     func close(_ completion: (@MainActor () -> Void)?) {
         endEditing(true)
+        sound.stopPreview()
         isUserInteractionEnabled = false
         UIView.animate(withDuration: 0.3, delay: 0, options: .curveEaseIn) {
             self.sheet.frame.origin.y = self.bounds.height

@@ -19,9 +19,7 @@ extension ChatViewController {
             visible: view.convert(visibleHistoryFrame, to: host),
             extras: MessageMenuExtras(
                 selection: textSelection(for: message, node: node),
-                reactions: MessageMenuReactions(chosen: message.chosenReaction) { [weak self] emoji in
-                    self?.history.react(emoji, messageID: message.id)
-                },
+                reactions: menuReactions(for: message),
                 receipts: menuReceipts(for: message)
             ),
             host: host
@@ -31,7 +29,11 @@ extension ChatViewController {
     }
 
     private func textSelection(for message: HistoryMessage, node: MessageBubbleNode) -> MessageMenuSelection? {
-        node.selectableText(message.content.text).map { text in
+        guard !isCopyingRestricted else {
+            return nil
+        }
+
+        return node.selectableText(message.content.text).map { text in
             MessageMenuSelection(text: text) { [weak self] selected, range in
                 self?.selectionItems(selected, range: range, message: message) ?? []
             }
@@ -85,23 +87,19 @@ extension ChatViewController {
         var items = retryItems(for: message) + (canWrite ? [reply] : [])
         let text = message.content.text
         if !text.isEmpty {
-            items.append(copyItem(text))
+            if !isCopyingRestricted {
+                items.append(copyItem(text))
+            }
             items.append(contentsOf: translateItems(for: message))
             items.append(contentsOf: pollItems(for: message))
         }
         if message.isOutgoing, message.content.isEditable {
             items.append(editItem(for: message))
         }
-        let forward = MenuItem(
-            title: strings.chatForward,
-            symbol: "arrowshape.turn.up.right",
-            isDestructive: false,
-            action: .run { [weak self] in
-                self?.showForward([message])
-            }
-        )
-        items.append(contentsOf: [forward] + videoReactionItems(for: message) + showInGroupItems(for: message))
+        items.append(contentsOf: forwardItems(for: message) + videoReactionItems(for: message))
+        items.append(contentsOf: showInGroupItems(for: message))
         items.append(pinItem(for: message))
+        items.append(contentsOf: reportItems(for: message))
         items.append(selectItem(for: message))
         let delete = MenuItem(
             title: strings.chatDelete,
@@ -112,6 +110,23 @@ extension ChatViewController {
         items.append(delete)
 
         return items
+    }
+
+    private func forwardItems(for message: HistoryMessage) -> [MenuItem] {
+        guard !isCopyingRestricted else {
+            return []
+        }
+
+        let item = MenuItem(
+            title: presentation.strings.chatForward,
+            symbol: "arrowshape.turn.up.right",
+            isDestructive: false,
+            action: .run { [weak self] in
+                self?.showForward([message])
+            }
+        )
+
+        return [item]
     }
 
     private func selectItem(for message: HistoryMessage) -> MenuItem {

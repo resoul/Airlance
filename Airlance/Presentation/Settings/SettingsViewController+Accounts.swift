@@ -10,6 +10,16 @@ extension SettingsViewController {
             accountRow(record, isCurrent: record.id == current)
         }
         rows.append(SettingsRowItem(
+            id: "account-sign-in",
+            title: strings.authAddAccount,
+            symbol: "person.badge.plus",
+            color: .systemBlue,
+            position: .middle,
+            onSelect: {
+                switcher.addAccount()
+            }
+        ))
+        rows.append(SettingsRowItem(
             id: "account-add",
             title: strings.accountAdd,
             symbol: "plus",
@@ -22,19 +32,25 @@ extension SettingsViewController {
         if let current, let record = switcher.accountRecords.first(where: { record in
             record.id == current
         }) {
-            rows.append(SettingsRowItem(
-                id: "account-remove",
-                title: strings.accountRemove,
-                symbol: "trash",
-                color: .systemRed,
-                position: .middle,
-                onSelect: { [weak self] in
-                    self?.confirmRemove(record)
-                }
-            ))
+            rows.append(removeRow(record))
         }
 
         return rows
+    }
+
+    private func removeRow(_ record: AccountRecord) -> SettingsRowItem {
+        let strings = presentation.strings
+
+        return SettingsRowItem(
+            id: "account-remove",
+            title: record.isDemo ? strings.accountRemove : strings.authSignOut,
+            symbol: record.isDemo ? "trash" : "rectangle.portrait.and.arrow.right",
+            color: .systemRed,
+            position: .middle,
+            onSelect: { [weak self] in
+                self?.confirmRemove(record)
+            }
+        )
     }
 
     private func accountRow(_ record: AccountRecord, isCurrent: Bool) -> SettingsRowItem {
@@ -45,7 +61,7 @@ extension SettingsViewController {
 
         return SettingsRowItem(
             id: "account-\(id.rawValue)",
-            title: strings.accountName(record),
+            title: isCurrent ? myProfile.profile.fullName : strings.accountName(record),
             symbol: isCurrent ? "person.crop.circle.badge.checkmark" : "person.crop.circle",
             color: isCurrent ? .systemGreen : .systemGray,
             detail: marks.compactMap(\.self).joined(separator: " · "),
@@ -61,9 +77,14 @@ extension SettingsViewController {
         let switcher = accounts
         PopupAlert.show(
             title: nil,
-            message: strings.accountRemoveConfirm(strings.accountName(record)),
+            message: record.isDemo
+                ? strings.accountRemoveConfirm(strings.accountName(record))
+                : strings.authSignOutConfirm(strings.accountName(record)),
             actions: [
-                PopupAlertAction(title: strings.accountRemoveAction, style: .destructive) {
+                PopupAlertAction(
+                    title: record.isDemo ? strings.accountRemoveAction : strings.authSignOutAction,
+                    style: .destructive
+                ) {
                     switcher.removeAccount(record.id)
                 },
                 PopupAlertAction(title: strings.chatCancel, style: .cancel),
