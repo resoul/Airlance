@@ -5,6 +5,9 @@ enum MessageKind : ushort {
   Ping = 1,
   Pong = 2,
   Error = 3,
+  ProfileGet = 4,
+  ProfileSet = 5,
+  ProfileData = 6,
 }
 
 table Envelope {
