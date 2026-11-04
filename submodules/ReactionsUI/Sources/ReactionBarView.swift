@@ -21,6 +21,7 @@ public final class ReactionBarView: UIView {
 
     private let emojis: [String]
     private let quickCount: Int
+    private let hasMore: Bool
     private var labels: [UILabel] = []
     private let chosenMark = UIView()
     private let moreButton = UIView()
@@ -33,10 +34,12 @@ public final class ReactionBarView: UIView {
     public init(quick: [String], more: [String], chosen: String?, theme: AppTheme) {
         emojis = quick + more
         quickCount = quick.count
+        hasMore = !more.isEmpty
+        let columns = more.isEmpty ? max(quick.count, 1) : Self.columns
         super.init(frame: CGRect(
             x: 0,
             y: 0,
-            width: CGFloat(Self.columns) * Self.slot + Self.inset * 2,
+            width: CGFloat(columns) * Self.slot + Self.inset * 2,
             height: Self.height
         ))
         let colors = theme.colors
@@ -52,7 +55,9 @@ public final class ReactionBarView: UIView {
         chosenMark.isHidden = true
         addSubview(chosenMark)
         addLabels(chosen: chosen)
-        addMoreButton(color: colors.textSecondary)
+        if hasMore {
+            addMoreButton(color: colors.textSecondary)
+        }
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapped(_:))))
     }
 
@@ -169,7 +174,11 @@ public final class ReactionBarView: UIView {
 
         let column = min(Self.columns - 1, max(0, Int((point.x - Self.inset) / Self.slot)))
         guard point.y >= Self.height - 2, isExpanded else {
-            return column == quickCount ? .more : column < quickCount ? .emoji(column) : nil
+            if column == quickCount {
+                return hasMore ? .more : nil
+            }
+
+            return column < quickCount ? .emoji(column) : nil
         }
 
         let row = Int((point.y - Self.height + 2) / Self.slot)

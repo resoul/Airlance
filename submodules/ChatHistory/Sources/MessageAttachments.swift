@@ -41,7 +41,7 @@ public struct MessageReply: Sendable, Hashable {
             isLocation = true
         case .videoNote:
             isVideoNote = true
-        case .text, .photos, .service, .poll:
+        case .text, .photos, .service, .poll, .contact:
             break
         }
     }

@@ -65,6 +65,7 @@ final class ListSwipeButtonsView: UIView {
             var frame = CGRect(x: reveal - share * CGFloat(index + 1), y: 0, width: share + 1, height: bounds.height)
             if isFull, index == 0 {
                 frame = CGRect(x: 0, y: 0, width: reveal, height: bounds.height)
+                bringSubviewToFront(button)
             }
             button.frame = frame
             button.isHidden = offset <= 0

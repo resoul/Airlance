@@ -19,6 +19,16 @@ public struct MessageFile: Sendable, Hashable {
     }
 }
 
+public struct MessageContact: Sendable, Hashable {
+    public let name: String
+    public let phone: String
+
+    public init(name: String, phone: String) {
+        self.name = name
+        self.phone = phone
+    }
+}
+
 public struct MessageLocation: Sendable, Hashable {
     public let latitude: Double
     public let longitude: Double

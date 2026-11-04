@@ -32,8 +32,13 @@ public final class ParticleChartView: UIView {
     public var repelsTouches = true
     public var touchArea: CGRect?
     public var onTap: (@MainActor (CGPoint) -> Void)?
+    public var isPaused = false {
+        didSet {
+            updateDriver()
+        }
+    }
 
-    private let gpu = ParticlesGPU.shared
+    private let gpu: ParticlesGPU?
     private var particles: (any MTLBuffer)?
     private var targets: (any MTLBuffer)?
     private var released: [Bool] = []
@@ -52,6 +57,10 @@ public final class ParticleChartView: UIView {
         ParticlesGPU.shared != nil
     }
 
+    public static var isHardwareSupported: Bool {
+        ParticlesGPU.hardware != nil
+    }
+
     override public class var layerClass: AnyClass {
         CAMetalLayer.self
     }
@@ -64,7 +73,16 @@ public final class ParticleChartView: UIView {
         Float(CACurrentMediaTime() - start)
     }
 
-    override public init(frame: CGRect) {
+    override public convenience init(frame: CGRect) {
+        self.init(frame: frame, gpu: ParticlesGPU.shared)
+    }
+
+    public convenience init(ignoresPowerSaving: Bool) {
+        self.init(frame: .zero, gpu: ignoresPowerSaving ? ParticlesGPU.hardware : ParticlesGPU.shared)
+    }
+
+    private init(frame: CGRect, gpu: ParticlesGPU?) {
+        self.gpu = gpu
         super.init(frame: frame)
         isOpaque = false
         backgroundColor = .clear
@@ -84,6 +102,12 @@ public final class ParticleChartView: UIView {
         if let window {
             contentScaleFactor = window.screen.scale
             metalLayer?.contentsScale = contentScaleFactor
+        }
+        updateDriver()
+    }
+
+    private func updateDriver() {
+        if window != nil, !isPaused {
             driver.start()
         } else {
             driver.stop()
@@ -151,35 +175,6 @@ public final class ParticleChartView: UIView {
             pointer[index].color = color
             pointer[index].release = SIMD4(-1, ParticleSampler.seed(index), 0, 0)
             released[index] = false
-        }
-    }
-
-    private func releaseRange(
-        _ range: Range<Int>,
-        home: CGPoint?,
-        at time: Float,
-        into pointer: UnsafeMutablePointer<ParticleTarget>
-    ) {
-        let duration = Float(releaseDuration)
-        for index in range where !released[index] {
-            let place = pointer[index].place
-            let seed = ParticleSampler.seed(index)
-            let delay: Float
-            switch release {
-            case .dust:
-                delay = Float(place.x) / Float(max(bounds.width, 1)) * duration * 0.45 + seed * 0.12
-            case .blackHole:
-                delay = seed * duration * 0.18
-            case .home:
-                let point = CGPoint(x: CGFloat(place.x), y: CGFloat(place.y))
-                let angle = Float(ParticleShapes.angle(of: point, around: releaseCenter))
-                delay = angle / (.pi * 2) * duration * 0.5 + seed * 0.08
-            case .burst:
-                delay = seed * 0.06
-            }
-            let target = home ?? releaseCenter
-            pointer[index].release = SIMD4(time + delay, seed, Float(target.x), Float(target.y))
-            released[index] = true
         }
     }
 
@@ -285,6 +280,37 @@ public final class ParticleChartView: UIView {
             ),
             frame: SIMD4(Float(deltaTime), Float(particleCount), now, Float(brightness))
         )
+    }
+}
+
+extension ParticleChartView {
+    private func releaseRange(
+        _ range: Range<Int>,
+        home: CGPoint?,
+        at time: Float,
+        into pointer: UnsafeMutablePointer<ParticleTarget>
+    ) {
+        let duration = Float(releaseDuration)
+        for index in range where !released[index] {
+            let place = pointer[index].place
+            let seed = ParticleSampler.seed(index)
+            let delay: Float
+            switch release {
+            case .dust:
+                delay = Float(place.x) / Float(max(bounds.width, 1)) * duration * 0.45 + seed * 0.12
+            case .blackHole:
+                delay = seed * duration * 0.18
+            case .home:
+                let point = CGPoint(x: CGFloat(place.x), y: CGFloat(place.y))
+                let angle = Float(ParticleShapes.angle(of: point, around: releaseCenter))
+                delay = angle / (.pi * 2) * duration * 0.5 + seed * 0.08
+            case .burst:
+                delay = seed * 0.06
+            }
+            let target = home ?? releaseCenter
+            pointer[index].release = SIMD4(time + delay, seed, Float(target.x), Float(target.y))
+            released[index] = true
+        }
     }
 }
 

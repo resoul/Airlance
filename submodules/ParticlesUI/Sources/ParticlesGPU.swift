@@ -15,6 +15,10 @@ final class ParticlesGPU {
         ParticleEffects.isEnabled ? instance : nil
     }
 
+    static var hardware: ParticlesGPU? {
+        instance
+    }
+
     private static let bundleName = "ParticlesUI"
     private static let logger = Logger(subsystem: "ParticlesUI", category: "GPU")
 

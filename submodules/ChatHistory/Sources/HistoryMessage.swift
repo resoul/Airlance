@@ -64,6 +64,7 @@ public enum MessageContent: Sendable, Hashable {
     case service(MessageService)
     case poll(MessagePoll)
     case videoNote(MessageVideoNote)
+    case contact(MessageContact)
 
     public var text: String {
         switch self {
@@ -73,6 +74,8 @@ public enum MessageContent: Sendable, Hashable {
             caption
         case .poll(let poll):
             poll.question
+        case .contact(let contact):
+            contact.name
         case .voice, .location, .service, .videoNote:
             ""
         }
@@ -90,7 +93,7 @@ public enum MessageContent: Sendable, Hashable {
         switch self {
         case .text, .photos, .file:
             true
-        case .voice, .location, .service, .poll, .videoNote:
+        case .voice, .location, .service, .poll, .videoNote, .contact:
             false
         }
     }

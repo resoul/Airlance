@@ -1,12 +1,12 @@
 import AVFoundation
 
-struct TrackMetadata: Sendable {
-    var title: String?
-    var artist: String?
-    var artwork: Data?
-    var duration: TimeInterval = 0
+public struct TrackMetadata: Sendable {
+    public var title: String?
+    public var artist: String?
+    public var artwork: Data?
+    public var duration: TimeInterval = 0
 
-    static func load(_ url: URL) async -> TrackMetadata {
+    public static func load(_ url: URL) async -> TrackMetadata {
         let asset = AVURLAsset(url: url)
         var metadata = TrackMetadata()
         if let duration = try? await asset.load(.duration).seconds, duration.isFinite {
