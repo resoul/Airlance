@@ -1,0 +1,13 @@
+load("@rules_swift//swift:swift_library.bzl", "swift_library")
+
+swift_library(
+    name = "ServerConnection",
+    module_name = "ServerConnection",
+    srcs = glob(["Sources/**/*.swift"]),
+    copts = ["-swift-version", "6"],
+    deps = [
+        "//submodules/Protocol",
+        "//submodules/WireAuth",
+    ],
+    visibility = ["//visibility:public"],
+)

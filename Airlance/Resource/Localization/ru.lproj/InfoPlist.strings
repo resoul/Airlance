@@ -1,0 +1,7 @@
+"NSCameraUsageDescription" = "Airlance использует камеру, чтобы снимать фото и видео, записывать видеосообщения и совершать видеозвонки.";
+"NSContactsUsageDescription" = "Airlance использует ваши контакты, чтобы находить друзей в приложении и делиться контактами в чатах.";
+"NSLocationWhenInUseUsageDescription" = "Airlance использует вашу геопозицию, когда вы отправляете её в чат.";
+"NSMicrophoneUsageDescription" = "Airlance использует микрофон для голосовых сообщений и звонков.";
+"NSPhotoLibraryAddUsageDescription" = "Airlance сохраняет фото и видео из чатов в вашу медиатеку.";
+"NSPhotoLibraryUsageDescription" = "Airlance использует ваши фото и видео, чтобы вы могли отправлять их в чатах.";
+"NSSpeechRecognitionUsageDescription" = "Airlance превращает голосовые сообщения в текст прямо на вашем iPhone.";

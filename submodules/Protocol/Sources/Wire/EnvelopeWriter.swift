@@ -36,11 +36,63 @@ enum EnvelopeWriter {
             kind = .error
             let text = builder.create(string: error.message)
             root = Airlance_Wire_Error.createError(&builder, code: error.code, messageOffset: text)
+        case .profileGet:
+            kind = .profileget
+            root = Airlance_Wire_ProfileGet.endProfileGet(
+                &builder,
+                start: Airlance_Wire_ProfileGet.startProfileGet(&builder)
+            )
+        case .profileSet(let fields):
+            kind = .profileset
+            root = writeProfileSet(fields, into: &builder)
+        case .profileData(let data):
+            kind = .profiledata
+            root = writeProfileData(data, into: &builder)
+        case .authenticate(let token):
+            kind = .authenticate
+            let text = builder.create(string: token)
+            root = Airlance_Wire_Authenticate.createAuthenticate(&builder, accessTokenOffset: text)
+        case .authenticated(let expiresAtUnix):
+            kind = .authenticated
+            root = Airlance_Wire_Authenticated.createAuthenticated(&builder, expiresAtUnix: expiresAtUnix)
         case .unsupported(let raw):
             throw .unencodable(kind: raw)
         }
         builder.finish(offset: root)
 
         return (kind, builder.data)
+    }
+
+    private static func writeProfileSet(_ fields: ProfileFields, into builder: inout FlatBufferBuilder) -> Offset {
+        let first = builder.create(string: fields.firstName)
+        let last = builder.create(string: fields.lastName)
+        let username = builder.create(string: fields.username)
+        let bio = builder.create(string: fields.bio)
+
+        return Airlance_Wire_ProfileSet.createProfileSet(
+            &builder,
+            firstNameOffset: first,
+            lastNameOffset: last,
+            usernameOffset: username,
+            bioOffset: bio
+        )
+    }
+
+    private static func writeProfileData(_ data: ProfileData, into builder: inout FlatBufferBuilder) -> Offset {
+        let subject = builder.create(string: data.subject)
+        let first = builder.create(string: data.fields.firstName)
+        let last = builder.create(string: data.fields.lastName)
+        let username = builder.create(string: data.fields.username)
+        let bio = builder.create(string: data.fields.bio)
+
+        return Airlance_Wire_ProfileData.createProfileData(
+            &builder,
+            subjectOffset: subject,
+            firstNameOffset: first,
+            lastNameOffset: last,
+            usernameOffset: username,
+            bioOffset: bio,
+            updatedAtUnix: data.updatedAtUnix
+        )
     }
 }

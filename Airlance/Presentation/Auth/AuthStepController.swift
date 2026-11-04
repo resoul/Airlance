@@ -3,7 +3,6 @@ import ToastUI
 import UIKit
 
 final class AuthStepController: ScreenViewController {
-    private static let resendDelay = 60
     private static let sideInset: CGFloat = 24
 
     var onPrimary: (@MainActor ([String]) -> Void)?
@@ -16,14 +15,13 @@ final class AuthStepController: ScreenViewController {
     private let heroView = UIImageView()
     private let titleLabel = UILabel()
     private let messageLabel = UILabel()
-    private let codesView = AuthCodesView()
     private let primaryButton = UIButton(type: .system)
     private let secondaryButton = UIButton(type: .system)
     private let footer = UIStackView()
     private let playsIntro: Bool
     private var logo: AuthLogoParticles?
     private var fieldViews: [AuthFieldView] = []
-    private var resendLeft = 0
+    private var isBusy = false
 
     init(step: AuthStep, playsIntro: Bool = false, presentationSource: PresentationContext) {
         self.step = step
@@ -37,9 +35,6 @@ final class AuthStepController: ScreenViewController {
         buildContent()
         buildFooter()
         buildLogo()
-        if case .code = step {
-            startResendCountdown()
-        }
     }
 
     override func viewDidLayoutSubviews() {
@@ -59,6 +54,15 @@ final class AuthStepController: ScreenViewController {
 
     func setLogoPaused(_ isPaused: Bool) {
         logo?.chart.isPaused = isPaused
+    }
+
+    func setBusy(_ busy: Bool) {
+        isBusy = busy
+        updateButtons()
+    }
+
+    func showFailure(_ text: String) {
+        Toast(text).show(theme: presentation.theme, in: view)
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -90,11 +94,9 @@ final class AuthStepController: ScreenViewController {
         messageLabel.text = content.message
         messageLabel.font = theme.fonts.body
         messageLabel.textColor = theme.colors.textSecondary
-        codesView.apply(theme)
         for field in fieldViews {
             field.apply(presentation)
         }
-        primaryButton.applyAuthFilled(title: content.primary, theme: theme)
         updateButtons()
     }
 
@@ -120,9 +122,6 @@ final class AuthStepController: ScreenViewController {
         fieldViews = step.fields.map(makeField)
         for field in fieldViews {
             stack.addArrangedSubview(field)
-        }
-        if case .recoveryCodes = step {
-            stack.addArrangedSubview(codesView)
         }
         scrollView.keyboardDismissMode = .interactive
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -219,25 +218,14 @@ final class AuthStepController: ScreenViewController {
     }
 
     private func updateButtons() {
-        primaryButton.isEnabled = fieldViews.allSatisfy(\.isValid)
+        let content = step.content(presentation.strings)
         let theme = presentation.theme
-        let title = secondaryTitle
-        secondaryButton.isHidden = title == nil
-        if let title {
+        primaryButton.applyAuthFilled(title: content.primary, theme: theme, isBusy: isBusy)
+        primaryButton.isEnabled = !isBusy && fieldViews.allSatisfy(\.isValid)
+        secondaryButton.isHidden = content.secondary == nil
+        if let title = content.secondary {
             secondaryButton.applyAuthPlain(title: title, theme: theme)
         }
-        if case .code = step {
-            secondaryButton.isEnabled = resendLeft == 0
-        }
-    }
-
-    private var secondaryTitle: String? {
-        let strings = presentation.strings
-        guard case .code = step else {
-            return step.content(strings).secondary
-        }
-
-        return resendLeft > 0 ? strings.authCodeResendIn(resendLeft) : strings.authCodeResend
     }
 
     private func primaryTapped() {
@@ -246,37 +234,7 @@ final class AuthStepController: ScreenViewController {
     }
 
     private func secondaryTapped() {
-        switch step {
-        case .code:
-            startResendCountdown()
-        case .recoveryCodes:
-            copyCodes()
-        default:
-            view.endEditing(true)
-            onSecondary?()
-        }
-    }
-
-    private func copyCodes() {
-        UIPasteboard.general.string = AuthCodesView.samples.joined(separator: "\n")
-        Toast(presentation.strings.authCodesCopied, symbol: "doc.on.doc")
-            .show(theme: presentation.theme, in: view)
-    }
-
-    private func startResendCountdown() {
-        resendLeft = Self.resendDelay
-        updateButtons()
-        Task { [weak self] in
-            repeat {
-                try? await Task.sleep(for: .seconds(1))
-            } while self?.tickResend() == true
-        }
-    }
-
-    private func tickResend() -> Bool {
-        resendLeft -= 1
-        updateButtons()
-
-        return resendLeft > 0
+        view.endEditing(true)
+        onSecondary?()
     }
 }

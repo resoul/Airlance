@@ -147,12 +147,10 @@ final class AccountManager {
         return record
     }
 
-    func addSignedIn(subject: String, email: String?) -> AccountID {
+    func addSignedIn(subject: String, email: String?, hasProfile: Bool) -> AccountID {
         let id = AccountID.user(subject: subject)
-        if let record = record(id) {
-            if record.currentStatus == .signedOut {
-                setStatus(.active, for: id)
-            }
+        if record(id) != nil {
+            setStatus(hasProfile ? .active : .needsProfile, for: id)
 
             return id
         }
@@ -165,7 +163,7 @@ final class AccountManager {
             fixtureVariant: variant,
             createdAt: Date(),
             subject: subject,
-            status: .needsProfile
+            status: hasProfile ? .active : .needsProfile
         ))
         save(records: stored)
         observers.notify(.changed)

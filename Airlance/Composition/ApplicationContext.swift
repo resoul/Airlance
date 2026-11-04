@@ -16,6 +16,7 @@ final class ApplicationContext {
     let sharedStorage: any KeyValueStore
     let keychain: Keychain
     let auth: AuthTokenStore
+    let servers: AccountServers
     let themeStore: ThemeStore
     let localizationStore: LocalizationStore
     let permissionStore: PermissionStore
@@ -44,6 +45,7 @@ final class ApplicationContext {
         permissionStore = PermissionStore(providers: AppPermissions.makeProviders())
         contactsSync = ContactsSync(storage: sharedStorage, permissionStore: permissionStore)
         auth = AuthTokenStore(configuration: .airlance, keychain: keychain)
+        servers = AccountServers(auth: auth)
         accounts = AccountManager(storage: sharedStorage, keychain: keychain, auth: auth)
         translation = TranslationSettings(storage: sharedStorage)
         powerSaving = PowerSaving(storage: sharedStorage)
@@ -66,6 +68,8 @@ extension AuthConfiguration {
         issuer: "https://auth.airlance.org",
         clientID: "airlance-ios",
         redirectScheme: "airlance",
-        redirectURI: "airlance://auth/callback"
+        redirectURI: "airlance://auth/callback",
+        scope: "openid email profile:read profile:write",
+        resource: "https://api.airlance.org"
     )
 }

@@ -9,7 +9,6 @@ enum SettingsPage: String, Sendable {
     case bubbleCorners
     case editProfile
     case editUsername
-    case authPreview
 
     var parents: [AppRoute] {
         switch self {
@@ -19,7 +18,7 @@ enum SettingsPage: String, Sendable {
             [.appearance]
         case .editUsername:
             [.settingsPage(.editProfile)]
-        case .language, .powerSaving, .editProfile, .authPreview:
+        case .language, .powerSaving, .editProfile:
             []
         }
     }

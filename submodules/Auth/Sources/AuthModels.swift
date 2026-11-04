@@ -5,12 +5,23 @@ public struct AuthConfiguration: Sendable {
     public let clientID: String
     public let redirectScheme: String
     public let redirectURI: String
+    public let scope: String
+    public let resource: String
 
-    public init(issuer: String, clientID: String, redirectScheme: String, redirectURI: String) {
+    public init(
+        issuer: String,
+        clientID: String,
+        redirectScheme: String,
+        redirectURI: String,
+        scope: String,
+        resource: String
+    ) {
         self.issuer = issuer
         self.clientID = clientID
         self.redirectScheme = redirectScheme
         self.redirectURI = redirectURI
+        self.scope = scope
+        self.resource = resource
     }
 }
 

@@ -8,7 +8,7 @@ tool_directory="$repo_root/cache/swiftlint/$version"
 binary="$tool_directory/swiftlint"
 
 if [[ "$(uname -s)" != Darwin ]]; then
-    echo 'SwiftLint for Contact requires macOS and Xcode.' >&2
+    echo 'SwiftLint for Airlance requires macOS and Xcode.' >&2
     exit 1
 fi
 

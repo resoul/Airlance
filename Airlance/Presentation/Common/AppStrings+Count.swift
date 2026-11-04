@@ -12,6 +12,14 @@ extension AppStrings {
         formatter.numberStyle = .decimal
         let text = formatter.string(from: NSNumber(value: value)) ?? String(value)
         let language = pack.locale.language.languageCode?.identifier ?? "en"
+        if language == "ro" {
+            return romanianCount(value, text: text, one: one, few: few, many: many)
+        }
+
+        if language == "fr", value == 0 {
+            return one(text)
+        }
+
         guard ["uk", "ru", "be"].contains(language) else {
             return value == 1 ? one(text) : many(text)
         }
@@ -25,6 +33,20 @@ extension AppStrings {
         default:
             return many(text)
         }
+    }
+
+    private func romanianCount(
+        _ value: Int,
+        text: String,
+        one: (String) -> String,
+        few: (String) -> String,
+        many: (String) -> String
+    ) -> String {
+        guard value != 1 else {
+            return one(text)
+        }
+
+        return value == 0 || (1...19).contains(value % 100) ? few(text) : many(text)
     }
 
     func compactCount(_ value: Int) -> String {

@@ -1,0 +1,7 @@
+"NSCameraUsageDescription" = "Airlance verwendet die Kamera, um Fotos und Videos aufzunehmen, Videonachrichten aufzuzeichnen und Videoanrufe zu führen.";
+"NSContactsUsageDescription" = "Airlance verwendet deine Kontakte, um Freunde zu finden, die die App nutzen, und Kontakte in Chats zu teilen.";
+"NSLocationWhenInUseUsageDescription" = "Airlance verwendet deinen Standort, wenn du ihn in einen Chat sendest.";
+"NSMicrophoneUsageDescription" = "Airlance verwendet das Mikrofon für Sprachnachrichten und Anrufe.";
+"NSPhotoLibraryAddUsageDescription" = "Airlance sichert Fotos und Videos aus Chats in deiner Mediathek.";
+"NSPhotoLibraryUsageDescription" = "Airlance verwendet deine Fotos und Videos, damit du sie in Chats senden kannst.";
+"NSSpeechRecognitionUsageDescription" = "Airlance wandelt Sprachnachrichten direkt auf deinem iPhone in Text um.";

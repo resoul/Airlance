@@ -55,21 +55,6 @@ struct MyProfile: Codable, Sendable, Equatable {
         }
     }
 
-    init(name: String, username: String) {
-        let parts = name.split(separator: " ", maxSplits: 1).map(String.init)
-        firstName = parts.first ?? ""
-        lastName = parts.count > 1 ? parts[1] : ""
-        self.username = username
-        phone = ""
-    }
-
-    init(firstName: String, lastName: String, username: String, phone: String) {
-        self.firstName = firstName
-        self.lastName = lastName
-        self.username = username
-        self.phone = phone
-    }
-
     static var initial: MyProfile {
         let fixture = ProfileFixture.current
         let parts = fixture.name.split(separator: " ", maxSplits: 1).map(String.init)

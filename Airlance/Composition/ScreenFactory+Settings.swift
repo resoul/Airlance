@@ -33,8 +33,6 @@ extension ScreenFactory {
             makeProfileEdit()
         case .editUsername:
             makeUsernameEdit()
-        case .authPreview:
-            AuthPreviewController(presentationContext: scene.presentationContext)
         case .powerSaving:
             makePowerSaving()
         }

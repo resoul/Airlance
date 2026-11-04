@@ -31,3 +31,11 @@ table ProfileData {
   bio: string;
   updated_at_unix: long;
 }
+
+table Authenticate {
+  access_token: string;
+}
+
+table Authenticated {
+  expires_at_unix: long;
+}

@@ -41,6 +41,7 @@ struct AuthEndpoint: Sendable {
             "redirect_uri": configuration.redirectURI,
             "client_id": configuration.clientID,
             "code_verifier": verifier,
+            "resource": configuration.resource,
         ])
 
         return try decode(AuthTokenResponse.self, from: data)
@@ -51,6 +52,7 @@ struct AuthEndpoint: Sendable {
             "grant_type": "refresh_token",
             "refresh_token": token,
             "client_id": configuration.clientID,
+            "resource": configuration.resource,
         ])
 
         return try decode(AuthTokenResponse.self, from: data)

@@ -167,7 +167,9 @@ extension CameraViewController {
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = true
-        request.recognitionLanguages = ["uk-UA", "en-US", "es-ES"]
+        let languages = ["uk-UA", "en-US", "es-ES", "ru-RU", "it-IT", "ro-RO", "fr-FR", "de-DE"]
+        let supported = (try? request.supportedRecognitionLanguages()) ?? languages
+        request.recognitionLanguages = languages.filter(supported.contains)
         let handler = VNImageRequestHandler(cgImage: image, orientation: orientation)
         try? handler.perform([request])
         let lines = request.results?.compactMap { observation in

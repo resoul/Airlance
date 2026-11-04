@@ -47,12 +47,54 @@ struct EnvelopeReader {
                 let error: Airlance_Wire_Error = try checkedRoot(body)
 
                 return .error(ServerError(code: error.code, message: error.message ?? ""))
+            case .profileget:
+                let _: Airlance_Wire_ProfileGet = try checkedRoot(body)
+
+                return .profileGet
+            case .profileset:
+                return try profileSet(body)
+            case .profiledata:
+                return try profileData(body)
+            case .authenticate:
+                let table: Airlance_Wire_Authenticate = try checkedRoot(body)
+
+                return .authenticate(token: table.accessToken ?? "")
+            case .authenticated:
+                let table: Airlance_Wire_Authenticated = try checkedRoot(body)
+
+                return .authenticated(expiresAtUnix: table.expiresAtUnix)
             case .none_, nil:
                 return .unsupported(kind: kind)
             }
         } catch {
             throw .invalidBody(kind: kind, reason: String(describing: error))
         }
+    }
+
+    private func profileSet(_ body: Data) throws -> ProtocolMessage {
+        let set: Airlance_Wire_ProfileSet = try checkedRoot(body)
+
+        return .profileSet(ProfileFields(
+            firstName: set.firstName ?? "",
+            lastName: set.lastName ?? "",
+            username: set.username ?? "",
+            bio: set.bio ?? ""
+        ))
+    }
+
+    private func profileData(_ body: Data) throws -> ProtocolMessage {
+        let data: Airlance_Wire_ProfileData = try checkedRoot(body)
+
+        return .profileData(ProfileData(
+            subject: data.subject ?? "",
+            fields: ProfileFields(
+                firstName: data.firstName ?? "",
+                lastName: data.lastName ?? "",
+                username: data.username ?? "",
+                bio: data.bio ?? ""
+            ),
+            updatedAtUnix: data.updatedAtUnix
+        ))
     }
 
     private func checkedRoot<T: FlatBufferTable & Verifiable>(_ data: Data, fileID: String? = nil) throws -> T {

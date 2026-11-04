@@ -8,6 +8,8 @@ enum MessageKind : ushort {
   ProfileGet = 4,
   ProfileSet = 5,
   ProfileData = 6,
+  Authenticate = 7,
+  Authenticated = 8,
 }
 
 table Envelope {

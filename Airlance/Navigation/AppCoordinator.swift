@@ -291,6 +291,7 @@ extension AppCoordinator: UINavigationControllerDelegate {
         didShow viewController: UIViewController,
         animated: Bool
     ) {
+        updateTabBarVisibility(for: navigationController, top: viewController, coordinator: nil)
         syncRouter()
         tabBarController.updateTrackedScrollView()
     }

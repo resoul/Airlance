@@ -1,0 +1,7 @@
+"NSCameraUsageDescription" = "Airlance folosește camera pentru a face poze și videoclipuri, a înregistra mesaje video și a efectua apeluri video.";
+"NSContactsUsageDescription" = "Airlance folosește contactele tale pentru a găsi prietenii care folosesc aplicația și pentru a trimite contacte în chaturi.";
+"NSLocationWhenInUseUsageDescription" = "Airlance folosește locația ta atunci când o trimiți într-un chat.";
+"NSMicrophoneUsageDescription" = "Airlance folosește microfonul pentru mesaje vocale și apeluri.";
+"NSPhotoLibraryAddUsageDescription" = "Airlance salvează în biblioteca ta pozele și videoclipurile din chaturi.";
+"NSPhotoLibraryUsageDescription" = "Airlance folosește pozele și videoclipurile tale ca să le poți trimite în chaturi.";
+"NSSpeechRecognitionUsageDescription" = "Airlance transformă mesajele vocale în text direct pe iPhone-ul tău.";

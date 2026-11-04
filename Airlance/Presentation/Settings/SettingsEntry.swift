@@ -16,7 +16,6 @@ enum SettingsEntry: String, CaseIterable {
     case powerSaving
     case language
     case about
-    case authPreview
 
     var section: Int {
         switch self {
@@ -25,7 +24,7 @@ enum SettingsEntry: String, CaseIterable {
         case .notifications, .privacy, .permissions, .passcode, .appearance, .tabs, .storage,
              .powerSaving, .language:
             1
-        case .about, .authPreview:
+        case .about:
             2
         }
     }
@@ -62,8 +61,6 @@ enum SettingsEntry: String, CaseIterable {
             "globe"
         case .about:
             "info.circle.fill"
-        case .authPreview:
-            "person.badge.key.fill"
         }
     }
 
@@ -77,7 +74,7 @@ enum SettingsEntry: String, CaseIterable {
             .systemGreen
         case .devices, .powerSaving:
             .systemOrange
-        case .folders, .authPreview:
+        case .folders:
             .systemTeal
         case .privacy:
             .systemGray
@@ -104,8 +101,6 @@ enum SettingsEntry: String, CaseIterable {
             .storage
         case .tabs:
             .tabSettings
-        case .authPreview:
-            .settingsPage(.authPreview)
         default:
             nil
         }
@@ -143,8 +138,6 @@ enum SettingsEntry: String, CaseIterable {
             strings.settingsLanguage
         case .about:
             strings.settingsAbout
-        case .authPreview:
-            strings.authPreviewTitle
         }
     }
 }

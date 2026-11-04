@@ -9,6 +9,11 @@
         <string>en</string>
         <string>uk</string>
         <string>es</string>
+        <string>ru</string>
+        <string>it</string>
+        <string>ro</string>
+        <string>fr</string>
+        <string>de</string>
     </array>
     <key>CFBundleURLTypes</key>
     <array>
@@ -22,7 +27,7 @@
         </dict>
     </array>
     <key>CFBundleDisplayName</key>
-    <string>Contact</string>
+    <string>Airlance</string>
     <key>CFBundleShortVersionString</key>
     <string>1.0.0</string>
     <key>CFBundleVersion</key>
@@ -70,18 +75,18 @@
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>Airlance turns voice messages into text right on your iPhone.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Contact uses the microphone for voice messages and calls.</string>
+    <string>Airlance uses the microphone for voice messages and calls.</string>
     <key>NSCameraUsageDescription</key>
-    <string>Contact uses the camera to take photos and videos, record video messages and make video calls.</string>
+    <string>Airlance uses the camera to take photos and videos, record video messages and make video calls.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Contact uses your photos and videos so you can send them in chats.</string>
+    <string>Airlance uses your photos and videos so you can send them in chats.</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>Contact saves photos and videos from chats to your library.</string>
+    <string>Airlance saves photos and videos from chats to your library.</string>
     <key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
     <true/>
     <key>NSContactsUsageDescription</key>
-    <string>Contact uses your contacts to find friends who use the app and to share contacts in chats.</string>
+    <string>Airlance uses your contacts to find friends who use the app and to share contacts in chats.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Contact uses your location when you send it to a chat.</string>
+    <string>Airlance uses your location when you send it to a chat.</string>
 </dict>
 </plist>

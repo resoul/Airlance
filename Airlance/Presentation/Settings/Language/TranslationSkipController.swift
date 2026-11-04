@@ -10,7 +10,7 @@ struct TranslationSkipDependencies {
 final class TranslationSkipController: ScreenViewController {
     static let languages = [
         "en", "uk", "es", "de", "fr", "it", "pl", "pt", "nl", "sv", "cs", "tr", "ar", "he", "hi", "id", "ja", "ko",
-        "zh", "th", "vi", "ru",
+        "zh", "th", "vi", "ru", "ro",
     ]
 
     private let dependencies: TranslationSkipDependencies

@@ -99,7 +99,14 @@ open class TabBarController<Presentation: ThemedPresentation>:
         animated: Bool,
         alongside coordinator: (any UIViewControllerTransitionCoordinator)? = nil
     ) {
-        guard hidden != isTabBarHidden, follower == nil else {
+        if follower != nil {
+            guard coordinator == nil else {
+                return
+            }
+
+            finishFollowing()
+        }
+        guard hidden != isTabBarHidden else {
             return
         }
 
@@ -144,18 +151,27 @@ open class TabBarController<Presentation: ThemedPresentation>:
         self.follower = follower
         tabBarView.transform = .identity
         follower.start()
-        coordinator.animate(alongsideTransition: nil) { [weak self] context in
-            guard let self else {
+        let queued = coordinator.animate(alongsideTransition: nil) { [weak self, weak follower] context in
+            guard let self, let follower, self.follower === follower else {
                 return
             }
 
-            follower.stop()
-            self.follower = nil
             self.isTabBarHidden = context.isCancelled ? !hiding : hiding
-            self.applyTabBarVisibility()
+            self.finishFollowing()
+        }
+        guard queued else {
+            finishFollowing()
+
+            return false
         }
 
         return true
+    }
+
+    private func finishFollowing() {
+        follower?.stop()
+        follower = nil
+        applyTabBarVisibility()
     }
 
     public func setTabBarCompact(_ compact: Bool, animated: Bool) {

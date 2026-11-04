@@ -3,7 +3,9 @@ import Speech
 
 @MainActor
 public final class SubtitleRecognizer {
-    public static let languages = ["uk-UA", "en-US", "es-ES"]
+    public static let languages = [
+        "uk-UA", "en-US", "es-ES", "ru-RU", "it-IT", "ro-RO", "fr-FR", "de-DE",
+    ]
 
     public static func language(for locale: Locale) -> String {
         let code = locale.language.languageCode?.identifier ?? "uk"

@@ -4,6 +4,7 @@ import Keychain
 public actor AuthTokenStore {
     private static let refreshMargin: TimeInterval = 30
     private static let retryDelay: Duration = .seconds(1)
+    private static let endsSession: Set<String> = ["invalid_grant", "invalid_target", "invalid_scope"]
 
     private let endpoint: AuthEndpoint
     private let keychain: Keychain
@@ -73,7 +74,7 @@ public actor AuthTokenStore {
         let response: AuthTokenResponse
         do {
             response = try await endpoint.refresh(token: tokens.refreshToken)
-        } catch AuthError.refused("invalid_grant") {
+        } catch AuthError.refused(let code) where Self.endsSession.contains(code) {
             try keychain.remove(Self.key(account))
             throw AuthError.sessionEnded
         }

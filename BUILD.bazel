@@ -67,11 +67,14 @@ swift_library(
         "//submodules/Permissions:PhotosPermission",
         "//submodules/Permissions:SpeechPermission",
         "//submodules/ReactionsUI",
+        "//submodules/Protocol",
         "//submodules/Routing",
+        "//submodules/ServerConnection",
         "//submodules/Stories",
         "//submodules/Subtitles",
         "//submodules/Theme",
         "//submodules/ToastUI",
+        "//submodules/WireAuth",
     ],
 )
 
