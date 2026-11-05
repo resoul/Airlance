@@ -214,7 +214,7 @@ final class AccountMessaging {
             throw AccountMessagingError.refused
         }
 
-        try await save(chat, keepsPin: true)
+        try await save(chat, keepsSettings: true)
 
         return chat.chatID
     }
@@ -255,7 +255,7 @@ final class AccountMessaging {
         }
     }
 
-    func save(_ chat: ServerChat, keepsPin: Bool = false) async throws {
+    func save(_ chat: ServerChat, keepsSettings: Bool = false) async throws {
         let peer = StoredPeer(
             subject: chat.peer.subject,
             firstName: chat.peer.firstName,
@@ -272,9 +272,10 @@ final class AccountMessaging {
             inviteToken: chat.details.inviteToken,
             memberCount: Int(chat.details.memberCount),
             role: Int(chat.details.role.rawValue),
-            isPinned: chat.details.isPinned
+            isPinned: chat.details.isPinned,
+            isMuted: chat.details.isMuted
         )
-        try await storage.saveChat(id: chat.chatID, peer: peer, details: details, keepsPin: keepsPin)
+        try await storage.saveChat(id: chat.chatID, peer: peer, details: details, keepsSettings: keepsSettings)
     }
 
     private static func stored(_ message: ServerMessage) -> StoredMessage {

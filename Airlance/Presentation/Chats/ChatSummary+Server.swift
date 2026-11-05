@@ -28,6 +28,7 @@ extension ChatSummary {
         )
         chat.isServer = true
         chat.isPinned = details.isPinned
+        chat.isMuted = details.isMuted
         chat.unread = stored.unread
         chat.unreadMentions = stored.unreadMentions
         chat.avatarKey = stored.peer.photoMediaID + stored.peer.videoMediaID

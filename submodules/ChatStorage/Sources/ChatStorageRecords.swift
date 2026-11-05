@@ -79,15 +79,15 @@ enum ChatStorageRecords {
         id: String,
         peer: StoredPeer,
         details: StoredChatDetails,
-        keepsPin: Bool,
+        keepsSettings: Bool,
         db: any SQLWriter
     ) throws {
         try db.execute(
             "INSERT INTO server_chats (id, peer_subject, peer_first_name, peer_last_name, peer_username, "
                 + "peer_photo_media_id, peer_video_media_id, kind, title, about, link, invite_token, "
-                + "member_count, role, is_pinned) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET "
-                + (keepsPin ? "" : "is_pinned = excluded.is_pinned, ")
+                + "member_count, role, is_pinned, is_muted) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET "
+                + (keepsSettings ? "" : "is_pinned = excluded.is_pinned, is_muted = excluded.is_muted, ")
                 + "peer_subject = excluded.peer_subject, peer_first_name = excluded.peer_first_name, "
                 + "peer_last_name = excluded.peer_last_name, peer_username = excluded.peer_username, "
                 + "peer_photo_media_id = excluded.peer_photo_media_id, "
@@ -110,6 +110,7 @@ enum ChatStorageRecords {
                 .integer(Int64(details.memberCount)),
                 .integer(Int64(details.role)),
                 .integer(details.isPinned ? 1 : 0),
+                .integer(details.isMuted ? 1 : 0),
             ]
         )
     }
@@ -224,7 +225,8 @@ enum ChatStorageRecords {
             inviteToken: row["invite_token"].string ?? "",
             memberCount: row["member_count"].int ?? 0,
             role: row["role"].int ?? 0,
-            isPinned: (row["is_pinned"].int ?? 0) != 0
+            isPinned: (row["is_pinned"].int ?? 0) != 0,
+            isMuted: (row["is_muted"].int ?? 0) != 0
         )
     }
 

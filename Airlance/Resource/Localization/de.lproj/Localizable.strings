@@ -994,3 +994,4 @@
 "folders.tagsFooter" = "In der Chatliste erscheinen farbige Tags der Ordner, in denen der Chat liegt. Die Farbe wählst du in den Ordnereinstellungen.";
 
 "chats.pinFailed" = "Chat konnte nicht angeheftet werden. Prüfe die Verbindung und dass höchstens 20 Chats angeheftet sind.";
+"chats.muteFailed" = "Toneinstellung konnte nicht geändert werden. Prüfe die Verbindung.";

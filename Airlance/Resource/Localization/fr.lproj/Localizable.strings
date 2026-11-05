@@ -994,3 +994,4 @@
 "folders.tagsFooter" = "Des étiquettes colorées des dossiers contenant la discussion apparaissent dans la liste. La couleur se choisit dans les réglages du dossier.";
 
 "chats.pinFailed" = "Impossible d’épingler la discussion. Vérifiez la connexion et que 20 discussions au plus sont épinglées.";
+"chats.muteFailed" = "Impossible de modifier le réglage du son. Vérifiez la connexion.";

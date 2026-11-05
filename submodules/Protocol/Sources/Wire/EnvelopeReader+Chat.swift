@@ -112,7 +112,8 @@ extension EnvelopeReader {
                 memberCount: table.memberCount,
                 role: ServerChatRole(rawValue: table.role) ?? .member,
                 isMember: table.isMember,
-                isPinned: table.isPinned
+                isPinned: table.isPinned,
+                isMuted: table.isMuted
             )
         )
     }

@@ -59,6 +59,10 @@ extension EnvelopeReader {
             let table: Airlance_Wire_ChatSearchData = try checkedRoot(body)
 
             return .group(.searchResults(table.chats.map(Self.serverChat)))
+        case .chatmuteset:
+            let table: Airlance_Wire_ChatMuteSet = try checkedRoot(body)
+
+            return .group(.muteSet(chatID: table.chatId ?? "", isMuted: table.isMuted))
         case .chatpinset:
             let table: Airlance_Wire_ChatPinSet = try checkedRoot(body)
 

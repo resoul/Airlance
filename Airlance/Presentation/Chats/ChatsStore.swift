@@ -7,6 +7,7 @@ struct ServerChatActions {
     let leave: @MainActor (String) async throws -> Void
     let resetInvite: @MainActor (String) async throws -> String
     let setPinned: @MainActor (Bool, String) async throws -> Void
+    let setMuted: @MainActor (Bool, String) async throws -> Void
 }
 
 @MainActor
@@ -43,7 +44,6 @@ final class ChatsStore {
             if let current = self.chats.first(where: { current in
                 current.id == chat.id
             }) {
-                chat.isMuted = current.isMuted
                 chat.isArchived = current.isArchived
                 chat.draft = current.draft
                 chat.draftDate = current.draftDate
@@ -179,9 +179,24 @@ final class ChatsStore {
         }
     }
 
-    func toggleMute(_ id: String) {
+    func toggleMute(_ id: String, onFailure: (@MainActor () -> Void)? = nil) {
         mutate(id) { chat in
             chat.isMuted.toggle()
+        }
+        guard let chat = chat(id), chat.isServer, let serverActions else {
+            return
+        }
+
+        let isMuted = chat.isMuted
+        Task { [weak self] in
+            do {
+                try await serverActions.setMuted(isMuted, id)
+            } catch {
+                self?.mutate(id) { chat in
+                    chat.isMuted = !isMuted
+                }
+                onFailure?()
+            }
         }
     }
 

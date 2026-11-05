@@ -994,3 +994,4 @@
 "folders.tagsFooter" = "Colored tags of the folders a chat is in appear in the chat list. Choose the color in the folder’s settings.";
 
 "chats.pinFailed" = "Couldn’t pin the chat. Check your connection and that no more than 20 chats are pinned.";
+"chats.muteFailed" = "Couldn’t change the sound setting. Check your connection.";

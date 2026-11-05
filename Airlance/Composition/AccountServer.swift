@@ -204,6 +204,9 @@ final class AccountServer {
             },
             setPinned: { [weak messaging] isPinned, chatID in
                 try await messaging?.setPinned(isPinned, chatID: chatID)
+            },
+            setMuted: { [weak messaging] isMuted, chatID in
+                try await messaging?.setMuted(isMuted, chatID: chatID)
             }
         )
         let me = messaging.me

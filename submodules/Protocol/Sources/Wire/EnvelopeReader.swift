@@ -87,7 +87,8 @@ struct EnvelopeReader {
         case .privacyget, .privacyset, .privacydata, .blocksget, .blocksdata, .blockset:
             return try privacy(kind: kind, body: body)
         case .chatcreate, .chatjoin, .chatleave, .chatmembersget, .chatmembersdata, .chatmemberadd, .chatmemberremove,
-             .chatsearch, .chatsearchdata, .chatschanged, .chatresolve, .chatinvitereset, .userresolve, .chatpinset:
+             .chatsearch, .chatsearchdata, .chatschanged, .chatresolve, .chatinvitereset, .userresolve, .chatpinset,
+             .chatmuteset:
             return try group(kind: kind, body: body)
         default:
             return try chat(kind: kind, body: body)

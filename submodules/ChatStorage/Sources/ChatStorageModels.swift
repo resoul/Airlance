@@ -144,6 +144,7 @@ public struct StoredChatDetails: Sendable, Equatable {
     public var memberCount: Int
     public var role: Int
     public var isPinned: Bool
+    public var isMuted: Bool
 
     public init(
         kind: StoredChatKind = .direct,
@@ -153,8 +154,10 @@ public struct StoredChatDetails: Sendable, Equatable {
         inviteToken: String = "",
         memberCount: Int = 2,
         role: Int = 0,
-        isPinned: Bool = false
+        isPinned: Bool = false,
+        isMuted: Bool = false
     ) {
+        self.isMuted = isMuted
         self.isPinned = isPinned
         self.kind = kind
         self.title = title

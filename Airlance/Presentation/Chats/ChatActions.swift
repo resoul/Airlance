@@ -112,7 +112,15 @@ struct ChatActions {
             color: .systemOrange,
             toast: toast
         ) { store, id in
-            store.toggleMute(id)
+            let failed = Toast(strings.chatsMuteFailed, symbol: "exclamationmark.circle")
+            let theme = presentation.theme
+            store.toggleMute(id) { [weak host] in
+                guard let window = host?.window else {
+                    return
+                }
+
+                failed.show(theme: theme, in: window)
+            }
         }
     }
 

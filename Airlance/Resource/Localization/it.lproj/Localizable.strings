@@ -994,3 +994,4 @@
 "folders.tagsFooter" = "Nell’elenco delle chat compaiono etichette colorate delle cartelle che contengono la chat. Il colore si sceglie nelle impostazioni della cartella.";
 
 "chats.pinFailed" = "Impossibile fissare la chat. Controlla la connessione e che non ci siano più di 20 chat fissate.";
+"chats.muteFailed" = "Impossibile modificare l’impostazione audio. Controlla la connessione.";

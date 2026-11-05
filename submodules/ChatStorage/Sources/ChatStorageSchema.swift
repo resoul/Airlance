@@ -24,7 +24,9 @@ public enum ChatStorageSchema {
                         member_count INTEGER NOT NULL DEFAULT 2,
                         role INTEGER NOT NULL DEFAULT 0,
                         history_loaded INTEGER NOT NULL DEFAULT 0,
-                        unread_mentions INTEGER NOT NULL DEFAULT 0
+                        unread_mentions INTEGER NOT NULL DEFAULT 0,
+                        is_pinned INTEGER NOT NULL DEFAULT 0,
+                        is_muted INTEGER NOT NULL DEFAULT 0
                     );
                     CREATE TABLE server_messages (
                         chat_id TEXT NOT NULL,
@@ -49,12 +51,6 @@ public enum ChatStorageSchema {
                         key TEXT PRIMARY KEY NOT NULL,
                         value INTEGER NOT NULL
                     );
-                    """
-            ),
-            TableMigration(
-                "v2",
-                sql: """
-                    ALTER TABLE server_chats ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0;
                     """
             ),
         ]

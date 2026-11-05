@@ -80,6 +80,11 @@ extension EnvelopeWriter {
         into builder: inout FlatBufferBuilder
     ) -> (Airlance_Wire_MessageKind, Offset) {
         switch group {
+        case .muteSet(let chatID, let isMuted):
+            let text = builder.create(string: chatID)
+            let root = Airlance_Wire_ChatMuteSet.createChatMuteSet(&builder, chatIdOffset: text, isMuted: isMuted)
+
+            return (.chatmuteset, root)
         case .pinSet(let chatID, let isPinned):
             let text = builder.create(string: chatID)
             let root = Airlance_Wire_ChatPinSet.createChatPinSet(&builder, chatIdOffset: text, isPinned: isPinned)

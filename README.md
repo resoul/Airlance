@@ -6,8 +6,7 @@ It has chats with text, media, voice and video messages, groups and channels, st
 an in-app browser, themes and eight languages. Several accounts can live on one device, each with its own encrypted database.
 
 People sign in through [airlance-auth](https://github.com/resoul/auth) with an emailed code and a passkey, and the app talks to
-[airlance-server](https://github.com/resoul/airlance-server) over an encrypted WebSocket. So far only the profile comes from the server:
-chats and the rest of the content are local fixtures.
+[airlance-server](https://github.com/resoul/airlance-server) over an encrypted WebSocket. Real accounts get profiles, direct chats, groups and channels, attachments, stories, contacts, privacy, links, scheduled messages, agents, folders, pinned and muted chats from the server. A demo account runs on local fixtures, and so do the parts the server does not have yet, such as calls and the On Air tab.
 
 ## Getting the code
 

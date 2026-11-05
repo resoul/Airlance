@@ -187,7 +187,8 @@ extension EnvelopeWriter {
             memberCount: chat.details.memberCount,
             role: chat.details.role.rawValue,
             isMember: chat.details.isMember,
-            isPinned: chat.details.isPinned
+            isPinned: chat.details.isPinned,
+            isMuted: chat.details.isMuted
         )
     }
 }

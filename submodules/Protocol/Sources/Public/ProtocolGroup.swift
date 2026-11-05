@@ -24,6 +24,7 @@ public struct ServerChatDetails: Sendable, Equatable {
     public var role: ServerChatRole
     public var isMember: Bool
     public var isPinned: Bool
+    public var isMuted: Bool
 
     public init(
         kind: ServerChatKind = .direct,
@@ -34,8 +35,10 @@ public struct ServerChatDetails: Sendable, Equatable {
         memberCount: Int32 = 2,
         role: ServerChatRole = .member,
         isMember: Bool = true,
-        isPinned: Bool = false
+        isPinned: Bool = false,
+        isMuted: Bool = false
     ) {
+        self.isMuted = isMuted
         self.isPinned = isPinned
         self.kind = kind
         self.title = title
@@ -110,6 +113,7 @@ public enum GroupWireMessage: Sendable, Equatable {
     case searchResults([ServerChat])
     case resolve(code: String)
     case pinSet(chatID: String, isPinned: Bool)
+    case muteSet(chatID: String, isMuted: Bool)
     case inviteReset(chatID: String)
     case userResolve(username: String)
     case changed

@@ -42,4 +42,19 @@ extension AccountMessaging {
             throw error
         }
     }
+
+    func setMuted(_ isMuted: Bool, chatID: String) async throws {
+        try await storage.setMuted(isMuted, chatID: chatID)
+        do {
+            let reply = try await connection.request(.group(.muteSet(chatID: chatID, isMuted: isMuted)))
+            guard case .chat(.chat(let chat)) = reply else {
+                throw AccountMessagingError.refused
+            }
+
+            try await save(chat)
+        } catch {
+            try? await storage.setMuted(!isMuted, chatID: chatID)
+            throw error
+        }
+    }
 }

@@ -92,10 +92,19 @@ public final class ChatStorage {
         id: String,
         peer: StoredPeer,
         details: StoredChatDetails = StoredChatDetails(),
-        keepsPin: Bool = false
+        keepsSettings: Bool = false
     ) async throws {
         try await tables.write { db in
-            try ChatStorageRecords.saveChat(id: id, peer: peer, details: details, keepsPin: keepsPin, db: db)
+            try ChatStorageRecords.saveChat(id: id, peer: peer, details: details, keepsSettings: keepsSettings, db: db)
+        }
+    }
+
+    public func setMuted(_ isMuted: Bool, chatID: String) async throws {
+        try await tables.write { db in
+            try db.execute(
+                "UPDATE server_chats SET is_muted = ? WHERE id = ?",
+                [.integer(isMuted ? 1 : 0), .text(chatID)]
+            )
         }
     }
 

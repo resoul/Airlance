@@ -994,3 +994,4 @@
 "folders.tagsFooter" = "În lista de conversații apar etichete colorate ale dosarelor în care se află conversația. Culoarea se alege în setările dosarului.";
 
 "chats.pinFailed" = "Conversația nu a putut fi fixată. Verifică conexiunea și să nu fie fixate peste 20 de conversații.";
+"chats.muteFailed" = "Setarea sunetului nu a putut fi schimbată. Verifică conexiunea.";
