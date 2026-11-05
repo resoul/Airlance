@@ -23,6 +23,20 @@ public final class StoriesHeaderView: UIView, UIScrollViewDelegate {
             setNeedsLayout()
         }
     }
+    public var isTitleBusy = false {
+        didSet {
+            guard isTitleBusy != oldValue else {
+                return
+            }
+
+            if isTitleBusy {
+                titleSpinner.startAnimating()
+            } else {
+                titleSpinner.stopAnimating()
+            }
+            setNeedsLayout()
+        }
+    }
     public var safeTop: CGFloat = 0 {
         didSet {
             setNeedsLayout()
@@ -51,6 +65,7 @@ public final class StoriesHeaderView: UIView, UIScrollViewDelegate {
 
     let background = UIView()
     let titleLabel = UILabel()
+    let titleSpinner = UIActivityIndicatorView(style: .medium)
     let canvas = LiquidCanvasView()
     let rowScroll = UIScrollView()
     var entries: [StoryStripEntry] = []
@@ -62,6 +77,8 @@ public final class StoriesHeaderView: UIView, UIScrollViewDelegate {
         addSubview(background)
         addSubview(canvas)
         addSubview(titleLabel)
+        addSubview(titleSpinner)
+        titleSpinner.hidesWhenStopped = true
         canvas.gloss = 0.5
         canvas.rimWidth = 4
         canvas.onFrame = { [weak self] deltaTime in
@@ -214,6 +231,7 @@ public final class StoriesHeaderView: UIView, UIScrollViewDelegate {
         background.backgroundColor = theme.background
         titleLabel.font = theme.titleFont
         titleLabel.textColor = theme.title
+        titleSpinner.color = theme.title
         canvas.color = theme.unseen
         for entry in entries {
             entry.apply(theme, traits: traitCollection)

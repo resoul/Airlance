@@ -904,3 +904,7 @@
 "auth.profileUsernameInvalid" = "Такое имя пользователя не подходит.";
 "auth.profileNameInvalid" = "Такое имя не подходит.";
 "auth.profileFailed" = "Не удалось сохранить профиль: %@";
+
+"connection.waitingForNetwork" = "Ожидание сети";
+"connection.connecting" = "Соединение…";
+"connection.updating" = "Обновление…";

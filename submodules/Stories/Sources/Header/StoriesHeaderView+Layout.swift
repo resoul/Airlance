@@ -2,6 +2,8 @@ import LiquidUI
 import UIKit
 
 extension StoriesHeaderView {
+    private static let spinnerGap: CGFloat = 6
+
     var stackArea: CGRect {
         let group = groupStart(titleWidth: titleWidth)
 
@@ -10,6 +12,10 @@ extension StoriesHeaderView {
 
     private var titleWidth: CGFloat {
         ceil(titleLabel.intrinsicContentSize.width)
+    }
+
+    private var spinnerWidth: CGFloat {
+        isTitleBusy ? titleSpinner.intrinsicContentSize.width + Self.spinnerGap : 0
     }
 
     private var stackWidth: CGFloat {
@@ -27,12 +33,16 @@ extension StoriesHeaderView {
         let width = titleWidth
         let start = groupStart(titleWidth: width)
         let collapsedX = start + stackWidth
-        let centeredX = (bounds.width - width) / 2
+        let centeredX = (bounds.width - width - spinnerWidth) / 2
         titleLabel.frame = CGRect(
             x: collapsedX + (centeredX - collapsedX) * expansion,
             y: safeTop,
             width: width,
             height: Self.barHeight
+        )
+        titleSpinner.center = CGPoint(
+            x: titleLabel.frame.maxX + spinnerWidth - titleSpinner.intrinsicContentSize.width / 2,
+            y: titleLabel.frame.midY
         )
 
         var blobs: [LiquidBlob] = []
@@ -45,7 +55,7 @@ extension StoriesHeaderView {
     }
 
     private func groupStart(titleWidth: CGFloat) -> CGFloat {
-        (bounds.width - stackWidth - titleWidth) / 2
+        (bounds.width - stackWidth - titleWidth - spinnerWidth) / 2
     }
 
     private func place(_ entry: StoryStripEntry, at index: Int, groupStart: CGFloat) -> LiquidBlob? {

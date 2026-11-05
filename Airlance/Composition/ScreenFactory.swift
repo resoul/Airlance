@@ -65,7 +65,8 @@ final class ScreenFactory {
                 chatFolders: account.chatFolders,
                 permissionFlow: scene.permissionFlow,
                 videoNotes: account.videoNotes,
-                media: account.media
+                media: account.media,
+                connectionStatus: account.connectionStatus
             ),
             router: router
         )
@@ -105,7 +106,8 @@ final class ScreenFactory {
                 videoNotes: account.videoNotes,
                 media: account.media,
                 translation: app.translation,
-                contacts: app.contactsSync.store
+                contacts: app.contactsSync.store,
+                connectionStatus: account.connectionStatus
             ),
             router: router
         )

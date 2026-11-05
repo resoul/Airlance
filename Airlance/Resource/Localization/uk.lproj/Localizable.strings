@@ -904,3 +904,7 @@
 "auth.profileUsernameInvalid" = "Це ім’я користувача не підходить.";
 "auth.profileNameInvalid" = "Це ім’я не підходить.";
 "auth.profileFailed" = "Не вдалося зберегти профіль: %@";
+
+"connection.waitingForNetwork" = "Очікування мережі";
+"connection.connecting" = "З’єднання…";
+"connection.updating" = "Оновлення…";

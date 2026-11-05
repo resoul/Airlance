@@ -1,4 +1,5 @@
 import Auth
+import Connectivity
 import Database
 import DatabaseAPI
 import Foundation
@@ -13,6 +14,7 @@ import Theme
 final class ApplicationContext {
     nonisolated static let thumbnailLimit: Int64 = 200 * 1024 * 1024
 
+    let network = NetworkMonitor()
     let sharedStorage: any KeyValueStore
     let keychain: Keychain
     let auth: AuthTokenStore
@@ -46,7 +48,7 @@ final class ApplicationContext {
         contactsSync = ContactsSync(storage: sharedStorage, permissionStore: permissionStore)
         auth = AuthTokenStore(configuration: .airlance, keychain: keychain)
         servers = AccountServers(auth: auth)
-        accounts = AccountManager(storage: sharedStorage, keychain: keychain, auth: auth)
+        accounts = AccountManager(storage: sharedStorage, keychain: keychain, auth: auth, network: network)
         translation = TranslationSettings(storage: sharedStorage)
         powerSaving = PowerSaving(storage: sharedStorage)
     }

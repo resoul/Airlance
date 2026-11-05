@@ -42,6 +42,7 @@ swift_library(
         "//submodules/CameraUI",
         "//submodules/ChatFolders",
         "//submodules/ChatHistory",
+        "//submodules/Connectivity",
         "//submodules/Database",
         "//submodules/Database:DatabaseAPI",
         "//submodules/Device",

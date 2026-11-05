@@ -69,6 +69,7 @@ extension SceneContext {
         server.onSaveFailed = { [weak self] error in
             self?.showProfileError(error)
         }
+        server.follow(account)
 
         return server
     }

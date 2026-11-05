@@ -63,11 +63,77 @@ struct EnvelopeReader {
                 let table: Airlance_Wire_Authenticated = try checkedRoot(body)
 
                 return .authenticated(expiresAtUnix: table.expiresAtUnix)
+            case .updatessubscribe:
+                let table: Airlance_Wire_UpdatesSubscribe = try checkedRoot(body)
+
+                return .updatesSubscribe(afterSeq: table.afterSeq)
+            case .updatessubscribed:
+                let table: Airlance_Wire_UpdatesSubscribed = try checkedRoot(body)
+
+                return .updatesSubscribed(latestSeq: table.latestSeq)
+            case .mediauploadrequest, .mediauploadticket, .mediadownloadrequest, .mediadownloadticket:
+                return try media(kind: kind, body: body)
+            case .search, .searchresults, .publicprofileget:
+                return try search(kind: kind, body: body)
             case .none_, nil:
                 return .unsupported(kind: kind)
             }
         } catch {
             throw .invalidBody(kind: kind, reason: String(describing: error))
+        }
+    }
+
+    private func search(kind: UInt16, body: Data) throws -> ProtocolMessage {
+        switch Airlance_Wire_MessageKind(rawValue: kind) {
+        case .search:
+            let table: Airlance_Wire_Search = try checkedRoot(body)
+
+            return .search(.query(table.query ?? ""))
+        case .searchresults:
+            let table: Airlance_Wire_SearchResults = try checkedRoot(body)
+            let people = table.people.map { row in
+                SearchPerson(
+                    subject: row.subject ?? "",
+                    firstName: row.firstName ?? "",
+                    lastName: row.lastName ?? "",
+                    username: row.username ?? ""
+                )
+            }
+
+            return .search(.results(people))
+        case .publicprofileget:
+            let table: Airlance_Wire_PublicProfileGet = try checkedRoot(body)
+
+            return .search(.publicProfileGet(subject: table.subject ?? ""))
+        default:
+            return .unsupported(kind: kind)
+        }
+    }
+
+    private func media(kind: UInt16, body: Data) throws -> ProtocolMessage {
+        switch Airlance_Wire_MessageKind(rawValue: kind) {
+        case .mediauploadrequest:
+            let table: Airlance_Wire_MediaUploadRequest = try checkedRoot(body)
+
+            return .media(.uploadRequest(size: table.size))
+        case .mediauploadticket:
+            let table: Airlance_Wire_MediaUploadTicket = try checkedRoot(body)
+
+            return .media(.uploadTicket(
+                mediaID: table.mediaId ?? "",
+                url: table.url ?? "",
+                expiresAtUnix: table.expiresAtUnix
+            ))
+        case .mediadownloadrequest:
+            let table: Airlance_Wire_MediaDownloadRequest = try checkedRoot(body)
+
+            return .media(.downloadRequest(mediaID: table.mediaId ?? ""))
+        case .mediadownloadticket:
+            let table: Airlance_Wire_MediaDownloadTicket = try checkedRoot(body)
+
+            return .media(.downloadTicket(url: table.url ?? "", expiresAtUnix: table.expiresAtUnix))
+        default:
+            return .unsupported(kind: kind)
         }
     }
 

@@ -1,4 +1,5 @@
 import ChatFolders
+import Connectivity
 import Database
 import DatabaseAPI
 import Foundation
@@ -27,6 +28,7 @@ final class AccountContext {
     let onAir: OnAirStore
     let media: MediaStore
     let myProfile: MyProfileStore
+    let connectionStatus: ConnectionStatusStore
 
     private let database: AccountDatabase
     private var isClosed = false
@@ -59,7 +61,7 @@ final class AccountContext {
         return store
     }
 
-    init(record: AccountRecord, keychain: Keychain) throws {
+    init(record: AccountRecord, keychain: Keychain, network: NetworkMonitor) throws {
         let directory = try Self.directory(accountID: record.id)
         let key = try AccountDatabaseKey.load(accountID: record.id.rawValue, keychain: keychain)
         if key.isNew {
@@ -70,6 +72,7 @@ final class AccountContext {
 
         self.record = record
         self.database = database
+        connectionStatus = ConnectionStatusStore(network: network)
         storage = database.keyValue
         chatFolders = ChatFolderStore(tables: database.tables)
         let channelSettings = ChannelSettingsStore(storage: database.keyValue)

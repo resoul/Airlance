@@ -1,6 +1,7 @@
 import AirlanceUI
 @preconcurrency import AsyncDisplayKit
 import ChatFolders
+import Connectivity
 import ListUI
 import MediaStore
 import Observers
@@ -17,6 +18,7 @@ struct ChatsDependencies {
     let permissionFlow: PermissionFlow
     let videoNotes: VideoNoteSettings
     let media: MediaStore
+    let connectionStatus: ConnectionStatusStore
 }
 
 enum ChatsPage: Equatable {
@@ -96,7 +98,17 @@ final class ChatsViewController: ScreenViewController {
                 self?.renderStories()
                 self?.render()
             },
+            dependencies.connectionStatus.observe { [weak self] _ in
+                self?.renderTitle()
+            },
         ]
+    }
+
+    private func renderTitle() {
+        let status = dependencies.connectionStatus.status
+        let strings = presentation.strings
+        header.title = status.title(strings) ?? strings.chatsTitle
+        header.isTitleBusy = status != .online
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -131,7 +143,7 @@ final class ChatsViewController: ScreenViewController {
         let strings = presentation.strings
 
         navigationItem.title = strings.chatsTitle
-        header.title = strings.chatsTitle
+        renderTitle()
         header.theme = StoriesHeaderTheme(
             background: theme.colors.background,
             title: theme.colors.textPrimary,

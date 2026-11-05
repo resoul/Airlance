@@ -7,6 +7,12 @@ public enum ServerConnectionError: Error, Sendable, Equatable {
     case disconnected
     case timedOut
     case invalidResponse
+    case refused(code: Int32)
+}
+
+public struct ServerUpdates: Sendable {
+    public let latestSeq: UInt64
+    public let stream: AsyncStream<ProtocolEnvelope>
 }
 
 public actor ServerConnection {
@@ -27,6 +33,7 @@ public actor ServerConnection {
 
     private static let requestTimeout: Duration = .seconds(15)
     private static let unauthorizedCode: Int32 = 401
+    private static let conflictCode: Int32 = 409
     private static let unavailableCode: Int32 = 503
 
     private let url: URL
@@ -39,6 +46,7 @@ public actor ServerConnection {
     private var sending: Task<Void, Never>?
     private var nextRequestID: UInt64 = 0
     private var pending: [UInt64: CheckedContinuation<ProtocolMessage, any Error>] = [:]
+    private var updates: AsyncStream<ProtocolEnvelope>.Continuation?
 
     public init(url: URL, pins: [WireAuthPin], token: @escaping TokenProvider) {
         self.url = url
@@ -54,11 +62,46 @@ public actor ServerConnection {
         }
     }
 
+    public func subscribe(after seq: UInt64) async throws -> ServerUpdates {
+        try await connect()
+        let (stream, continuation) = AsyncStream.makeStream(of: ProtocolEnvelope.self)
+        finishUpdates()
+        updates = continuation
+        do {
+            let reply = try await attempt(.updatesSubscribe(afterSeq: seq))
+
+            return ServerUpdates(latestSeq: try latestSeq(from: reply), stream: stream)
+        } catch {
+            finishUpdates()
+            throw error
+        }
+    }
+
     public func close() {
         socket?.cancel(with: .goingAway, reason: nil)
         socket = nil
         channel = nil
         failPending(ServerConnectionError.disconnected)
+        finishUpdates()
+    }
+
+    private func latestSeq(from reply: ProtocolMessage) throws -> UInt64 {
+        switch reply {
+        case .updatesSubscribed(let latestSeq):
+            return latestSeq
+        case .error(let error) where error.code == Self.conflictCode:
+            close()
+            throw ServerConnectionError.disconnected
+        case .error(let error):
+            throw ServerConnectionError.refused(code: error.code)
+        default:
+            throw ServerConnectionError.invalidResponse
+        }
+    }
+
+    private func finishUpdates() {
+        updates?.finish()
+        updates = nil
     }
 
     private func attempt(_ message: ProtocolMessage) async throws -> ProtocolMessage {
@@ -198,6 +241,12 @@ public actor ServerConnection {
         }
 
         self.channel = channel
+        if envelope.requestID == 0 {
+            updates?.yield(envelope)
+
+            return
+        }
+
         pending.removeValue(forKey: envelope.requestID)?.resume(returning: envelope.message)
     }
 
@@ -210,6 +259,7 @@ public actor ServerConnection {
         socket = nil
         channel = nil
         failPending(error)
+        finishUpdates()
     }
 
     private func fail(_ id: UInt64, with error: any Error) {

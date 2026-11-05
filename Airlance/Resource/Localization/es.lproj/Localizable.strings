@@ -904,3 +904,7 @@
 "auth.profileUsernameInvalid" = "Ese nombre de usuario no es válido.";
 "auth.profileNameInvalid" = "Ese nombre no es válido.";
 "auth.profileFailed" = "No se pudo guardar el perfil: %@";
+
+"connection.waitingForNetwork" = "Esperando red";
+"connection.connecting" = "Conectando…";
+"connection.updating" = "Actualizando…";

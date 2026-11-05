@@ -34,14 +34,10 @@ enum EnvelopeWriter {
             root = Airlance_Wire_Pong.createPong(&builder, pingId: id)
         case .error(let error):
             kind = .error
-            let text = builder.create(string: error.message)
-            root = Airlance_Wire_Error.createError(&builder, code: error.code, messageOffset: text)
+            root = writeError(error, into: &builder)
         case .profileGet:
             kind = .profileget
-            root = Airlance_Wire_ProfileGet.endProfileGet(
-                &builder,
-                start: Airlance_Wire_ProfileGet.startProfileGet(&builder)
-            )
+            root = writeProfileGet(into: &builder)
         case .profileSet(let fields):
             kind = .profileset
             root = writeProfileSet(fields, into: &builder)
@@ -49,18 +45,130 @@ enum EnvelopeWriter {
             kind = .profiledata
             root = writeProfileData(data, into: &builder)
         case .authenticate(let token):
-            kind = .authenticate
-            let text = builder.create(string: token)
-            root = Airlance_Wire_Authenticate.createAuthenticate(&builder, accessTokenOffset: text)
+            (kind, root) = writeAuthenticate(token, into: &builder)
         case .authenticated(let expiresAtUnix):
             kind = .authenticated
             root = Airlance_Wire_Authenticated.createAuthenticated(&builder, expiresAtUnix: expiresAtUnix)
+        case .updatesSubscribe(let afterSeq):
+            (kind, root) = (.updatessubscribe, writeUpdatesSubscribe(afterSeq, into: &builder))
+        case .updatesSubscribed(let latestSeq):
+            (kind, root) = (.updatessubscribed, writeUpdatesSubscribed(latestSeq, into: &builder))
+        case .media(let media):
+            (kind, root) = writeMedia(media, into: &builder)
+        case .search(let search):
+            (kind, root) = writeSearch(search, into: &builder)
         case .unsupported(let raw):
             throw .unencodable(kind: raw)
         }
         builder.finish(offset: root)
 
         return (kind, builder.data)
+    }
+
+    private static func writeMedia(
+        _ media: MediaMessage,
+        into builder: inout FlatBufferBuilder
+    ) -> (Airlance_Wire_MessageKind, Offset) {
+        switch media {
+        case .uploadRequest(let size):
+            let root = Airlance_Wire_MediaUploadRequest.createMediaUploadRequest(&builder, size: size)
+
+            return (.mediauploadrequest, root)
+        case .uploadTicket(let mediaID, let url, let expiresAtUnix):
+            let id = builder.create(string: mediaID)
+            let address = builder.create(string: url)
+            let root = Airlance_Wire_MediaUploadTicket.createMediaUploadTicket(
+                &builder,
+                mediaIdOffset: id,
+                urlOffset: address,
+                expiresAtUnix: expiresAtUnix
+            )
+
+            return (.mediauploadticket, root)
+        case .downloadRequest(let mediaID):
+            let id = builder.create(string: mediaID)
+            let root = Airlance_Wire_MediaDownloadRequest.createMediaDownloadRequest(&builder, mediaIdOffset: id)
+
+            return (.mediadownloadrequest, root)
+        case .downloadTicket(let url, let expiresAtUnix):
+            let address = builder.create(string: url)
+            let root = Airlance_Wire_MediaDownloadTicket.createMediaDownloadTicket(
+                &builder,
+                urlOffset: address,
+                expiresAtUnix: expiresAtUnix
+            )
+
+            return (.mediadownloadticket, root)
+        }
+    }
+
+    private static func writeUpdatesSubscribe(_ afterSeq: UInt64, into builder: inout FlatBufferBuilder) -> Offset {
+        Airlance_Wire_UpdatesSubscribe.createUpdatesSubscribe(&builder, afterSeq: afterSeq)
+    }
+
+    private static func writeUpdatesSubscribed(_ latestSeq: UInt64, into builder: inout FlatBufferBuilder) -> Offset {
+        Airlance_Wire_UpdatesSubscribed.createUpdatesSubscribed(&builder, latestSeq: latestSeq)
+    }
+
+    private static func writeSearch(
+        _ search: SearchMessage,
+        into builder: inout FlatBufferBuilder
+    ) -> (Airlance_Wire_MessageKind, Offset) {
+        switch search {
+        case .query(let query):
+            let text = builder.create(string: query)
+
+            return (.search, Airlance_Wire_Search.createSearch(&builder, queryOffset: text))
+        case .results(let people):
+            let rows = people.map { person in
+                writeSearchPerson(person, into: &builder)
+            }
+            let vector = builder.createVector(ofOffsets: rows)
+            let root = Airlance_Wire_SearchResults.createSearchResults(&builder, peopleVectorOffset: vector)
+
+            return (.searchresults, root)
+        case .publicProfileGet(let subject):
+            let text = builder.create(string: subject)
+            let root = Airlance_Wire_PublicProfileGet.createPublicProfileGet(&builder, subjectOffset: text)
+
+            return (.publicprofileget, root)
+        }
+    }
+
+    private static func writeSearchPerson(_ person: SearchPerson, into builder: inout FlatBufferBuilder) -> Offset {
+        let subject = builder.create(string: person.subject)
+        let first = builder.create(string: person.firstName)
+        let last = builder.create(string: person.lastName)
+        let username = builder.create(string: person.username)
+
+        return Airlance_Wire_SearchPerson.createSearchPerson(
+            &builder,
+            subjectOffset: subject,
+            firstNameOffset: first,
+            lastNameOffset: last,
+            usernameOffset: username
+        )
+    }
+
+    private static func writeAuthenticate(
+        _ token: String,
+        into builder: inout FlatBufferBuilder
+    ) -> (Airlance_Wire_MessageKind, Offset) {
+        let text = builder.create(string: token)
+
+        return (.authenticate, Airlance_Wire_Authenticate.createAuthenticate(&builder, accessTokenOffset: text))
+    }
+
+    private static func writeError(_ error: ServerError, into builder: inout FlatBufferBuilder) -> Offset {
+        let text = builder.create(string: error.message)
+
+        return Airlance_Wire_Error.createError(&builder, code: error.code, messageOffset: text)
+    }
+
+    private static func writeProfileGet(into builder: inout FlatBufferBuilder) -> Offset {
+        let start = Airlance_Wire_ProfileGet.startProfileGet(&builder)
+
+        return Airlance_Wire_ProfileGet.endProfileGet(&builder, start: start)
     }
 
     private static func writeProfileSet(_ fields: ProfileFields, into builder: inout FlatBufferBuilder) -> Offset {

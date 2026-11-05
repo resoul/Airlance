@@ -904,3 +904,7 @@
 "auth.profileUsernameInvalid" = "Acest nume de utilizator nu este valid.";
 "auth.profileNameInvalid" = "Acest nume nu este valid.";
 "auth.profileFailed" = "Profilul nu a putut fi salvat: %@";
+
+"connection.waitingForNetwork" = "Se așteaptă rețeaua";
+"connection.connecting" = "Se conectează…";
+"connection.updating" = "Se actualizează…";

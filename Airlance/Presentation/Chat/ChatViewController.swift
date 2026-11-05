@@ -1,6 +1,7 @@
 import AirlanceUI
 import CameraUI
 import ChatHistory
+import Connectivity
 import DeviceContacts
 import MediaStore
 import Observers
@@ -16,6 +17,7 @@ struct ChatDependencies {
     let media: MediaStore
     let translation: TranslationSettings
     let contacts: DeviceContactsStore
+    let connectionStatus: ConnectionStatusStore
 }
 
 final class ChatViewController: ScreenViewController {
@@ -64,7 +66,7 @@ final class ChatViewController: ScreenViewController {
     weak var metricsView: HistoryMetricsView?
     private var viewing: ObservationToken?
     private let scrollDown = ChatScrollDownButton()
-    private var observation: ObservationToken?
+    var storeObservations: [ObservationToken] = []
     var expiryObservation: ObservationToken?
 
     init(id: String, dependencies: ChatDependencies, router: AppRouter) {
@@ -110,13 +112,7 @@ final class ChatViewController: ScreenViewController {
             object: nil
         )
         inputBar.setText(dependencies.chatsStore.chat(id)?.draft ?? "", animated: false)
-        observation = dependencies.chatsStore.observe { [weak self] _ in
-            guard let self else {
-                return
-            }
-
-            self.render(self.presentation)
-        }
+        observeStores()
     }
 
     override func apply(_ presentation: PresentationData) {
@@ -238,16 +234,17 @@ final class ChatViewController: ScreenViewController {
         }
     }
 
-    private func render(_ presentation: PresentationData) {
+    func render(_ presentation: PresentationData) {
         let strings = presentation.strings
         let peer = dependencies.chatsStore.chat(peerID)
         let chat = thread == nil ? peer : nil
         let name = thread == nil ? peer?.name ?? id : strings.chatCommentsTitle
-        let isOnline = chat?.isOnline ?? false
-        let typing = chat?.typing.map { name in
+        let connection = dependencies.connectionStatus.status.title(strings)
+        let isOnline = connection == nil && chat?.isOnline ?? false
+        let typing = connection == nil ? chat?.typing.map { name in
             strings.typing(name)
-        }
-        let status = typing ?? chat.map { chat in
+        } : nil
+        let status = connection ?? typing ?? chat.map { chat in
             Self.status(of: chat, strings: strings)
         } ?? peer?.name
         let theme = presentation.theme

@@ -1,5 +1,6 @@
 import Auth
 import BrowserUI
+import Connectivity
 import DatabaseAPI
 import Foundation
 import Keychain
@@ -29,6 +30,7 @@ final class AccountManager {
     private let storage: any KeyValueStore
     private let keychain: Keychain
     private let auth: AuthTokenStore
+    private let network: NetworkMonitor
     private let observers = ObserverList<AccountEvent>()
     private var stored: [AccountRecord]
     private var removing: Set<AccountID> = []
@@ -36,10 +38,11 @@ final class AccountManager {
     private var users: [AccountID: Set<UUID>] = [:]
     private var saving: Task<Void, Never>?
 
-    init(storage: any KeyValueStore, keychain: Keychain, auth: AuthTokenStore) {
+    init(storage: any KeyValueStore, keychain: Keychain, auth: AuthTokenStore, network: NetworkMonitor) {
         self.storage = storage
         self.keychain = keychain
         self.auth = auth
+        self.network = network
         stored = storage.value(for: .accounts)
         lastSelected = storage.value(for: .selectedAccount).map(AccountID.init(rawValue:))
         if !storage.value(for: .accountsMigrated) {
@@ -94,7 +97,7 @@ final class AccountManager {
         }
 
         do {
-            let context = try AccountContext(record: record, keychain: keychain)
+            let context = try AccountContext(record: record, keychain: keychain, network: network)
             contexts[id] = context
 
             return .success(context)

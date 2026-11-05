@@ -4,19 +4,22 @@ import Observers
 import os
 import Protocol
 import ServerConnection
+import UIKit
 import WireAuth
 
-struct ServerProfile: Equatable, Sendable {
+struct ServerProfile: Sendable {
     let firstName: String
     let lastName: String
     let username: String
     let bio: String
+    var updatedAtUnix: Int64 = 0
 
-    init(firstName: String, lastName: String, username: String, bio: String) {
-        self.firstName = firstName
-        self.lastName = lastName
-        self.username = username
-        self.bio = bio
+    init(_ data: ProfileData) {
+        firstName = data.fields.firstName
+        lastName = data.fields.lastName
+        username = data.fields.username
+        bio = data.fields.bio
+        updatedAtUnix = data.updatedAtUnix
     }
 
     init(name: String, username: String) {
@@ -32,6 +35,13 @@ struct ServerProfile: Equatable, Sendable {
         lastName = profile.lastName
         username = profile.username
         bio = profile.bio
+    }
+
+    func hasSameFields(as other: ServerProfile?) -> Bool {
+        firstName == other?.firstName
+            && lastName == other?.lastName
+            && username == other?.username
+            && bio == other?.bio
     }
 }
 
@@ -52,6 +62,7 @@ final class AccountServer {
     private weak var store: MyProfileStore?
     private var observation: ObservationToken?
     private var synced: ServerProfile?
+    private var sync: AccountSync?
 
     init(connection: ServerConnection) {
         self.connection = connection
@@ -87,7 +98,23 @@ final class AccountServer {
         }
     }
 
+    func follow(_ account: AccountContext) {
+        if sync == nil {
+            sync = makeSync(account)
+        }
+        sync?.start()
+    }
+
+    func suspend() async {
+        sync?.stop()
+        await connection.close()
+    }
+
     func apply(_ remote: ServerProfile) {
+        guard remote.updatedAtUnix >= synced?.updatedAtUnix ?? 0 else {
+            return
+        }
+
         synced = remote
         guard let store else {
             return
@@ -118,12 +145,29 @@ final class AccountServer {
 
     func close() async {
         observation = nil
-        await connection.close()
+        await suspend()
+    }
+
+    private func makeSync(_ account: AccountContext) -> AccountSync {
+        let sync = AccountSync(connection: connection, storage: account.storage, status: account.connectionStatus)
+        sync.onProfile = { [weak self] data in
+            self?.apply(ServerProfile(data))
+        }
+        sync.onJournalLost = { [weak self] in
+            Task {
+                await self?.pull()
+            }
+        }
+        sync.onSessionEnded = { [weak self] in
+            self?.onSessionEnded?()
+        }
+
+        return sync
     }
 
     private func localChanged(_ profile: MyProfile) {
         let local = ServerProfile(profile)
-        guard local != synced else {
+        guard !local.hasSameFields(as: synced) else {
             return
         }
 
@@ -140,12 +184,7 @@ final class AccountServer {
     private static func profile(from reply: ProtocolMessage) throws -> ServerProfile {
         switch reply {
         case .profileData(let data):
-            ServerProfile(
-                firstName: data.fields.firstName,
-                lastName: data.fields.lastName,
-                username: data.fields.username,
-                bio: data.fields.bio
-            )
+            ServerProfile(data)
         case .error(let error):
             throw AccountServerError.refused(code: error.code, message: error.message)
         default:
@@ -163,9 +202,27 @@ final class AccountServers {
 
     private let auth: AuthTokenStore
     private var servers: [AccountID: AccountServer] = [:]
+    private var backgroundObserver: (any NSObjectProtocol)?
 
     init(auth: AuthTokenStore) {
         self.auth = auth
+        backgroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.suspendAll()
+            }
+        }
+    }
+
+    private func suspendAll() {
+        for server in servers.values {
+            Task {
+                await server.suspend()
+            }
+        }
     }
 
     func server(for id: AccountID) -> AccountServer? {
