@@ -188,7 +188,7 @@ extension ChannelMembersController {
     }
 
     private func copyLink() {
-        UIPasteboard.general.string = "https://airlance.app/\(dependencies.settings.link(of: id))"
+        UIPasteboard.general.string = AirlanceLink.chat(dependencies.settings.link(of: id)).webURL?.absoluteString
         Haptics.play(.success)
         Toast(presentation.strings.chatCopied, symbol: "link").show(theme: presentation.theme, in: view)
     }

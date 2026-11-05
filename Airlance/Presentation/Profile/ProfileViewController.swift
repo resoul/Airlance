@@ -235,13 +235,18 @@ final class ProfileViewController: ScreenViewController {
     }
 
     private func infoRows(_ strings: AppStrings) -> [ProfileInfoCard.Row] {
+        if let current = dependencies.chatsStore.chat(id), current.isServer, current.kind != .person {
+            return serverInfoRows(current, strings: strings)
+        }
+
         guard chat?.kind == .person || chat == nil else {
             let settings = dependencies.chatsStore.channelSettings
             let about = settings.settings(id).about ?? peer.bio
             let link = settings.link(of: id)
             var rows = [ProfileInfoCard.Row(value: about, key: strings.groupDescription, isAccent: false)]
             if chat?.kind != .channel || chat?.isPublic == true {
-                rows.append(ProfileInfoCard.Row(value: "airlance.app/\(link)", key: strings.groupLink, isAccent: true))
+                let text = AirlanceLink.chat(link).displayText
+                rows.append(ProfileInfoCard.Row(value: text, key: strings.groupLink, isAccent: true))
             }
 
             return rows

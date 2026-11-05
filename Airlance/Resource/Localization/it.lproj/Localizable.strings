@@ -128,7 +128,7 @@
 
 "newChat.title" = "Nuova chat";
 "newChat.search" = "Cerca per nome o username";
-"newChat.hint" = "Inserisci almeno 3 caratteri per trovare una persona.";
+"newChat.hint" = "Inserisci almeno 3 caratteri per trovare una persona, un gruppo o un canale.";
 "newChat.failed" = "Impossibile aprire la chat";
 
 "media.title" = "Media: %@";
@@ -947,3 +947,50 @@
 "connection.waitingForNetwork" = "In attesa di rete";
 "connection.connecting" = "Connessione…";
 "connection.updating" = "Aggiornamento…";
+
+"applink.invalid" = "Questo link non è valido";
+"applink.share" = "Condividi link";
+"applink.reset" = "Reimposta link";
+"applink.resetConfirm" = "Il vecchio link smetterà di funzionare e non permetterà più di unirsi.";
+"applink.resetDone" = "Nuovo link creato";
+"chat.group.join" = "Unisciti";
+"chat.group.joined" = "Ti sei unito al gruppo";
+
+"settings.agents" = "Agenti";
+"agents.hint" = "Un agente esegue uno scenario semplice in un gruppo o canale che amministri: un evento e un messaggio. I suoi messaggi sono contrassegnati e il registro mostra cosa ha fatto.";
+"agents.new" = "Nuovo agente";
+"agents.name" = "Nome";
+"agents.chat" = "Chat";
+"agents.text" = "Messaggio";
+"agents.keyword" = "Parola chiave";
+"agents.failed" = "Impossibile salvare l’agente.";
+"agents.noChats" = "Serve un gruppo o canale che amministri.";
+"agents.log" = "Registro";
+"agents.logEmpty" = "Ancora nessuna esecuzione";
+"agents.delete" = "Elimina agente";
+"agents.deleteConfirm" = "Eliminare questo agente?";
+"agents.trigger.schedule" = "Pianificato";
+"agents.trigger.joined" = "Nuovo membro";
+"agents.trigger.keyword" = "Parola chiave";
+"agents.trigger.webhook" = "Webhook esterno";
+"agents.hint.name" = "{name} diventa il nome della persona.";
+"agents.hint.webhook" = "Lascia vuoto per inviare il campo text della richiesta, oppure usa {text}.";
+"agents.hook.title" = "Indirizzo webhook";
+"agents.hook.once" = "L’indirizzo viene mostrato una volta. Invia un POST con JSON {\"text\": \"...\"}.";
+"agents.hook.rotate" = "Nuovo indirizzo webhook";
+"agents.run.sent" = "Inviato";
+"agents.run.noRights" = "Nessun permesso nella chat";
+"agents.run.limited" = "Saltato: limite di 60 all’ora";
+"agents.run.empty" = "Saltato: testo vuoto";
+
+"chats.preview.photo" = "Foto";
+"chats.preview.video" = "Video";
+"chats.preview.voice" = "Messaggio vocale";
+"chats.preview.videoNote" = "Videomessaggio";
+"chats.preview.sticker" = "Sticker";
+"chats.preview.location" = "Posizione";
+
+"folders.tags" = "Mostra etichette cartelle";
+"folders.tagsFooter" = "Nell’elenco delle chat compaiono etichette colorate delle cartelle che contengono la chat. Il colore si sceglie nelle impostazioni della cartella.";
+
+"chats.pinFailed" = "Impossibile fissare la chat. Controlla la connessione e che non ci siano più di 20 chat fissate.";

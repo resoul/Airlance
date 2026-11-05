@@ -14,7 +14,15 @@ extension ProfileViewController {
 
     private func moreItems() -> [PopupMenuItem] {
         let strings = presentation.strings
-        guard let chat, chat.kind == .channel else {
+        guard let chat, chat.kind != .person else {
+            return personItems()
+        }
+
+        if chat.isServer {
+            return serverChatItems(chat, strings: strings)
+        }
+
+        guard chat.kind == .channel else {
             return personItems()
         }
 
@@ -48,6 +56,78 @@ extension ProfileViewController {
         }
 
         return items
+    }
+
+    private func serverChatItems(_ chat: ChatSummary, strings: AppStrings) -> [PopupMenuItem] {
+        let current = dependencies.chatsStore.chat(chat.id) ?? chat
+        var items: [PopupMenuItem] = []
+        if let url = Self.shareableLink(of: current)?.webURL {
+            items.append(PopupMenuItem(title: strings.applinkShare, symbol: "square.and.arrow.up") { [weak self] in
+                self?.share(url)
+            })
+        }
+        guard dependencies.chatsStore.isJoined(chat.id) else {
+            return items
+        }
+
+        if current.isAdmin, current.link.isEmpty {
+            let symbol = "arrow.triangle.2.circlepath"
+            items.append(PopupMenuItem(title: strings.applinkReset, symbol: symbol) { [weak self] in
+                self?.confirmResetInvite()
+            })
+        }
+        items.append(
+            PopupMenuItem(
+                title: strings.channelSettingsLeave,
+                symbol: "rectangle.portrait.and.arrow.right",
+                isDestructive: true
+            ) { [weak self] in
+                self?.confirmLeave()
+            }
+        )
+
+        return items
+    }
+
+    private func share(_ url: URL) {
+        let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        sheet.popoverPresentationController?.sourceView = view
+        present(sheet, animated: true)
+    }
+
+    private func confirmResetInvite() {
+        let strings = presentation.strings
+        PopupAlert.show(
+            title: nil,
+            message: strings.applinkResetConfirm,
+            actions: [
+                PopupAlertAction(title: strings.applinkReset, style: .destructive) { [weak self] in
+                    self?.resetInvite()
+                },
+                PopupAlertAction(title: strings.chatCancel, style: .cancel),
+            ],
+            theme: presentation.theme,
+            in: view
+        )
+    }
+
+    private func resetInvite() {
+        let chatID = id
+        let strings = presentation.strings
+        Task { [weak self] in
+            do {
+                try await self?.dependencies.chatsStore.resetInvite(chatID)
+                Haptics.play(.success)
+                self?.apply(strings: strings)
+            } catch {
+                self?.showToast(strings.newChatFailed, symbol: "exclamationmark.circle")
+            }
+        }
+    }
+
+    private func apply(strings: AppStrings) {
+        apply(presentation)
+        showToast(strings.applinkResetDone, symbol: "checkmark.circle.fill")
     }
 
     private func confirmLeave() {

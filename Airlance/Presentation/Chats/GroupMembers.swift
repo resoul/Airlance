@@ -1,6 +1,7 @@
 import ChatHistory
 import Foundation
 import Observers
+import Protocol
 
 enum GroupRole: Int, Sendable, Comparable {
     case owner
@@ -37,6 +38,31 @@ struct GroupMember: Identifiable, Sendable, Equatable {
     let isOnline: Bool
 }
 
+extension GroupMember {
+    @MainActor
+    init(server: ServerChatMember, me: String) {
+        let parts = [server.person.firstName, server.person.lastName].filter { part in
+            !part.isEmpty
+        }
+        let role: GroupRole
+        switch server.role {
+        case .owner:
+            role = .owner
+        case .admin:
+            role = .admin
+        case .member:
+            role = .member
+        }
+        self.init(
+            id: server.person.subject == me ? GroupMembersStore.me.id : server.person.subject,
+            name: parts.joined(separator: " "),
+            role: role,
+            rights: [],
+            isOnline: false
+        )
+    }
+}
+
 struct GroupEvent: Sendable {
     let chatID: String
 }
@@ -49,6 +75,7 @@ final class GroupMembersStore {
     private var members: [String: [GroupMember]] = [:]
     private var permissions: [String: Set<GroupRight>] = [:]
     private let observers = ObserverList<GroupEvent>()
+    var serverLoader: (@MainActor (String) async -> [GroupMember]?)?
 
     func observe(_ onChange: @escaping @MainActor @Sendable (GroupEvent) -> Void) -> ObservationToken {
         observers.add(onChange)
@@ -59,14 +86,42 @@ final class GroupMembersStore {
             return list
         }
 
+        guard serverLoader == nil else {
+            reload(chatID)
+
+            return []
+        }
+
         let list = Self.fixture(chatID)
         members[chatID] = list
 
         return list
     }
 
+    func reload(_ chatID: String) {
+        guard let serverLoader else {
+            return
+        }
+
+        if members[chatID] == nil {
+            members[chatID] = []
+        }
+        Task { [weak self] in
+            guard let list = await serverLoader(chatID), let self else {
+                return
+            }
+
+            self.members[chatID] = Self.sorted(list)
+            self.observers.notify(GroupEvent(chatID: chatID))
+        }
+    }
+
     func myRole(in chatID: String) -> GroupRole {
-        members(in: chatID).first { member in
+        guard serverLoader == nil else {
+            return .member
+        }
+
+        return members(in: chatID).first { member in
             member.id == Self.me.id
         }?.role ?? .member
     }

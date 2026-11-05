@@ -23,6 +23,55 @@ enum ChatFixtures {
         }
     }
 
+    private static func demoRow(_ chat: ChatSummary) -> ChatSummary {
+        var chat = chat
+        let mine = "Ти: "
+        if chat.message.hasPrefix(mine) {
+            chat.message = String(chat.message.dropFirst(mine.count))
+            chat.isLastOutgoing = true
+        }
+        if chat.kind == .group, let range = chat.message.range(of: ": "), !chat.isLastOutgoing {
+            chat.lastAuthor = String(chat.message[..<range.lowerBound])
+            chat.preview = ChatRowPreview(kind: .text(String(chat.message[range.upperBound...])))
+        }
+        applyDemoKind(to: &chat)
+
+        return chat
+    }
+
+    private static func applyDemoKind(to chat: inout ChatSummary) {
+        let photo = ChatRowThumbnail(source: .bundle(name: "avatar-demo-photo", ext: "jpg"), isVideo: false)
+        let poster = ChatRowThumbnail(source: .bundle(name: "avatar-demo-poster", ext: "jpg"), isVideo: true)
+        switch chat.id {
+        case "vika":
+            chat.preview = ChatRowPreview(kind: .voice)
+        case "olena":
+            chat.preview = ChatRowPreview(kind: .photo, thumbnails: [photo])
+        case "pavlo":
+            chat.preview = ChatRowPreview(kind: .sticker)
+        case "boris":
+            chat.preview = ChatRowPreview(kind: .video, caption: chat.message, thumbnails: [poster])
+        case "travel":
+            chat.preview = ChatRowPreview(kind: .photo, caption: "квитки куплені!", thumbnails: [photo, poster, photo])
+        case "music":
+            chat.preview = ChatRowPreview(kind: .music("Океан Ельзи — Обійми"))
+        case "tech":
+            chat.preview = ChatRowPreview(kind: .text(chat.message), isForwarded: true)
+        case "football":
+            chat.unreadMentions = 1
+        case "family":
+            chat.unreadReactions = 1
+        case "sofia":
+            chat.isSending = true
+            chat.outgoingRead = nil
+        case "marta":
+            chat.isFailed = true
+            chat.outgoingRead = nil
+        default:
+            break
+        }
+    }
+
     private static func all(now: Date) -> [ChatSummary] {
         let minute: TimeInterval = 60
         let hour = 60 * minute
@@ -56,7 +105,7 @@ enum ChatFixtures {
             person("pavlo", "Павло", "Стікер", now - 30 * day),
             channel("sport", "Спорт сьогодні", "Огляд матчів вихідних", now - 40 * day),
             person("marta", "Марта", "Ти: З днем народження! 🎉", now - 200 * day, read: true),
-        ]
+        ].map(demoRow)
 
         return chats.map { chat in
             var chat = chat

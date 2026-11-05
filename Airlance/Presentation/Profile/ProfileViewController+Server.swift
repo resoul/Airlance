@@ -3,8 +3,32 @@ import AvatarUI
 import Protocol
 
 extension ProfileViewController {
+    func serverInfoRows(_ chat: ChatSummary, strings: AppStrings) -> [ProfileInfoCard.Row] {
+        var rows: [ProfileInfoCard.Row] = []
+        if !chat.about.isEmpty {
+            rows.append(ProfileInfoCard.Row(value: chat.about, key: strings.groupDescription, isAccent: false))
+        }
+        if let link = Self.shareableLink(of: chat) {
+            rows.append(ProfileInfoCard.Row(value: link.displayText, key: strings.groupLink, isAccent: true))
+        }
+
+        return rows
+    }
+
+    static func shareableLink(of chat: ChatSummary) -> AirlanceLink? {
+        if !chat.link.isEmpty {
+            return .chat(chat.link)
+        }
+
+        return chat.inviteToken.isEmpty ? nil : .invite(chat.inviteToken)
+    }
+
     func loadServerProfile() {
-        guard let server = PeerAvatars.server(id), let load = dependencies.publicProfile else {
+        if membersPane != nil {
+            dependencies.groupMembers.reload(id)
+        }
+
+        guard let server = PeerAvatars.server(id), !server.subject.isEmpty, let load = dependencies.publicProfile else {
             return
         }
 

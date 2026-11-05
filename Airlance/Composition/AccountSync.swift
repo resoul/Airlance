@@ -24,6 +24,8 @@ final class AccountSync {
     var onProfile: (@MainActor (ProfileData) -> Void)?
     var onStoriesChanged: (@MainActor () -> Void)?
     var onContactsChanged: (@MainActor () -> Void)?
+    var onScheduledChanged: (@MainActor () -> Void)?
+    var onFoldersChanged: (@MainActor () -> Void)?
     var onJournalLost: (@MainActor () -> Void)?
     var onSessionEnded: (@MainActor () -> Void)?
 
@@ -176,6 +178,7 @@ final class AccountSync {
         status.setUpdating(seq < updates.latestSeq)
         status.setLink(.connected)
         await messaging.flushPending()
+        messaging.scheduleRefresh()
         let pinger = Task { [connection] in
             await Self.keepAlive(connection)
         }
@@ -220,6 +223,15 @@ final class AccountSync {
             try await save(envelope.seq)
         case .contact(.changed):
             onContactsChanged?()
+            try await save(envelope.seq)
+        case .automation(.foldersChanged):
+            onFoldersChanged?()
+            try await save(envelope.seq)
+        case .automation(.scheduledChanged):
+            onScheduledChanged?()
+            try await save(envelope.seq)
+        case .group(.changed):
+            messaging.scheduleRefresh()
             try await save(envelope.seq)
         default:
             try await save(envelope.seq)

@@ -27,11 +27,19 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         )
         self.window = window
         window.makeKeyAndVisible()
+
         if let context {
             ParticleSplashView.present(in: window, tint: context.presentationContext.presentation.theme.colors.accent)
         }
 
         open(connectionOptions.urlContexts, animated: false)
+        for activity in connectionOptions.userActivities {
+            open(activity)
+        }
+    }
+
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        open(userActivity)
     }
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
@@ -55,8 +63,26 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         context?.updateTraits(SystemTraits(windowScene.traitCollection))
     }
 
+    private func open(_ activity: NSUserActivity) {
+        guard let url = activity.webpageURL, let link = AirlanceLink(url: url) else {
+            return
+        }
+
+        context?.open(link)
+    }
+
     private func open(_ contexts: Set<UIOpenURLContext>, animated: Bool) {
-        guard let url = contexts.first?.url, let route = ExternalRoute(url: url) else {
+        guard let url = contexts.first?.url else {
+            return
+        }
+
+        if let link = AirlanceLink(url: url) {
+            context?.open(link)
+
+            return
+        }
+
+        guard let route = ExternalRoute(url: url) else {
             return
         }
 

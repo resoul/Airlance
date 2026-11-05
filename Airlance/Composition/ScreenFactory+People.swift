@@ -44,4 +44,26 @@ extension ScreenFactory {
             router: router
         )
     }
+
+    var appLinkOpener: (@MainActor (AirlanceLink) -> Void)? {
+        guard !account.record.isDemo else {
+            return nil
+        }
+
+        let links = links
+
+        return { link in
+            links.open(link)
+        }
+    }
+
+    var links: AccountLinks {
+        AccountLinks(
+            account: account,
+            servers: app.servers,
+            router: router,
+            presentationContext: scene.presentationContext,
+            window: scene.window
+        )
+    }
 }

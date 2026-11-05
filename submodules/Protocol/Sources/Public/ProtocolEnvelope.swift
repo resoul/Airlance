@@ -26,6 +26,8 @@ public enum ProtocolMessage: Sendable, Equatable {
     case media(MediaMessage)
     case search(SearchMessage)
     case chat(ChatWireMessage)
+    case group(GroupWireMessage)
+    case automation(AutomationWireMessage)
     case story(StoryWireMessage)
     case contact(ContactWireMessage)
     case privacy(PrivacyWireMessage)
@@ -35,7 +37,13 @@ public enum ProtocolMessage: Sendable, Equatable {
 public enum ChatWireMessage: Sendable, Equatable {
     case openDirect(peerSubject: String)
     case chat(ServerChat)
-    case send(chatID: String, clientID: String, text: String)
+    case send(
+        chatID: String,
+        clientID: String,
+        text: String,
+        forwardName: String = "",
+        attachments: [ServerAttachment] = []
+    )
     case message(ServerMessage)
     case historyGet(chatID: String, beforeID: Int64, limit: Int32)
     case history([ServerMessage])
@@ -50,8 +58,24 @@ public struct ServerMessage: Sendable, Equatable {
     public let clientID: String
     public let text: String
     public let sentAtUnixMs: Int64
+    public let author: ServerMessageAuthor
+    public let forwardName: String
+    public let attachments: [ServerAttachment]
 
-    public init(chatID: String, messageID: Int64, sender: String, clientID: String, text: String, sentAtUnixMs: Int64) {
+    public init(
+        chatID: String,
+        messageID: Int64,
+        sender: String,
+        clientID: String,
+        text: String,
+        sentAtUnixMs: Int64,
+        author: ServerMessageAuthor = ServerMessageAuthor(),
+        forwardName: String = "",
+        attachments: [ServerAttachment] = []
+    ) {
+        self.forwardName = forwardName
+        self.attachments = attachments
+        self.author = author
         self.chatID = chatID
         self.messageID = messageID
         self.sender = sender
@@ -65,8 +89,15 @@ public struct ServerChat: Sendable, Equatable {
     public let chatID: String
     public let peer: SearchPerson
     public let lastMessage: ServerMessage?
+    public let details: ServerChatDetails
 
-    public init(chatID: String, peer: SearchPerson, lastMessage: ServerMessage?) {
+    public init(
+        chatID: String,
+        peer: SearchPerson,
+        lastMessage: ServerMessage?,
+        details: ServerChatDetails = ServerChatDetails()
+    ) {
+        self.details = details
         self.chatID = chatID
         self.peer = peer
         self.lastMessage = lastMessage

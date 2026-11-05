@@ -69,11 +69,15 @@ extension ChatViewController {
     }
 
     var canWrite: Bool {
-        guard thread == nil, let chat = dependencies.chatsStore.chat(id), chat.kind == .channel else {
+        guard thread == nil, let chat = dependencies.chatsStore.chat(id) else {
             return true
         }
 
-        return chat.canPost
+        if !chat.isMember, !dependencies.chatsStore.isJoined(id) {
+            return false
+        }
+
+        return chat.kind != .channel || chat.canPost
     }
 
     func channelWallpaper(_ presentation: PresentationData) -> ThemeWallpaper? {
@@ -122,10 +126,37 @@ extension ChatViewController {
             for: .touchUpInside
         )
         view.addSubview(channelBar)
+        let observation = dependencies.chatsStore.observe { [weak self] _ in
+            self?.channelStateChanged()
+        }
+        storeObservations.append(observation)
+    }
+
+    private func channelStateChanged() {
+        guard channelBar.superview != nil else {
+            return
+        }
+
+        guard canWrite else {
+            renderChannelBar(dependencies.chatsStore.chat(id), presentation: presentation)
+
+            return
+        }
+
+        channelBar.removeFromSuperview()
+        inputBar.isHidden = false
+        history.replySwipe.isEnabled = true
+        view.setNeedsLayout()
     }
 
     private func channelBarTapped() {
         let store = dependencies.chatsStore
+        if store.chat(id)?.isServer == true, !store.isJoined(id) {
+            joinServerChat()
+
+            return
+        }
+
         guard store.isJoined(id) else {
             store.subscribe(id)
             Haptics.play(.success)
@@ -135,6 +166,22 @@ extension ChatViewController {
         }
 
         store.toggleMute(id)
+    }
+
+    private func joinServerChat() {
+        let chatID = id
+        let strings = presentation.strings
+        let isGroup = dependencies.chatsStore.chat(id)?.kind == .group
+        Task { [weak self] in
+            do {
+                try await self?.dependencies.chatsStore.joinOnServer(chatID)
+                Haptics.play(.success)
+                let text = isGroup ? strings.chatGroupJoined : strings.chatChannelSubscribed
+                self?.showToast(text, symbol: "checkmark.circle.fill")
+            } catch {
+                self?.showToast(strings.newChatFailed, symbol: "exclamationmark.circle")
+            }
+        }
     }
 
     var bottomBarTop: CGFloat {
@@ -170,7 +217,8 @@ extension ChatViewController {
         let isMuted = chat?.isMuted ?? false
         let isJoined = dependencies.chatsStore.isJoined(id)
         let muteTitle = isMuted ? strings.chatChannelUnmute : strings.chatChannelMute
-        let title = isJoined ? muteTitle : strings.chatChannelSubscribe
+        let joinTitle = chat?.kind == .group ? strings.chatGroupJoin : strings.chatChannelSubscribe
+        let title = isJoined ? muteTitle : joinTitle
         channelBar.setTitle(title, for: .normal)
         channelBar.setTitleColor(isJoined ? theme.colors.accent : theme.colors.onAccent, for: .normal)
         channelBar.titleLabel?.font = theme.fonts.headline

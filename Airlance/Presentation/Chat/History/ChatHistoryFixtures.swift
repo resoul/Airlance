@@ -220,9 +220,8 @@ enum ChatHistoryFixtures {
     }
 
     private static func last(_ chat: ChatSummary, authors: [Author]) -> (author: Author, text: String, date: Date) {
-        let mine = ChatSummary.outgoingPrefix
-        if chat.message.hasPrefix(mine), authors.contains(where: \.isMe) {
-            return (me, String(chat.message.dropFirst(mine.count)), chat.date)
+        if chat.isLastOutgoing, authors.contains(where: \.isMe) {
+            return (me, chat.message, chat.date)
         }
 
         if chat.kind == .group, let range = chat.message.range(of: ": ") {

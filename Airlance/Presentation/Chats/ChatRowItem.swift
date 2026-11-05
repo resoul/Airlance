@@ -11,6 +11,8 @@ struct ChatRowItem: AsyncListItem {
     var onPeek: (@MainActor (ListItemNode) -> Void)?
     var draft: ChatRowDraft?
     var typing: String?
+    var messageText: String?
+    var tags: [ChatRowTag] = []
     var onStory: (@MainActor (ChatRowNode) -> Void)?
     let onSelect: @MainActor () -> Void
 
@@ -22,6 +24,13 @@ struct ChatRowItem: AsyncListItem {
         var hasher = Hasher()
         hasher.combine(chat.name)
         hasher.combine(chat.message)
+        hasher.combine(messageText)
+        hasher.combine(tags)
+        hasher.combine(chat.preview)
+        hasher.combine(chat.isSending)
+        hasher.combine(chat.isFailed)
+        hasher.combine(chat.unreadMentions)
+        hasher.combine(chat.unreadReactions)
         hasher.combine(chat.draft)
         hasher.combine(draft)
         hasher.combine(typing)
@@ -77,7 +86,16 @@ struct ChatRowItem: AsyncListItem {
     }
 
     nonisolated func prepareLayout(width: CGFloat, theme: ListTheme, displayScale: CGFloat) -> any ListPreparedLayout {
-        ChatRowLayout(chat: chat, timeText: timeText, width: width, theme: theme, draft: draft, typing: typing)
+        ChatRowLayout(
+            chat: chat,
+            timeText: timeText,
+            width: width,
+            theme: theme,
+            draft: draft,
+            typing: typing,
+            messageText: messageText,
+            tags: tags
+        )
     }
 
     func apply(_ layout: any ListPreparedLayout, to node: ListItemNode) {

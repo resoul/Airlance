@@ -128,7 +128,7 @@
 
 "newChat.title" = "Новий чат";
 "newChat.search" = "Пошук за ім’ям або username";
-"newChat.hint" = "Введіть щонайменше 3 символи, щоб знайти людину.";
+"newChat.hint" = "Введіть щонайменше 3 символи, щоб знайти людину, групу або канал.";
 "newChat.failed" = "Не вдалося відкрити чат";
 
 "media.title" = "Медіа: %@";
@@ -947,3 +947,50 @@
 "connection.waitingForNetwork" = "Очікування мережі";
 "connection.connecting" = "З’єднання…";
 "connection.updating" = "Оновлення…";
+
+"applink.invalid" = "Посилання недійсне";
+"applink.share" = "Поділитися посиланням";
+"applink.reset" = "Скинути посилання";
+"applink.resetConfirm" = "Старе посилання перестане працювати, і за ним більше не можна буде приєднатися.";
+"applink.resetDone" = "Нове посилання створено";
+"chat.group.join" = "Приєднатися";
+"chat.group.joined" = "Ви приєдналися до групи";
+
+"settings.agents" = "Агенти";
+"agents.hint" = "Агент виконує простий сценарій у групі чи каналі, де ви адмін: подія і повідомлення. Його повідомлення підписані, а в журналі видно, що він робив.";
+"agents.new" = "Новий агент";
+"agents.name" = "Назва";
+"agents.chat" = "Чат";
+"agents.text" = "Повідомлення";
+"agents.keyword" = "Ключове слово";
+"agents.failed" = "Не вдалося зберегти агента.";
+"agents.noChats" = "Потрібна група чи канал, де ви адмін.";
+"agents.log" = "Журнал";
+"agents.logEmpty" = "Запусків ще не було";
+"agents.delete" = "Видалити агента";
+"agents.deleteConfirm" = "Видалити цього агента?";
+"agents.trigger.schedule" = "За розкладом";
+"agents.trigger.joined" = "Новий учасник";
+"agents.trigger.keyword" = "Ключове слово";
+"agents.trigger.webhook" = "Зовнішній вебхук";
+"agents.hint.name" = "{name} заміниться іменем людини.";
+"agents.hint.webhook" = "Залиште порожнім, щоб надіслати поле text із запиту, або використайте {text}.";
+"agents.hook.title" = "Адреса вебхука";
+"agents.hook.once" = "Адреса показується один раз. Надішліть на неї POST з JSON {\"text\": \"...\"}.";
+"agents.hook.rotate" = "Нова адреса вебхука";
+"agents.run.sent" = "Надіслано";
+"agents.run.noRights" = "Немає прав у чаті";
+"agents.run.limited" = "Пропущено: ліміт 60 на годину";
+"agents.run.empty" = "Пропущено: порожній текст";
+
+"chats.preview.photo" = "Фото";
+"chats.preview.video" = "Відео";
+"chats.preview.voice" = "Голосове повідомлення";
+"chats.preview.videoNote" = "Відеоповідомлення";
+"chats.preview.sticker" = "Стікер";
+"chats.preview.location" = "Геопозиція";
+
+"folders.tags" = "Показувати мітки папок";
+"folders.tagsFooter" = "У списку чатів поруч із повідомленням з’являться кольорові мітки папок, у яких лежить чат. Колір обирається в налаштуваннях папки.";
+
+"chats.pinFailed" = "Не вдалося закріпити чат. Перевірте з’єднання і що закріплено не більше 20 чатів.";

@@ -38,6 +38,7 @@ final class SceneContext: AccountSwitching {
     var isSigningIn = false
     private var scrollPositions: [AccountID: ChatScrollPositions] = [:]
     private var observation: ObservationToken?
+    private var pendingLink: AirlanceLink?
 
     init(app: ApplicationContext, window: UIWindow, sceneSession: UISceneSession, traits: SystemTraits) {
         self.app = app
@@ -92,6 +93,17 @@ final class SceneContext: AccountSwitching {
         if let path = route.path {
             session?.router.navigate(to: path, animated: animated && route.accountID == nil)
         }
+    }
+
+    func open(_ link: AirlanceLink) {
+        guard let session, !session.account.record.isDemo else {
+            pendingLink = link
+
+            return
+        }
+
+        pendingLink = nil
+        session.links.open(link)
     }
 
     func switchAccount(to id: AccountID) {
@@ -186,6 +198,9 @@ final class SceneContext: AccountSwitching {
 
             session = AccountSession(account: account, scene: self, usage: app.accounts.use(id))
             revalidate()
+            if let pendingLink {
+                open(pendingLink)
+            }
         case .failure(let failure):
             window.rootViewController = placeholder(failed: failure.accountID)
         }

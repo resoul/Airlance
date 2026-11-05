@@ -49,7 +49,12 @@ extension ChatHistoryStore {
         message.delivery = .sending
         message.date = Date()
         append(message, to: id)
-        chatsStore.recordOutgoing(ChatsStore.preview(of: message), date: message.date, in: id)
+        chatsStore.recordOutgoing(
+            ChatsStore.preview(of: message),
+            date: message.date,
+            in: id,
+            preview: ChatRowPreview(message)
+        )
         deliver(message, in: id)
     }
 }

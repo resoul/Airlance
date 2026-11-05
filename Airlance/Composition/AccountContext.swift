@@ -34,6 +34,7 @@ final class AccountContext {
     let chatStorage: ChatStorage
     let profileFiles = ProfileMediaFiles()
     let privacy = PrivacyStore()
+    let agents = AgentsStore()
     private(set) lazy var serverContacts = ServerContactsStore(
         isServerBacked: record.subject != nil,
         files: profileFiles
@@ -111,19 +112,26 @@ final class AccountContext {
             Self.logger.error("Can't read the chats: \(String(describing: error))")
         } onChange: { [weak self] stored in
             let chats = stored.map { chat in
-                ChatSummary.server(chat, me: me, contacts: self?.serverContacts)
+                ChatSummary.server(chat, me: me, contacts: self?.serverContacts) { item in
+                    self?.rowThumbnail(item)
+                }
             }
             self?.registerPeerAvatars(stored)
-            let empty = chats.filter(\.message.isEmpty)
+            let empty = chats.filter { chat in
+                chat.kind == .person && chat.preview == nil && chat.message.isEmpty
+            }
             self?.chatsStore.setServerChats(chats.filter { chat in
-                !chat.message.isEmpty
+                chat.kind != .person || chat.preview != nil || !chat.message.isEmpty
             }, empty: empty)
+        }
+        historyStore.onServerAuthor = { [weak self] message in
+            self?.registerAuthor(message)
         }
     }
 
     private static func serverHistory(_ record: AccountRecord, storage: ChatStorage) -> ServerHistory? {
         record.subject.map { subject in
-            ServerHistory(storage: storage, me: subject)
+            ServerHistory(storage: storage, me: subject, account: record.id.rawValue)
         }
     }
 

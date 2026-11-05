@@ -6,6 +6,7 @@ import UIKit
 struct NewChatSearch {
     let search: @MainActor (String) async throws -> [SearchPerson]
     let open: @MainActor (SearchPerson) async throws -> String
+    let chats: @MainActor (String) async throws -> [ServerChat]
 }
 
 struct NewChatDependencies {
@@ -25,6 +26,7 @@ final class NewChatViewController: ScreenViewController {
     private let searchHeader = SearchHeaderView()
     private let hintLabel = UILabel()
     private var people: [SearchPerson] = []
+    private var publicChats: [ServerChat] = []
     private var pending: Task<Void, Never>?
 
     init(dependencies: NewChatDependencies, router: AppRouter) {
@@ -91,6 +93,7 @@ final class NewChatViewController: ScreenViewController {
         pending?.cancel()
         guard query.count >= Self.minQuery, let search = dependencies.search else {
             people = []
+            publicChats = []
             render()
 
             return
@@ -102,12 +105,15 @@ final class NewChatViewController: ScreenViewController {
                 return
             }
 
-            let found = (try? await search.search(query)) ?? []
+            async let foundPeople = try? search.search(query)
+            async let foundChats = try? search.chats(query)
+            let (found, chats) = await (foundPeople ?? [], foundChats ?? [])
             guard !Task.isCancelled, let self else {
                 return
             }
 
             self.people = found
+            self.publicChats = chats
             self.render()
         }
     }
@@ -116,12 +122,33 @@ final class NewChatViewController: ScreenViewController {
         let query = searchHeader.query
         let strings = presentation.strings
         hintLabel.text = query.count < Self.minQuery ? strings.newChatHint : strings.contactsNotFound
-        hintLabel.isHidden = !people.isEmpty
-        listView.apply(items: people.map { person in
+        hintLabel.isHidden = !people.isEmpty || !publicChats.isEmpty
+        let chatRows = publicChats.map { chat in
+            ActionRowItem(id: chat.chatID, title: Self.title(of: chat), symbol: Self.symbol(of: chat)) { [weak self] in
+                self?.open(chat)
+            }
+        }
+        let personRows = people.map { person in
             ActionRowItem(id: person.subject, title: Self.title(of: person), symbol: "person.circle") { [weak self] in
                 self?.open(person)
             }
-        }, animated: false)
+        }
+        listView.apply(items: personRows + chatRows, animated: false)
+    }
+
+    private func open(_ chat: ServerChat) {
+        if !chat.details.isMember {
+            dependencies.chatsStore.addServerPreview(.preview(of: chat))
+        }
+        router.show(.chat(chat.chatID))
+    }
+
+    private static func title(of chat: ServerChat) -> String {
+        "\(chat.details.title) · @\(chat.details.link)"
+    }
+
+    private static func symbol(of chat: ServerChat) -> String {
+        chat.details.kind == .channel ? "megaphone" : "person.3"
     }
 
     private func open(_ person: SearchPerson) {

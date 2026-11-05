@@ -5,6 +5,7 @@ import UIKit
 final class AccountSession {
     let account: AccountContext
     let router: AppRouter
+    let links: AccountLinks
 
     private let coordinator: AppCoordinator
     private let tabMemory: TabMemory
@@ -28,6 +29,7 @@ final class AccountSession {
 
         self.account = account
         self.router = router
+        links = factory.links
         self.tabMemory = tabMemory
         self.usage = usage
         coordinator = AppCoordinator(

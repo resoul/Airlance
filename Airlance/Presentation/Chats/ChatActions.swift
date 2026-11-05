@@ -88,7 +88,15 @@ struct ChatActions {
             symbol: chat.isPinned ? "pin.slash.fill" : "pin.fill",
             color: .systemGreen
         ) {
-            store.togglePin(id)
+            let failed = Toast(presentation.strings.chatsPinFailed, symbol: "exclamationmark.circle")
+            let theme = presentation.theme
+            store.togglePin(id) { [weak host] in
+                guard let window = host?.window else {
+                    return
+                }
+
+                failed.show(theme: theme, in: window)
+            }
         }
     }
 

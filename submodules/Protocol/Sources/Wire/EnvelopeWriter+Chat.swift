@@ -14,8 +14,15 @@ extension EnvelopeWriter {
             return (.chatopendirect, root)
         case .chat(let chat):
             return (.chatdata, writeServerChat(chat, into: &builder))
-        case .send(let chatID, let clientID, let text):
-            return (.messagesend, writeSend(chatID: chatID, clientID: clientID, text: text, into: &builder))
+        case .send(let chatID, let clientID, let text, let forwardName, let attachments):
+            return (.messagesend, writeSend(
+                chatID: chatID,
+                clientID: clientID,
+                text: text,
+                forwardName: forwardName,
+                attachments: attachments,
+                into: &builder
+            ))
         case .message(let message):
             return (.messagedata, writeServerMessage(message, into: &builder))
         case .historyGet(let chatID, let beforeID, let limit):
@@ -41,17 +48,58 @@ extension EnvelopeWriter {
         chatID: String,
         clientID: String,
         text: String,
+        forwardName: String,
+        attachments: [ServerAttachment],
         into builder: inout FlatBufferBuilder
     ) -> Offset {
         let chat = builder.create(string: chatID)
         let client = builder.create(string: clientID)
         let body = builder.create(string: text)
+        let forward = builder.create(string: forwardName)
+        let items = writeAttachments(attachments, into: &builder)
 
         return Airlance_Wire_MessageSend.createMessageSend(
             &builder,
             chatIdOffset: chat,
             clientIdOffset: client,
-            textOffset: body
+            textOffset: body,
+            forwardNameOffset: forward,
+            attachmentsVectorOffset: items
+        )
+    }
+
+    private static func writeAttachments(
+        _ attachments: [ServerAttachment],
+        into builder: inout FlatBufferBuilder
+    ) -> Offset {
+        let rows = attachments.map { item in
+            writeAttachment(item, into: &builder)
+        }
+
+        return builder.createVector(ofOffsets: rows)
+    }
+
+    private static func writeAttachment(_ item: ServerAttachment, into builder: inout FlatBufferBuilder) -> Offset {
+        let media = builder.create(string: item.mediaID)
+        let thumb = builder.create(string: item.thumbMediaID)
+        let name = builder.create(string: item.name)
+        let waveform = builder.createVector(item.waveform)
+        let title = builder.create(string: item.title)
+        let performer = builder.create(string: item.performer)
+
+        return Airlance_Wire_MessageAttachment.createMessageAttachment(
+            &builder,
+            kind: item.kind,
+            mediaIdOffset: media,
+            thumbMediaIdOffset: thumb,
+            nameOffset: name,
+            size: item.size,
+            width: item.width,
+            height: item.height,
+            durationMs: item.durationMs,
+            waveformVectorOffset: waveform,
+            titleOffset: title,
+            performerOffset: performer
         )
     }
 
@@ -78,6 +126,13 @@ extension EnvelopeWriter {
         let sender = builder.create(string: message.sender)
         let client = builder.create(string: message.clientID)
         let text = builder.create(string: message.text)
+        let first = builder.create(string: message.author.firstName)
+        let last = builder.create(string: message.author.lastName)
+        let photo = builder.create(string: message.author.photoMediaID)
+        let video = builder.create(string: message.author.videoMediaID)
+        let agent = builder.create(string: message.author.agentName)
+        let forward = builder.create(string: message.forwardName)
+        let items = writeAttachments(message.attachments, into: &builder)
 
         return Airlance_Wire_MessageData.createMessageData(
             &builder,
@@ -86,11 +141,18 @@ extension EnvelopeWriter {
             senderOffset: sender,
             clientIdOffset: client,
             textOffset: text,
-            sentAtUnixMs: message.sentAtUnixMs
+            sentAtUnixMs: message.sentAtUnixMs,
+            senderFirstNameOffset: first,
+            senderLastNameOffset: last,
+            senderPhotoMediaIdOffset: photo,
+            senderVideoMediaIdOffset: video,
+            agentNameOffset: agent,
+            forwardNameOffset: forward,
+            attachmentsVectorOffset: items
         )
     }
 
-    private static func writeServerChat(_ chat: ServerChat, into builder: inout FlatBufferBuilder) -> Offset {
+    static func writeServerChat(_ chat: ServerChat, into builder: inout FlatBufferBuilder) -> Offset {
         let last = chat.lastMessage.map { message in
             writeServerMessage(message, into: &builder)
         } ?? Offset()
@@ -102,6 +164,10 @@ extension EnvelopeWriter {
 
         let photo = builder.create(string: chat.peer.photoMediaID)
         let video = builder.create(string: chat.peer.videoMediaID)
+        let title = builder.create(string: chat.details.title)
+        let about = builder.create(string: chat.details.about)
+        let link = builder.create(string: chat.details.link)
+        let invite = builder.create(string: chat.details.inviteToken)
 
         return Airlance_Wire_ChatData.createChatData(
             &builder,
@@ -112,7 +178,16 @@ extension EnvelopeWriter {
             peerUsernameOffset: username,
             lastMessageOffset: last,
             peerPhotoMediaIdOffset: photo,
-            peerVideoMediaIdOffset: video
+            peerVideoMediaIdOffset: video,
+            kind: chat.details.kind.rawValue,
+            titleOffset: title,
+            aboutOffset: about,
+            linkOffset: link,
+            inviteTokenOffset: invite,
+            memberCount: chat.details.memberCount,
+            role: chat.details.role.rawValue,
+            isMember: chat.details.isMember,
+            isPinned: chat.details.isPinned
         )
     }
 }

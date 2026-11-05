@@ -35,7 +35,7 @@ final class ChannelTypeController: ScreenViewController {
         )
         view.addSubnode(listView)
         listView.scrollView.keyboardDismissMode = .interactive
-        linkPrefix.text = "airlance.app/"
+        linkPrefix.text = "\(AirlanceLink.host)/c/"
         linkField.autocapitalizationType = .none
         linkField.autocorrectionType = .no
         linkField.keyboardType = .asciiCapable

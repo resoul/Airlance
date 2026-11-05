@@ -8,6 +8,9 @@ final class ChatRowNode: ListItemNode {
     private let onlineDot = ASDisplayNode()
     private let separator = ASDisplayNode()
     private let content = ListRowCanvas()
+    private let thumbnails = ChatRowThumbnailsNode()
+    private let typingDots = ChatRowTypingNode()
+    private var isTyping = false
 
     override func didLoad() {
         super.didLoad()
@@ -18,6 +21,9 @@ final class ChatRowNode: ListItemNode {
         addSubnode(onlineDot)
         addSubnode(separator)
         addSubnode(content)
+        addSubnode(thumbnails)
+        addSubnode(typingDots)
+        typingDots.isHidden = true
     }
 
     func update(avatar descriptor: AvatarDescriptor, storyRing: AvatarStoryRing?, isOnline: Bool, theme: ListTheme) {
@@ -49,10 +55,24 @@ final class ChatRowNode: ListItemNode {
     func apply(_ layout: ChatRowLayout) {
         content.frame = CGRect(origin: .zero, size: layout.content.size)
         content.apply(layout.content)
+        thumbnails.frame = content.frame
+        thumbnails.show(
+            layout.thumbnails,
+            frames: layout.thumbnailFrames,
+            scale: max(view.traitCollection.displayScale, 1)
+        )
+        isTyping = layout.typingOrigin != nil
+        typingDots.isHidden = !isTyping
+        if let origin = layout.typingOrigin {
+            typingDots.frame = CGRect(origin: origin, size: CGSize(width: ChatRowTypingNode.width, height: 4))
+            typingDots.apply(color: layout.typingColor)
+        }
+        typingDots.setAnimating(isTyping && isOnScreen)
     }
 
     override func visibilityChanged() {
         avatar.isOnScreen = isOnScreen
+        typingDots.setAnimating(isTyping && isOnScreen)
     }
 
     override func prepareForReuse() {
@@ -60,6 +80,10 @@ final class ChatRowNode: ListItemNode {
         avatar.prepareForReuse()
         setAvatarHidden(false)
         content.apply(nil)
+        thumbnails.clear()
+        isTyping = false
+        typingDots.isHidden = true
+        typingDots.setAnimating(false)
     }
 
     override func layout() {

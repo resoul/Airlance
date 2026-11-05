@@ -53,18 +53,23 @@ public final class ChatStorage {
         }
     }
 
-    public func applyReceived(_ message: StoredMessage, seq: UInt64?, countsUnread: Bool) async throws -> Bool {
-        let hasPeer = try await tables.write { db in
-            try ChatStorageRecords.upsertReceived(message, countsUnread: countsUnread, db: db)
+    public func applyReceived(
+        _ message: StoredMessage,
+        seq: UInt64?,
+        countsUnread: Bool,
+        isMention: Bool = false
+    ) async throws -> Bool {
+        let isKnown = try await tables.write { db in
+            try ChatStorageRecords.upsertReceived(message, countsUnread: countsUnread, isMention: isMention, db: db)
             if let seq {
                 try ChatStorageRecords.saveSeq(seq, key: Self.seqKey, db: db)
             }
 
-            return try ChatStorageRecords.hasPeer(chatID: message.chatID, db: db)
+            return try ChatStorageRecords.isKnown(chatID: message.chatID, db: db)
         }
         publish(message)
 
-        return hasPeer
+        return isKnown
     }
 
     public func addPending(_ message: StoredMessage) async throws {
@@ -83,15 +88,62 @@ public final class ChatStorage {
         publish(failed)
     }
 
-    public func saveChat(id: String, peer: StoredPeer) async throws {
+    public func saveChat(
+        id: String,
+        peer: StoredPeer,
+        details: StoredChatDetails = StoredChatDetails(),
+        keepsPin: Bool = false
+    ) async throws {
         try await tables.write { db in
-            try ChatStorageRecords.saveChat(id: id, peer: peer, db: db)
+            try ChatStorageRecords.saveChat(id: id, peer: peer, details: details, keepsPin: keepsPin, db: db)
+        }
+    }
+
+    public func setPinned(_ isPinned: Bool, chatID: String) async throws {
+        try await tables.write { db in
+            try db.execute(
+                "UPDATE server_chats SET is_pinned = ? WHERE id = ?",
+                [.integer(isPinned ? 1 : 0), .text(chatID)]
+            )
+        }
+    }
+
+    public func saveAttachments(of message: StoredMessage) async throws {
+        try await tables.write { db in
+            try ChatStorageRecords.saveAttachments(of: message, db: db)
+        }
+    }
+
+    public func isHistoryLoaded(_ chatID: String) async throws -> Bool {
+        try await tables.read { db in
+            try ChatStorageRecords.isHistoryLoaded(chatID: chatID, db: db)
+        }
+    }
+
+    public func markHistoryLoaded(_ chatID: String) async throws {
+        try await tables.write { db in
+            try db.execute("UPDATE server_chats SET history_loaded = 1 WHERE id = ?", [.text(chatID)])
+        }
+    }
+
+    public func removeChat(_ id: String) async throws {
+        try await tables.write { db in
+            try ChatStorageRecords.removeChat(id, db: db)
+        }
+    }
+
+    public func removeChats(missingFrom keeping: Set<String>, before: Int64) async throws {
+        try await tables.write { db in
+            try ChatStorageRecords.removeMissing(keeping: keeping, before: before, db: db)
         }
     }
 
     public func markRead(_ chatID: String) async throws {
         try await tables.write { db in
-            try db.execute("UPDATE server_chats SET unread = 0 WHERE id = ? AND unread <> 0", [.text(chatID)])
+            try db.execute(
+                "UPDATE server_chats SET unread = 0, unread_mentions = 0 WHERE id = ? AND unread <> 0",
+                [.text(chatID)]
+            )
         }
     }
 

@@ -7,13 +7,26 @@ struct ChatRowDraft: Sendable, Hashable {
     let color: UIColor
 }
 
+struct ChatRowTag: Sendable, Hashable {
+    let title: String
+    let color: UIColor
+}
+
 final class ChatRowLayout: ListPreparedLayout, @unchecked Sendable {
     static let avatarSize: CGFloat = 56
     static let avatarX: CGFloat = 12
     static let textX: CGFloat = avatarX + avatarSize + 12
     static let rightInset: CGFloat = 14
+    static let thumbnailSide: CGFloat = 20
+    static let thumbnailRadius: CGFloat = 4
+    private static let cutoutGap: CGFloat = 4
+    private static let markSide: CGFloat = 12
 
     let content: ListRowContent
+    let thumbnails: [ChatRowThumbnail]
+    let thumbnailFrames: [CGRect]
+    let typingOrigin: CGPoint?
+    let typingColor: UIColor
 
     init(
         chat: ChatSummary,
@@ -22,7 +35,9 @@ final class ChatRowLayout: ListPreparedLayout, @unchecked Sendable {
         theme: ListTheme,
         grayBadge: Bool = false,
         draft: ChatRowDraft? = nil,
-        typing: String? = nil
+        typing: String? = nil,
+        messageText: String? = nil,
+        tags: [ChatRowTag] = []
     ) {
         let height = Self.height(theme: theme)
         var content = ListRowContent(size: CGSize(width: width, height: height))
@@ -40,22 +55,97 @@ final class ChatRowLayout: ListPreparedLayout, @unchecked Sendable {
             height: height,
             theme: theme
         )
-        let message = NSMutableAttributedString(
-            string: typing ?? draftText ?? chat.message,
-            attributes: [.font: theme.subtitleFont, .foregroundColor: typing == nil ? theme.secondary : theme.accent]
+        let message = Self.message(
+            typing ?? draftText ?? messageText ?? chat.message,
+            draft: draftText == nil ? nil : draft,
+            isTyping: typing != nil,
+            theme: theme
         )
-        if let draft, draftText != nil {
+        let isPlain = typing != nil || draftText != nil
+        let messageY = nameBottom + 3
+        let marks = isPlain ? .none : Self.addMarks(to: &content, chat: chat, y: messageY, theme: theme)
+        thumbnails = marks.thumbnails
+        thumbnailFrames = marks.frames
+        Self.indent(message, by: marks.cutout)
+        let messageWidth = max(1, messageRight - Self.textX)
+        let messageFrame = Self.addMessage(
+            message,
+            tags: tags,
+            to: &content,
+            origin: CGPoint(x: Self.textX, y: messageY),
+            width: messageWidth
+        )
+        Self.addTags(tags, to: &content, y: messageFrame.maxY + 3, right: messageRight, theme: theme)
+        typingColor = theme.accent
+        typingOrigin = typing == nil ? nil : Self.typingOrigin(after: messageFrame, right: messageRight)
+        self.content = content
+    }
+
+    private static func typingOrigin(after frame: CGRect, right: CGFloat) -> CGPoint {
+        CGPoint(x: min(frame.maxX + 3, right - ChatRowTypingNode.width), y: frame.minY + (frame.height - 4) / 2 + 3)
+    }
+
+    private static func message(
+        _ text: String,
+        draft: ChatRowDraft?,
+        isTyping: Bool,
+        theme: ListTheme
+    ) -> NSMutableAttributedString {
+        let message = NSMutableAttributedString(
+            string: text,
+            attributes: [.font: theme.subtitleFont, .foregroundColor: isTyping ? theme.accent : theme.secondary]
+        )
+        if let draft {
             let title = NSAttributedString(
                 string: draft.title + ": ",
                 attributes: [.font: theme.subtitleFont, .foregroundColor: draft.color]
             )
             message.insert(title, at: 0)
         }
-        let messageWidth = max(1, messageRight - Self.textX)
-        let messageSize = ListRowContent.measure(message, width: messageWidth, lines: 2)
-        let messageFrame = CGRect(origin: CGPoint(x: Self.textX, y: nameBottom + 3), size: messageSize)
-        content.elements.append(.text(message, lines: 2, frame: messageFrame))
-        self.content = content
+
+        return message
+    }
+
+    private struct Marks {
+        static let none = Marks(cutout: 0, thumbnails: [], frames: [])
+
+        let cutout: CGFloat
+        let thumbnails: [ChatRowThumbnail]
+        let frames: [CGRect]
+    }
+
+    private static func addMarks(
+        to content: inout ListRowContent,
+        chat: ChatSummary,
+        y: CGFloat,
+        theme: ListTheme
+    ) -> Marks {
+        guard let preview = chat.preview else {
+            return .none
+        }
+
+        var cutout: CGFloat = 0
+        let lineHeight = theme.subtitleFont.lineHeight
+        if preview.isForwarded {
+            let frame = CGRect(x: textX, y: y, width: markSide, height: lineHeight)
+            content.elements.append(
+                icon("arrowshape.turn.up.right.fill", size: 10, color: theme.secondary, frame: frame)
+            )
+            cutout += markSide + cutoutGap
+        }
+        let frames = preview.thumbnails.indices.map { index in
+            CGRect(
+                x: textX + cutout + CGFloat(index) * (thumbnailSide + 2),
+                y: y + (lineHeight - thumbnailSide) / 2,
+                width: thumbnailSide,
+                height: thumbnailSide
+            )
+        }
+        if let last = frames.last {
+            cutout = last.maxX - textX + cutoutGap
+        }
+
+        return Marks(cutout: cutout, thumbnails: preview.thumbnails, frames: frames)
     }
 
     private static func addTopLine(
@@ -71,13 +161,13 @@ final class ChatRowLayout: ListPreparedLayout, @unchecked Sendable {
         let time = text(timeText, font: font, color: theme.secondary, width: width / 3, lines: 1, origin: timeOrigin)
         content.elements.append(time.element)
 
-        var titleRight = time.frame.minX - 6
-        if let read = chat.outgoingRead {
-            let frame = CGRect(x: titleRight - 16, y: 10, width: 16, height: timeSize.height)
-            let symbol = read ? "checkmark.circle.fill" : "checkmark"
-            content.elements.append(icon(symbol, size: 12, color: theme.accent, frame: frame))
-            titleRight = frame.minX - 4
-        }
+        let titleRight = addStatus(
+            to: &content,
+            chat: chat,
+            right: time.frame.minX - 6,
+            height: timeSize.height,
+            theme: theme
+        )
 
         let muteWidth: CGFloat = chat.isMuted ? 18 : 0
         let name = text(
@@ -97,37 +187,11 @@ final class ChatRowLayout: ListPreparedLayout, @unchecked Sendable {
         return name.frame.maxY
     }
 
-    private static func addTrailing(
-        to content: inout ListRowContent,
-        chat: ChatSummary,
-        grayBadge: Bool,
-        width: CGFloat,
-        height: CGFloat,
-        theme: ListTheme
-    ) -> CGFloat {
-        if chat.unread > 0 {
-            let badge = badge(chat.unread, muted: chat.isMuted || grayBadge, theme: theme)
-            let origin = CGPoint(x: width - rightInset - badge.size.width, y: height - 12 - badge.size.height)
-            content.elements += badge.elements(at: origin)
-
-            return origin.x - 8
-        }
-
-        if chat.isPinned {
-            let frame = CGRect(x: width - rightInset - 18, y: height - 34, width: 18, height: 22)
-            content.elements.append(icon("pin.fill", size: 13, color: theme.secondary, frame: frame))
-
-            return frame.minX - 8
-        }
-
-        return width - rightInset
-    }
-
     static func height(theme: ListTheme) -> CGFloat {
         max(76, (8 + theme.titleFont.lineHeight + 3 + theme.subtitleFont.lineHeight * 2 + 10).rounded(.up))
     }
 
-    private static func text(
+    fileprivate static func text(
         _ string: String,
         font: UIFont,
         color: UIColor,
@@ -142,17 +206,17 @@ final class ChatRowLayout: ListPreparedLayout, @unchecked Sendable {
         return (.text(attributed, lines: lines, frame: frame), frame)
     }
 
-    private static func measure(_ string: String, font: UIFont, width: CGFloat, lines: UInt) -> CGSize {
+    fileprivate static func measure(_ string: String, font: UIFont, width: CGFloat, lines: UInt) -> CGSize {
         let attributed = NSAttributedString(string: string, attributes: [.font: font])
 
         return ListRowContent.measure(attributed, width: width, lines: lines)
     }
 
-    private static func icon(_ symbol: String, size: CGFloat, color: UIColor, frame: CGRect) -> ListRowElement {
+    fileprivate static func icon(_ symbol: String, size: CGFloat, color: UIColor, frame: CGRect) -> ListRowElement {
         .image(ListRowSymbols.image(symbol, size: size, color: color), frame: frame)
     }
 
-    private static func badge(_ count: Int, muted: Bool, theme: ListTheme) -> ChatRowBadge {
+    fileprivate static func badge(_ count: Int, muted: Bool, theme: ListTheme) -> ChatRowBadge {
         let font = theme.subtitleFont
         let number = NSAttributedString(
             string: count > 999 ? "999+" : "\(count)",
@@ -170,12 +234,153 @@ final class ChatRowLayout: ListPreparedLayout, @unchecked Sendable {
         )
     }
 
-    private static func boldFont(_ font: UIFont) -> UIFont {
+    fileprivate static func boldFont(_ font: UIFont) -> UIFont {
         guard let descriptor = font.fontDescriptor.withSymbolicTraits(.traitBold) else {
             return font
         }
 
         return UIFont(descriptor: descriptor, size: font.pointSize)
+    }
+}
+
+extension ChatRowLayout {
+    fileprivate static func indent(_ message: NSMutableAttributedString, by cutout: CGFloat) {
+        guard cutout > 0 else {
+            return
+        }
+
+        let style = NSMutableParagraphStyle()
+        style.firstLineHeadIndent = cutout
+        message.addAttribute(.paragraphStyle, value: style, range: NSRange(location: 0, length: message.length))
+    }
+
+    fileprivate static func addMessage(
+        _ message: NSAttributedString,
+        tags: [ChatRowTag],
+        to content: inout ListRowContent,
+        origin: CGPoint,
+        width: CGFloat
+    ) -> CGRect {
+        let lines: UInt = tags.isEmpty ? 2 : 1
+        let size = ListRowContent.measure(message, width: width, lines: lines)
+        let frame = CGRect(origin: origin, size: size)
+        content.elements.append(.text(message, lines: lines, frame: frame))
+
+        return frame
+    }
+
+    fileprivate static func addTags(
+        _ tags: [ChatRowTag],
+        to content: inout ListRowContent,
+        y: CGFloat,
+        right: CGFloat,
+        theme: ListTheme
+    ) {
+        let font = theme.subtitleFont.withSize(11)
+        let height: CGFloat = 16
+        var x = textX
+        for tag in tags {
+            let title = NSAttributedString(string: tag.title, attributes: [.font: font, .foregroundColor: tag.color])
+            let size = ListRowContent.measure(title, width: right - textX, lines: 1)
+            let frame = CGRect(x: x, y: y, width: size.width + 10, height: height)
+            guard frame.maxX <= right else {
+                return
+            }
+
+            content.elements.append(.box(tag.color.withAlphaComponent(0.16), cornerRadius: 4, frame: frame))
+            let origin = CGPoint(x: x + 5, y: y + (height - size.height) / 2)
+            content.elements.append(.text(title, lines: 1, frame: CGRect(origin: origin, size: size)))
+            x = frame.maxX + 4
+        }
+    }
+
+    fileprivate static func addStatus(
+        to content: inout ListRowContent,
+        chat: ChatSummary,
+        right: CGFloat,
+        height: CGFloat,
+        theme: ListTheme
+    ) -> CGFloat {
+        let single = CGRect(x: right - 16, y: 10, width: 16, height: height)
+        if chat.isFailed {
+            content.elements.append(icon("exclamationmark.circle.fill", size: 13, color: .systemRed, frame: single))
+
+            return single.minX - 4
+        }
+
+        if chat.isSending {
+            content.elements.append(icon("clock", size: 11, color: theme.secondary, frame: single))
+
+            return single.minX - 4
+        }
+
+        guard let read = chat.outgoingRead else {
+            return right
+        }
+
+        content.elements.append(icon("checkmark", size: 11, color: theme.accent, frame: single))
+        guard read else {
+            return single.minX - 4
+        }
+
+        let second = single.offsetBy(dx: -5, dy: 0)
+        content.elements.append(icon("checkmark", size: 11, color: theme.accent, frame: second))
+
+        return second.minX - 4
+    }
+
+    fileprivate static func addBadge(
+        to content: inout ListRowContent,
+        symbol: String,
+        color: UIColor,
+        right: CGFloat,
+        bottom: CGFloat
+    ) -> CGFloat {
+        let side: CGFloat = 22
+        let frame = CGRect(x: right - side, y: bottom - side, width: side, height: side)
+        content.elements.append(.box(color, cornerRadius: side / 2, frame: frame))
+        content.elements.append(icon(symbol, size: 11, color: .white, frame: frame))
+
+        return frame.minX - 4
+    }
+
+    fileprivate static func addTrailing(
+        to content: inout ListRowContent,
+        chat: ChatSummary,
+        grayBadge: Bool,
+        width: CGFloat,
+        height: CGFloat,
+        theme: ListTheme
+    ) -> CGFloat {
+        var right = width - rightInset
+        var hasBadge = false
+        if chat.unread > 0 {
+            let badge = badge(chat.unread, muted: chat.isMuted || grayBadge, theme: theme)
+            let origin = CGPoint(x: right - badge.size.width, y: height - 12 - badge.size.height)
+            content.elements += badge.elements(at: origin)
+            right = origin.x - 4
+            hasBadge = true
+        }
+        if chat.unreadMentions > 0 {
+            right = addBadge(to: &content, symbol: "at", color: theme.accent, right: right, bottom: height - 12)
+            hasBadge = true
+        }
+        if chat.unreadReactions > 0 {
+            right = addBadge(to: &content, symbol: "heart.fill", color: .systemPink, right: right, bottom: height - 12)
+            hasBadge = true
+        }
+        if hasBadge {
+            return right - 4
+        }
+
+        if chat.isPinned {
+            let frame = CGRect(x: width - rightInset - 18, y: height - 34, width: 18, height: 22)
+            content.elements.append(icon("pin.fill", size: 13, color: theme.secondary, frame: frame))
+
+            return frame.minX - 8
+        }
+
+        return width - rightInset
     }
 }
 

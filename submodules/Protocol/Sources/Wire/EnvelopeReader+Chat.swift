@@ -16,7 +16,13 @@ extension EnvelopeReader {
         case .messagesend:
             let table: Airlance_Wire_MessageSend = try checkedRoot(body)
 
-            return .chat(.send(chatID: table.chatId ?? "", clientID: table.clientId ?? "", text: table.text ?? ""))
+            return .chat(.send(
+                chatID: table.chatId ?? "",
+                clientID: table.clientId ?? "",
+                text: table.text ?? "",
+                forwardName: table.forwardName ?? "",
+                attachments: table.attachments.map(Self.serverAttachment)
+            ))
         case .messagedata:
             let table: Airlance_Wire_MessageData = try checkedRoot(body)
 
@@ -49,18 +55,43 @@ extension EnvelopeReader {
         }
     }
 
-    private static func serverMessage(_ table: Airlance_Wire_MessageData) -> ServerMessage {
+    private static func serverAttachment(_ table: Airlance_Wire_MessageAttachment) -> ServerAttachment {
+        ServerAttachment(
+            kind: table.kind,
+            mediaID: table.mediaId ?? "",
+            thumbMediaID: table.thumbMediaId ?? "",
+            name: table.name ?? "",
+            size: table.size,
+            width: table.width,
+            height: table.height,
+            durationMs: table.durationMs,
+            waveform: table.waveform.map(\.self),
+            title: table.title ?? "",
+            performer: table.performer ?? ""
+        )
+    }
+
+    static func serverMessage(_ table: Airlance_Wire_MessageData) -> ServerMessage {
         ServerMessage(
             chatID: table.chatId ?? "",
             messageID: table.messageId,
             sender: table.sender ?? "",
             clientID: table.clientId ?? "",
             text: table.text ?? "",
-            sentAtUnixMs: table.sentAtUnixMs
+            sentAtUnixMs: table.sentAtUnixMs,
+            author: ServerMessageAuthor(
+                firstName: table.senderFirstName ?? "",
+                lastName: table.senderLastName ?? "",
+                photoMediaID: table.senderPhotoMediaId ?? "",
+                videoMediaID: table.senderVideoMediaId ?? "",
+                agentName: table.agentName ?? ""
+            ),
+            forwardName: table.forwardName ?? "",
+            attachments: table.attachments.map(serverAttachment)
         )
     }
 
-    private static func serverChat(_ table: Airlance_Wire_ChatData) -> ServerChat {
+    static func serverChat(_ table: Airlance_Wire_ChatData) -> ServerChat {
         ServerChat(
             chatID: table.chatId ?? "",
             peer: SearchPerson(
@@ -71,7 +102,18 @@ extension EnvelopeReader {
                 photoMediaID: table.peerPhotoMediaId ?? "",
                 videoMediaID: table.peerVideoMediaId ?? ""
             ),
-            lastMessage: table.lastMessage.map(serverMessage)
+            lastMessage: table.lastMessage.map(serverMessage),
+            details: ServerChatDetails(
+                kind: ServerChatKind(rawValue: table.kind) ?? .direct,
+                title: table.title ?? "",
+                about: table.about ?? "",
+                link: table.link ?? "",
+                inviteToken: table.inviteToken ?? "",
+                memberCount: table.memberCount,
+                role: ServerChatRole(rawValue: table.role) ?? .member,
+                isMember: table.isMember,
+                isPinned: table.isPinned
+            )
         )
     }
 }

@@ -14,6 +14,11 @@ final class ChatHistoryStore: HistorySource {
     let fixtureSalt: Int?
     let server: ServerHistory?
     var serverSender: (@MainActor (StoredMessage) -> Void)?
+    var serverPreview: (@MainActor (String) async -> [StoredMessage])?
+    var onServerAuthor: (@MainActor (StoredMessage) -> Void)?
+    var serverScheduled: AccountScheduled?
+    var serverMediaFetcher: ServerMediaFetcher?
+    var serverAttachmentsByMessage: [String: [StoredAttachment]] = [:]
     var loadedServerChats: Set<String> = []
     private var serverObservation: ObservationToken?
     var histories: [String: ChatHistoryFixtures.History] = [:]
@@ -227,7 +232,7 @@ final class ChatHistoryStore: HistorySource {
         append(message, to: id)
         countComment(message, in: id)
         let text = ChatsStore.preview(of: message)
-        chatsStore.recordOutgoing(text, date: message.date, in: id)
+        chatsStore.recordOutgoing(text, date: message.date, in: id, preview: ChatRowPreview(message))
         deliver(message, in: id)
         scheduleExpiry(message, in: id)
     }

@@ -36,6 +36,7 @@ final class FolderEditorViewController: ScreenViewController {
             isNew = false
         } else {
             draft = ChatFolder(name: "")
+            draft.color = FolderStyle.colorOrder.first
             isNew = true
         }
         super.init(presentationSource: dependencies.presentationContext)

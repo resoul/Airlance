@@ -84,8 +84,10 @@ public struct ChatFolder: Sendable, Equatable, Identifiable {
 public struct ChatFolderList: Sendable, Equatable {
     public var folders: [ChatFolder]
     public var allChatsPosition: Int
+    public var showsTags: Bool
 
-    public init(folders: [ChatFolder] = [], allChatsPosition: Int = 0) {
+    public init(folders: [ChatFolder] = [], allChatsPosition: Int = 0, showsTags: Bool = true) {
+        self.showsTags = showsTags
         self.folders = folders
         self.allChatsPosition = min(max(allChatsPosition, 0), folders.count)
     }

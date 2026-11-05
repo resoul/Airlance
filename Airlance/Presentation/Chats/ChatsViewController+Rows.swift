@@ -88,6 +88,22 @@ extension ChatsViewController {
         }
     }
 
+    private func tags(of chat: ChatSummary, page: ChatsPage) -> [ChatRowTag] {
+        let list = dependencies.chatFolders.list
+        guard list.showsTags else {
+            return []
+        }
+
+        return list.folders.compactMap { folder in
+            guard page.id != ChatsPage.folder(folder).id, folder.contains(chat),
+                  let color = FolderStyle.color(folder.color) else {
+                return nil
+            }
+
+            return ChatRowTag(title: folder.name, color: color)
+        }
+    }
+
     private func items(for chats: [ChatSummary], page: ChatsPage) -> [any ListItem] {
         let strings = presentation.strings
         let archived = page == .all ? dependencies.chatsStore.chats.filter(\.isArchived) : []
@@ -103,6 +119,11 @@ extension ChatsViewController {
                 : [ChatsEmptyItem(id: "empty", title: strings.chatsEmptyTitle, text: strings.chatsEmptyText)]
         }
 
+        return items + rows(for: chats, page: page)
+    }
+
+    private func rows(for chats: [ChatSummary], page: ChatsPage) -> [any ListItem] {
+        let strings = presentation.strings
         let now = Date()
         let stories = dependencies.storiesStore
         let draft = ChatRowDraft(title: strings.chatsDraft, color: presentation.theme.colors.destructive)
@@ -110,7 +131,7 @@ extension ChatsViewController {
             ? nil
             : ChatActions(store: dependencies.chatsStore, presentation: presentation, host: view)
 
-        return items + chats.map { chat in
+        return chats.map { chat in
             ChatRowItem(
                 chat: chat,
                 timeText: dateFormatter.string(for: chat.activityDate, now: now),
@@ -123,6 +144,8 @@ extension ChatsViewController {
                 typing: chat.typing.map { name in
                     strings.typing(name)
                 },
+                messageText: chat.rowText(strings),
+                tags: tags(of: chat, page: page),
                 onStory: { [weak self] node in
                     self?.openStory(chat.id, from: node)
                 }

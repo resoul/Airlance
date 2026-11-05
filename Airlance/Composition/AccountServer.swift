@@ -71,6 +71,8 @@ final class AccountServer {
     private var synced: ServerProfile?
     private var sync: AccountSync?
     private var stories: AccountStories?
+    private var scheduled: AccountScheduled?
+    private var folders: AccountFolders?
     private(set) var messaging: AccountMessaging?
 
     init(connection: ServerConnection) {
@@ -126,6 +128,9 @@ final class AccountServer {
         account.serverContacts.refresh()
         account.privacy.attach(connection)
         account.privacy.refresh()
+        account.agents.attach(connection)
+        scheduled?.refresh()
+        folders?.sync()
         let connection = connection
         let files = account.profileFiles
         Task {
@@ -178,19 +183,82 @@ final class AccountServer {
         await suspend()
     }
 
-    private func makeSync(_ account: AccountContext) -> AccountSync {
+    private static func connectGroups(_ account: AccountContext, messaging: AccountMessaging) {
         let history = account.historyStore
-        let messaging = AccountMessaging(
-            connection: connection,
-            storage: account.chatStorage,
-            me: account.record.subject ?? ""
-        ) { [weak history] chatID in
-            history?.isViewed(chatID) ?? false
-        }
-        self.messaging = messaging
         history.serverSender = { [weak messaging] message in
             messaging?.send(message)
         }
+        history.serverMediaFetcher = ServerMediaFetcher(files: account.profileFiles)
+        history.serverPreview = { [weak messaging] chatID in
+            await messaging?.previewHistory(chatID) ?? []
+        }
+        account.chatsStore.serverActions = ServerChatActions(
+            join: { [weak messaging] code in
+                try await messaging?.join(code: code)
+            },
+            leave: { [weak messaging] chatID in
+                try await messaging?.leave(chatID)
+            },
+            resetInvite: { [weak messaging] chatID in
+                try await messaging?.resetInvite(chatID) ?? ""
+            },
+            setPinned: { [weak messaging] isPinned, chatID in
+                try await messaging?.setPinned(isPinned, chatID: chatID)
+            }
+        )
+        let me = messaging.me
+        account.groupMembers.serverLoader = { [weak messaging, weak account] chatID in
+            guard let members = try? await messaging?.members(of: chatID) else {
+                return nil
+            }
+
+            return members.map { member in
+                account?.registerAuthor(member.person)
+
+                return GroupMember(server: member, me: me)
+            }
+        }
+    }
+
+    private func connectFolders(_ account: AccountContext, sync: AccountSync) {
+        let folders = AccountFolders(connection: connection, store: account.chatFolders)
+        self.folders = folders
+        sync.onFoldersChanged = { [weak folders] in
+            folders?.sync()
+        }
+    }
+
+    private func connectScheduled(_ history: ChatHistoryStore, sync: AccountSync) {
+        let scheduled = AccountScheduled(connection: connection, history: history)
+        self.scheduled = scheduled
+        history.serverScheduled = scheduled
+        sync.onScheduledChanged = { [weak scheduled] in
+            scheduled?.refresh()
+        }
+    }
+
+    private func makeMessaging(_ account: AccountContext) -> AccountMessaging {
+        let history = account.historyStore
+
+        return AccountMessaging(
+            connection: connection,
+            storage: account.chatStorage,
+            me: account.record.subject ?? "",
+            account: account.record.id.rawValue,
+            files: account.profileFiles,
+            username: { [weak account] in
+                account?.myProfile.profile.username ?? ""
+            }
+        ) { [weak history] chatID in
+            history?.isViewed(chatID) ?? false
+        }
+    }
+
+    private func makeSync(_ account: AccountContext) -> AccountSync {
+        let history = account.historyStore
+        let messaging = makeMessaging(account)
+        self.messaging = messaging
+        Self.connectGroups(account, messaging: messaging)
         let sync = AccountSync(
             connection: connection,
             storage: account.storage,
@@ -207,6 +275,8 @@ final class AccountServer {
         sync.onContactsChanged = { [weak account] in
             account?.serverContacts.refresh()
         }
+        connectScheduled(history, sync: sync)
+        connectFolders(account, sync: sync)
         sync.onProfile = { [weak self] data in
             self?.apply(ServerProfile(data))
         }

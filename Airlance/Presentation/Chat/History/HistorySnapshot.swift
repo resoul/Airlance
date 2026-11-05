@@ -201,7 +201,7 @@ struct HistorySnapshot: Sendable {
         )
     }
 
-    private static func serviceTitle(_ service: MessageService, titles: Titles) -> String {
+    static func serviceTitle(_ service: MessageService, titles: Titles) -> String {
         switch service {
         case .created(let title):
             return titles.created(title)

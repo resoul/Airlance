@@ -80,8 +80,15 @@ struct EnvelopeReader {
         case .contactsget, .contactsdata, .contactadd, .contactaddphone, .contactremove, .contactssync,
              .contactschanged:
             return try contact(kind: kind, body: body)
+        case .scheduledget, .scheduledadd, .scheduledcancel, .scheduledsendnow, .scheduledchanged, .schedulededit,
+             .scheduleddata, .agentsget, .agentdelete, .agentsdata, .agentrunsget, .agentrunsdata, .agentsave,
+             .foldersget, .foldersput, .foldersdata, .folderschanged:
+            return try automation(kind: kind, body: body)
         case .privacyget, .privacyset, .privacydata, .blocksget, .blocksdata, .blockset:
             return try privacy(kind: kind, body: body)
+        case .chatcreate, .chatjoin, .chatleave, .chatmembersget, .chatmembersdata, .chatmemberadd, .chatmemberremove,
+             .chatsearch, .chatsearchdata, .chatschanged, .chatresolve, .chatinvitereset, .userresolve, .chatpinset:
+            return try group(kind: kind, body: body)
         default:
             return try chat(kind: kind, body: body)
         }

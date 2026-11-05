@@ -128,7 +128,7 @@
 
 "newChat.title" = "New chat";
 "newChat.search" = "Search by name or username";
-"newChat.hint" = "Enter at least 3 characters to find a person.";
+"newChat.hint" = "Enter at least 3 characters to find a person, group or channel.";
 "newChat.failed" = "Couldn’t open the chat";
 
 "media.title" = "Media: %@";
@@ -947,3 +947,50 @@
 "connection.waitingForNetwork" = "Waiting for network";
 "connection.connecting" = "Connecting…";
 "connection.updating" = "Updating…";
+
+"applink.invalid" = "This link is not valid";
+"applink.share" = "Share Link";
+"applink.reset" = "Reset Link";
+"applink.resetConfirm" = "The old link will stop working. Anyone who has it can no longer join.";
+"applink.resetDone" = "New link created";
+"chat.group.join" = "Join";
+"chat.group.joined" = "You joined the group";
+
+"settings.agents" = "Agents";
+"agents.hint" = "An agent runs a simple scenario in a group or channel you admin: an event and a message. Its messages are labelled, and the log shows what it did.";
+"agents.new" = "New Agent";
+"agents.name" = "Name";
+"agents.chat" = "Chat";
+"agents.text" = "Message";
+"agents.keyword" = "Keyword";
+"agents.failed" = "Couldn’t save the agent.";
+"agents.noChats" = "You need a group or channel you admin.";
+"agents.log" = "Log";
+"agents.logEmpty" = "No runs yet";
+"agents.delete" = "Delete Agent";
+"agents.deleteConfirm" = "Delete this agent?";
+"agents.trigger.schedule" = "On a schedule";
+"agents.trigger.joined" = "New member";
+"agents.trigger.keyword" = "Keyword";
+"agents.trigger.webhook" = "External webhook";
+"agents.hint.name" = "{name} becomes the person’s name.";
+"agents.hint.webhook" = "Leave empty to send the text field of the request, or use {text}.";
+"agents.hook.title" = "Webhook Address";
+"agents.hook.once" = "The address is shown once. POST JSON {\"text\": \"...\"} to it.";
+"agents.hook.rotate" = "New Webhook Address";
+"agents.run.sent" = "Sent";
+"agents.run.noRights" = "No rights in the chat";
+"agents.run.limited" = "Skipped: limit of 60 per hour";
+"agents.run.empty" = "Skipped: empty text";
+
+"chats.preview.photo" = "Photo";
+"chats.preview.video" = "Video";
+"chats.preview.voice" = "Voice message";
+"chats.preview.videoNote" = "Video message";
+"chats.preview.sticker" = "Sticker";
+"chats.preview.location" = "Location";
+
+"folders.tags" = "Show Folder Tags";
+"folders.tagsFooter" = "Colored tags of the folders a chat is in appear in the chat list. Choose the color in the folder’s settings.";
+
+"chats.pinFailed" = "Couldn’t pin the chat. Check your connection and that no more than 20 chats are pinned.";

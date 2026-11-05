@@ -126,7 +126,7 @@ extension ProfileViewController {
     }
 
     func copyInfo(_ text: String) {
-        UIPasteboard.general.string = text
+        UIPasteboard.general.string = text.hasPrefix(AirlanceLink.host) ? "https://\(text)" : text
         Haptics.play(.success)
         showToast(presentation.strings.chatCopied, symbol: "doc.on.doc")
     }

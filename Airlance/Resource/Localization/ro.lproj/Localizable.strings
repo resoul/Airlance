@@ -128,7 +128,7 @@
 
 "newChat.title" = "Chat nou";
 "newChat.search" = "Caută după nume sau username";
-"newChat.hint" = "Introdu cel puțin 3 caractere pentru a găsi o persoană.";
+"newChat.hint" = "Introdu cel puțin 3 caractere pentru a găsi o persoană, un grup sau un canal.";
 "newChat.failed" = "Chatul nu a putut fi deschis";
 
 "media.title" = "Media: %@";
@@ -947,3 +947,50 @@
 "connection.waitingForNetwork" = "Se așteaptă rețeaua";
 "connection.connecting" = "Se conectează…";
 "connection.updating" = "Se actualizează…";
+
+"applink.invalid" = "Acest link nu este valid";
+"applink.share" = "Distribuie linkul";
+"applink.reset" = "Resetează linkul";
+"applink.resetConfirm" = "Linkul vechi nu va mai funcționa și nimeni nu se va mai putea alătura prin el.";
+"applink.resetDone" = "Link nou creat";
+"chat.group.join" = "Alătură-te";
+"chat.group.joined" = "Te-ai alăturat grupului";
+
+"settings.agents" = "Agenți";
+"agents.hint" = "Un agent rulează un scenariu simplu într-un grup sau canal pe care îl administrezi: un eveniment și un mesaj. Mesajele sale sunt marcate, iar jurnalul arată ce a făcut.";
+"agents.new" = "Agent nou";
+"agents.name" = "Nume";
+"agents.chat" = "Conversație";
+"agents.text" = "Mesaj";
+"agents.keyword" = "Cuvânt cheie";
+"agents.failed" = "Agentul nu a putut fi salvat.";
+"agents.noChats" = "Ai nevoie de un grup sau canal pe care îl administrezi.";
+"agents.log" = "Jurnal";
+"agents.logEmpty" = "Nicio rulare încă";
+"agents.delete" = "Șterge agentul";
+"agents.deleteConfirm" = "Ștergi acest agent?";
+"agents.trigger.schedule" = "Programat";
+"agents.trigger.joined" = "Membru nou";
+"agents.trigger.keyword" = "Cuvânt cheie";
+"agents.trigger.webhook" = "Webhook extern";
+"agents.hint.name" = "{name} devine numele persoanei.";
+"agents.hint.webhook" = "Lasă gol pentru a trimite câmpul text din cerere sau folosește {text}.";
+"agents.hook.title" = "Adresa webhook";
+"agents.hook.once" = "Adresa se afișează o singură dată. Trimite un POST cu JSON {\"text\": \"...\"}.";
+"agents.hook.rotate" = "Adresă webhook nouă";
+"agents.run.sent" = "Trimis";
+"agents.run.noRights" = "Fără drepturi în conversație";
+"agents.run.limited" = "Omis: limită de 60 pe oră";
+"agents.run.empty" = "Omis: text gol";
+
+"chats.preview.photo" = "Fotografie";
+"chats.preview.video" = "Videoclip";
+"chats.preview.voice" = "Mesaj vocal";
+"chats.preview.videoNote" = "Mesaj video";
+"chats.preview.sticker" = "Autocolant";
+"chats.preview.location" = "Locație";
+
+"folders.tags" = "Afișează etichetele dosarelor";
+"folders.tagsFooter" = "În lista de conversații apar etichete colorate ale dosarelor în care se află conversația. Culoarea se alege în setările dosarului.";
+
+"chats.pinFailed" = "Conversația nu a putut fi fixată. Verifică conexiunea și să nu fie fixate peste 20 de conversații.";

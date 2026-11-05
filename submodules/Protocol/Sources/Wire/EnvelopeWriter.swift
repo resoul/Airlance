@@ -51,7 +51,7 @@ enum EnvelopeWriter {
             (kind, root) = (.updatessubscribed, writeUpdatesSubscribed(latestSeq, into: &builder))
         case .media(let media):
             (kind, root) = writeMedia(media, into: &builder)
-        case .search, .chat, .story, .contact, .privacy:
+        case .search, .chat, .group, .automation, .story, .contact, .privacy:
             (kind, root) = writeFeature(message, into: &builder)
         case .unsupported(let raw):
             throw .unencodable(kind: raw)
@@ -74,6 +74,10 @@ enum EnvelopeWriter {
             writeSearch(search, into: &builder)
         case .chat(let chat):
             writeChat(chat, into: &builder)
+        case .group(let group):
+            writeGroup(group, into: &builder)
+        case .automation(let automation):
+            writeAutomation(automation, into: &builder)
         case .story(let story):
             writeStory(story, into: &builder)
         case .contact(let contact):

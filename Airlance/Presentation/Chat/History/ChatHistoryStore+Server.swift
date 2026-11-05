@@ -5,6 +5,7 @@ import Foundation
 struct ServerHistory {
     let storage: ChatStorage
     let me: String
+    let account: String
 }
 
 extension ChatHistoryStore {
@@ -14,10 +15,14 @@ extension ChatHistoryStore {
         }
 
         loadedServerChats.insert(chatID)
-        guard let stored = try? await server.storage.messages(in: chatID) else {
+        guard var stored = try? await server.storage.messages(in: chatID) else {
             loadedServerChats.remove(chatID)
 
             return
+        }
+
+        if stored.isEmpty, chatsStore.chat(chatID)?.isMember == false, !chatsStore.isJoined(chatID) {
+            stored = await serverPreview?(chatID) ?? []
         }
 
         let known = Set(histories[chatID]?.messages.map(\.id) ?? [])
@@ -50,7 +55,7 @@ extension ChatHistoryStore {
     }
 
     func deliverToServer(_ message: HistoryMessage, in id: String) {
-        guard let server, case .text(let text) = message.content else {
+        guard let server, let attachments = serverAttachments(of: message) else {
             update(message.id, in: id) { current in
                 current.delivery = .failed
             }
@@ -63,9 +68,11 @@ extension ChatHistoryStore {
             sender: server.me,
             clientID: message.id,
             messageID: nil,
-            text: text,
+            text: message.content.text,
             sentAtMs: Int64(message.date.timeIntervalSince1970 * 1000),
-            state: .sending
+            state: .sending,
+            attachments: attachments,
+            forwardName: message.forward?.fromName ?? ""
         )
         Task { [weak self] in
             try? await server.storage.addPending(stored)
@@ -74,17 +81,30 @@ extension ChatHistoryStore {
     }
 
     private func historyMessage(_ stored: StoredMessage) -> HistoryMessage {
-        let isOutgoing = stored.sender == server?.me
-
-        return HistoryMessage(
+        let isAgent = !stored.author.agentName.isEmpty
+        let isOutgoing = stored.sender == server?.me && !isAgent
+        onServerAuthor?(stored)
+        fetchMissingMedia(stored)
+        let chatName = chatsStore.chat(stored.chatID)?.name ?? ""
+        let personName = stored.author.fullName.isEmpty ? chatName : stored.author.fullName
+        let authorName = isAgent ? "🤖 \(stored.author.agentName)" : personName
+        var message = HistoryMessage(
             id: isOutgoing ? stored.clientID : "\(stored.sender):\(stored.clientID)",
             authorID: isOutgoing ? "me" : stored.sender,
-            authorName: isOutgoing ? "" : chatsStore.chat(stored.chatID)?.name ?? "",
+            authorName: isOutgoing ? "" : authorName,
             isOutgoing: isOutgoing,
             date: Date(timeIntervalSince1970: TimeInterval(stored.sentAtMs) / 1000),
-            content: .text(stored.text),
+            content: content(of: stored),
             delivery: Self.delivery(of: stored, isOutgoing: isOutgoing)
         )
+        if !stored.forwardName.isEmpty {
+            message.forward = MessageForward(fromID: "", fromName: stored.forwardName)
+        }
+        if isAgent, chatsStore.chat(stored.chatID)?.kind == .channel {
+            message.signature = authorName
+        }
+
+        return message
     }
 
     private static func delivery(of stored: StoredMessage, isOutgoing: Bool) -> DeliveryState {

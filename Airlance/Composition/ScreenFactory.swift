@@ -87,7 +87,8 @@ final class ScreenFactory {
                 media: account.media,
                 translation: app.translation,
                 contacts: app.contactsSync.store,
-                connectionStatus: account.connectionStatus
+                connectionStatus: account.connectionStatus,
+                openAppLink: appLinkOpener
             ),
             router: router
         )
@@ -147,6 +148,18 @@ final class ScreenFactory {
                 }
 
                 return try await messaging.openDirect(with: person)
+            },
+            chats: { [weak account] query in
+                guard let messaging = servers.server(for: id)?.messaging else {
+                    throw AccountMessagingError.refused
+                }
+
+                let found = try await messaging.searchChats(query)
+                for chat in found {
+                    account?.registerChatAvatar(chat.chatID, link: chat.details.link)
+                }
+
+                return found
             }
         )
     }

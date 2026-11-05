@@ -2,9 +2,17 @@ import ChatHistory
 import Foundation
 import Observers
 
+struct ServerChatActions {
+    let join: @MainActor (String) async throws -> Void
+    let leave: @MainActor (String) async throws -> Void
+    let resetInvite: @MainActor (String) async throws -> String
+    let setPinned: @MainActor (Bool, String) async throws -> Void
+}
+
 @MainActor
 final class ChatsStore {
     private(set) var chats: [ChatSummary]
+    var serverActions: ServerChatActions?
 
     private let observers = ObserverList<[ChatSummary]>()
     private var previews: [String: ChatSummary]
@@ -36,7 +44,6 @@ final class ChatsStore {
                 current.id == chat.id
             }) {
                 chat.isMuted = current.isMuted
-                chat.isPinned = current.isPinned
                 chat.isArchived = current.isArchived
                 chat.draft = current.draft
                 chat.draftDate = current.draftDate
@@ -124,15 +131,51 @@ final class ChatsStore {
         observers.notify(chats)
     }
 
-    func toggleRead(_ id: String) {
+    func joinOnServer(_ id: String) async throws {
+        guard let chat = chat(id), let serverActions else {
+            return
+        }
+
+        try await serverActions.join(chat.joinCode)
+    }
+
+    func resetInvite(_ id: String) async throws {
+        guard let serverActions else {
+            return
+        }
+
+        let token = try await serverActions.resetInvite(id)
         mutate(id) { chat in
-            chat.unread = chat.unread > 0 ? 0 : 1
+            chat.inviteToken = token
         }
     }
 
-    func togglePin(_ id: String) {
+    func toggleRead(_ id: String) {
+        mutate(id) { chat in
+            chat.unread = chat.unread > 0 ? 0 : 1
+            chat.unreadMentions = 0
+            chat.unreadReactions = 0
+        }
+    }
+
+    func togglePin(_ id: String, onFailure: (@MainActor () -> Void)? = nil) {
         mutate(id) { chat in
             chat.isPinned.toggle()
+        }
+        guard let chat = chat(id), chat.isServer, let serverActions else {
+            return
+        }
+
+        let isPinned = chat.isPinned
+        Task { [weak self] in
+            do {
+                try await serverActions.setPinned(isPinned, id)
+            } catch {
+                self?.mutate(id) { chat in
+                    chat.isPinned = !isPinned
+                }
+                onFailure?()
+            }
         }
     }
 
@@ -148,9 +191,12 @@ final class ChatsStore {
         }
     }
 
-    func recordOutgoing(_ text: String, date: Date, in id: String) {
+    func recordOutgoing(_ text: String, date: Date, in id: String, preview: ChatRowPreview? = nil) {
         mutate(id) { chat in
-            chat.message = ChatSummary.outgoingPrefix + text
+            chat.message = text
+            chat.preview = preview
+            chat.isLastOutgoing = true
+            chat.lastAuthor = nil
             chat.date = date
             chat.unread = 0
             chat.outgoingRead = false
@@ -159,46 +205,15 @@ final class ChatsStore {
 
     func recordIncoming(_ message: HistoryMessage, in id: String, countsUnread: Bool) {
         mutate(id) { chat in
-            let text = ChatsStore.preview(of: message)
-            chat.message = chat.kind == .group ? "\(message.authorName): \(text)" : text
+            chat.message = ChatsStore.preview(of: message)
+            chat.preview = ChatRowPreview(message)
+            chat.isLastOutgoing = false
+            chat.lastAuthor = chat.kind == .group ? message.authorName : nil
             chat.date = message.date
             chat.outgoingRead = nil
             if countsUnread {
                 chat.unread += 1
             }
-        }
-    }
-
-    static func preview(of message: HistoryMessage) -> String {
-        guard message.entities.contains(where: \.isSpoiler), case .text(let text) = message.content else {
-            return preview(of: message.content)
-        }
-
-        return MessageEntity.masked(text, entities: message.entities)
-    }
-
-    static func preview(of content: MessageContent) -> String {
-        switch content {
-        case .service:
-            "📌"
-        case .file(let file, let caption):
-            caption.isEmpty ? "📎 \(file.name)" : caption
-        case .location(let location):
-            location.title.map { title in
-                "📍 \(title)"
-            } ?? "📍"
-        case .contact(let contact):
-            "👤 \(contact.name)"
-        case .videoNote:
-            "🎥"
-        case .poll(let poll):
-            "📊 \(poll.question)"
-        case .voice:
-            "🎤"
-        case .photos(_, let caption):
-            caption.isEmpty ? "📷" : caption
-        case .text(let text):
-            text
         }
     }
 
@@ -208,12 +223,8 @@ final class ChatsStore {
                 return
             }
 
-            let text = ChatsStore.preview(of: message)
-            if message.isOutgoing {
-                chat.message = ChatSummary.outgoingPrefix + text
-            } else {
-                chat.message = chat.kind == .group ? "\(message.authorName): \(text)" : text
-            }
+            chat.message = ChatsStore.preview(of: message)
+            chat.preview = ChatRowPreview(message)
         }
     }
 
@@ -239,6 +250,11 @@ final class ChatsStore {
     }
 
     func delete(_ id: String) {
+        if let chat = chat(id), chat.isServer, chat.kind != .person, let serverActions {
+            Task {
+                try? await serverActions.leave(id)
+            }
+        }
         chats.removeAll { chat in
             chat.id == id
         }

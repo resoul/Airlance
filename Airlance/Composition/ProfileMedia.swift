@@ -392,7 +392,54 @@ extension AccountContext {
                 files: files
             )
             PeerAvatars.register(avatar, for: chat.id)
-            PeerAvatars.register(avatar, for: chat.peer.subject)
+            if !chat.peer.subject.isEmpty {
+                PeerAvatars.register(avatar, for: chat.peer.subject)
+            }
         }
+    }
+
+    func rowThumbnail(_ item: StoredAttachment) -> ChatRowThumbnail? {
+        guard item.kind == .photo || item.kind == .video,
+              let thumb = item.thumbMedia(account: record.id.rawValue) else {
+            return nil
+        }
+
+        let mediaID = item.thumbMediaID
+        let history = historyStore
+
+        return ChatRowThumbnail(source: .local(thumb), isVideo: item.kind == .video) { [weak history] in
+            await history?.serverMediaFetcher?.fetchNow(mediaID, to: thumb)
+        }
+    }
+
+    func registerChatAvatar(_ chatID: String, link: String) {
+        let avatar = RemoteAvatar(subject: "", username: link, photoMediaID: "", videoMediaID: "", files: profileFiles)
+        PeerAvatars.register(avatar, for: chatID)
+    }
+
+    func registerAuthor(_ message: StoredMessage) {
+        guard message.sender != message.chatID else {
+            return
+        }
+
+        let avatar = RemoteAvatar(
+            subject: message.sender,
+            username: PeerAvatars.server(message.sender)?.username ?? "",
+            photoMediaID: message.author.photoMediaID,
+            videoMediaID: message.author.videoMediaID,
+            files: profileFiles
+        )
+        PeerAvatars.register(avatar, for: message.sender)
+    }
+
+    func registerAuthor(_ person: SearchPerson) {
+        let avatar = RemoteAvatar(
+            subject: person.subject,
+            username: person.username,
+            photoMediaID: person.photoMediaID,
+            videoMediaID: person.videoMediaID,
+            files: profileFiles
+        )
+        PeerAvatars.register(avatar, for: person.subject)
     }
 }

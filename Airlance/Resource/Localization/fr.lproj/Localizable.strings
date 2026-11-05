@@ -128,7 +128,7 @@
 
 "newChat.title" = "Nouvelle discussion";
 "newChat.search" = "Rechercher par nom ou pseudo";
-"newChat.hint" = "Saisissez au moins 3 caractères pour trouver une personne.";
+"newChat.hint" = "Saisissez au moins 3 caractères pour trouver une personne, un groupe ou une chaîne.";
 "newChat.failed" = "Impossible d’ouvrir la discussion";
 
 "media.title" = "Médias : %@";
@@ -947,3 +947,50 @@
 "connection.waitingForNetwork" = "En attente du réseau";
 "connection.connecting" = "Connexion…";
 "connection.updating" = "Mise à jour…";
+
+"applink.invalid" = "Ce lien n’est pas valide";
+"applink.share" = "Partager le lien";
+"applink.reset" = "Réinitialiser le lien";
+"applink.resetConfirm" = "L’ancien lien cessera de fonctionner et ne permettra plus de rejoindre.";
+"applink.resetDone" = "Nouveau lien créé";
+"chat.group.join" = "Rejoindre";
+"chat.group.joined" = "Vous avez rejoint le groupe";
+
+"settings.agents" = "Agents";
+"agents.hint" = "Un agent exécute un scénario simple dans un groupe ou une chaîne que vous administrez : un événement et un message. Ses messages sont signalés et le journal montre ce qu’il a fait.";
+"agents.new" = "Nouvel agent";
+"agents.name" = "Nom";
+"agents.chat" = "Discussion";
+"agents.text" = "Message";
+"agents.keyword" = "Mot-clé";
+"agents.failed" = "Impossible d’enregistrer l’agent.";
+"agents.noChats" = "Il faut un groupe ou une chaîne que vous administrez.";
+"agents.log" = "Journal";
+"agents.logEmpty" = "Aucune exécution pour l’instant";
+"agents.delete" = "Supprimer l’agent";
+"agents.deleteConfirm" = "Supprimer cet agent ?";
+"agents.trigger.schedule" = "Planifié";
+"agents.trigger.joined" = "Nouveau membre";
+"agents.trigger.keyword" = "Mot-clé";
+"agents.trigger.webhook" = "Webhook externe";
+"agents.hint.name" = "{name} devient le nom de la personne.";
+"agents.hint.webhook" = "Laissez vide pour envoyer le champ text de la requête, ou utilisez {text}.";
+"agents.hook.title" = "Adresse du webhook";
+"agents.hook.once" = "L’adresse n’est affichée qu’une fois. Envoyez-y un POST avec le JSON {\"text\": \"...\"}.";
+"agents.hook.rotate" = "Nouvelle adresse de webhook";
+"agents.run.sent" = "Envoyé";
+"agents.run.noRights" = "Aucun droit dans la discussion";
+"agents.run.limited" = "Ignoré : limite de 60 par heure";
+"agents.run.empty" = "Ignoré : texte vide";
+
+"chats.preview.photo" = "Photo";
+"chats.preview.video" = "Vidéo";
+"chats.preview.voice" = "Message vocal";
+"chats.preview.videoNote" = "Message vidéo";
+"chats.preview.sticker" = "Sticker";
+"chats.preview.location" = "Position";
+
+"folders.tags" = "Afficher les étiquettes de dossiers";
+"folders.tagsFooter" = "Des étiquettes colorées des dossiers contenant la discussion apparaissent dans la liste. La couleur se choisit dans les réglages du dossier.";
+
+"chats.pinFailed" = "Impossible d’épingler la discussion. Vérifiez la connexion et que 20 discussions au plus sont épinglées.";

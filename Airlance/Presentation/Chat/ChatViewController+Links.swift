@@ -5,6 +5,13 @@ import UIKit
 
 extension ChatViewController {
     func openLink(_ url: URL) {
+        if let link = AirlanceLink(url: url), let open = dependencies.openAppLink {
+            inputBar.dismissKeyboard()
+            open(link)
+
+            return
+        }
+
         if url.scheme == MessageBubbleLayout.mentionScheme {
             inputBar.dismissKeyboard()
             router.open(.profile(String(url.absoluteString.dropFirst(MessageBubbleLayout.mentionScheme.count + 1))))

@@ -65,6 +65,10 @@ extension ChatHistoryStore {
             return
         }
 
+        if downloadServerMedia(messageID, in: id) {
+            return
+        }
+
         let key = TransferKey(chatID: id, messageID: messageID)
         transfers.start(key, direction: .download, total: size) { [weak self] in
             self?.markDownloaded(messageID, in: id)
@@ -89,7 +93,7 @@ extension ChatHistoryStore {
         }
     }
 
-    private func markDownloaded(_ messageID: String, in id: String) {
+    func markDownloaded(_ messageID: String, in id: String) {
         update(messageID, in: id) { message in
             switch message.content {
             case .photos(var photos, let caption):

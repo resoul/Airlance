@@ -10,6 +10,9 @@ enum SettingsPage: String, Sendable {
     case privacyBio
     case privacyMessages
     case privacySearch
+    case agents
+    case agentEdit
+    case agentRuns
     case chatThemes
     case wallpapers
     case nightMode
@@ -29,7 +32,11 @@ enum SettingsPage: String, Sendable {
             [.settingsPage(.editProfile)]
         case .blocked, .privacyPhone, .privacyPhotos, .privacyBio, .privacyMessages, .privacySearch:
             [.settingsPage(.privacy)]
-        case .language, .powerSaving, .stories, .privacy, .editProfile:
+        case .agentEdit:
+            [.settingsPage(.agents)]
+        case .agentRuns:
+            [.settingsPage(.agents), .settingsPage(.agentEdit)]
+        case .language, .powerSaving, .stories, .privacy, .editProfile, .agents:
             []
         }
     }

@@ -8,6 +8,7 @@ enum SettingsEntry: String, CaseIterable {
     case folders
     case notifications
     case privacy
+    case agents
     case permissions
     case passcode
     case appearance
@@ -22,7 +23,7 @@ enum SettingsEntry: String, CaseIterable {
         switch self {
         case .profile, .saved, .calls, .devices, .folders:
             0
-        case .notifications, .privacy, .permissions, .passcode, .appearance, .tabs, .storage,
+        case .notifications, .privacy, .agents, .permissions, .passcode, .appearance, .tabs, .storage,
              .powerSaving, .stories, .language:
             1
         case .about:
@@ -46,6 +47,8 @@ enum SettingsEntry: String, CaseIterable {
             "bell.badge.fill"
         case .privacy:
             "lock.fill"
+        case .agents:
+            "wand.and.stars"
         case .permissions:
             "hand.raised.fill"
         case .passcode:
@@ -83,7 +86,7 @@ enum SettingsEntry: String, CaseIterable {
             .systemGray
         case .language:
             .systemPurple
-        case .tabs:
+        case .tabs, .agents:
             .systemIndigo
         }
     }
@@ -102,6 +105,8 @@ enum SettingsEntry: String, CaseIterable {
             .settingsPage(.stories)
         case .privacy:
             .settingsPage(.privacy)
+        case .agents:
+            .settingsPage(.agents)
         case .folders:
             .chatFolders
         case .storage:
@@ -129,6 +134,8 @@ enum SettingsEntry: String, CaseIterable {
             strings.settingsNotifications
         case .privacy:
             strings.settingsPrivacy
+        case .agents:
+            strings.settingsAgents
         case .permissions:
             strings.settingsPermissions
         case .passcode:

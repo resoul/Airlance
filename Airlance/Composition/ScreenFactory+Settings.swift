@@ -29,18 +29,43 @@ extension ScreenFactory {
             ChatMetricController(dependencies: appearanceDependencies, metric: .textSize)
         case .bubbleCorners:
             ChatMetricController(dependencies: appearanceDependencies, metric: .corners)
-        case .editProfile:
-            makeProfileEdit()
-        case .editUsername:
-            makeUsernameEdit()
-        case .editPhone:
-            makePhoneEdit()
+        case .editProfile, .editUsername, .editPhone:
+            makeProfilePage(page)
         case .powerSaving:
             makePowerSaving()
         case .stories:
             makeStorySettings()
         case .privacy, .blocked, .privacyPhone, .privacyPhotos, .privacyBio, .privacyMessages, .privacySearch:
             makePrivacy(page)
+        case .agents, .agentEdit, .agentRuns:
+            makeAgents(page)
+        }
+    }
+
+    private func makeProfilePage(_ page: SettingsPage) -> UIViewController {
+        switch page {
+        case .editUsername:
+            makeUsernameEdit()
+        case .editPhone:
+            makePhoneEdit()
+        default:
+            makeProfileEdit()
+        }
+    }
+
+    private func makeAgents(_ page: SettingsPage) -> UIViewController {
+        let dependencies = AgentsDependencies(
+            presentationContext: scene.presentationContext,
+            agents: account.agents,
+            chatsStore: account.chatsStore
+        )
+        switch page {
+        case .agentEdit:
+            return AgentEditController(dependencies: dependencies, router: router)
+        case .agentRuns:
+            return AgentRunsController(dependencies: dependencies)
+        default:
+            return AgentsController(dependencies: dependencies, router: router)
         }
     }
 

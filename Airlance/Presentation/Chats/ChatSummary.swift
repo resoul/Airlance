@@ -8,8 +8,6 @@ enum ChatKind: Sendable {
 }
 
 struct ChatSummary: Identifiable, Sendable, Equatable {
-    static let outgoingPrefix = "Ти: "
-
     let id: String
     var name: String
     let kind: ChatKind
@@ -29,6 +27,20 @@ struct ChatSummary: Identifiable, Sendable, Equatable {
     var typing: String?
     var canPost = true
     var isPublic = false
+    var isServer = false
+    var isMember = true
+    var about = ""
+    var link = ""
+    var joinCode = ""
+    var inviteToken = ""
+    var preview: ChatRowPreview?
+    var lastAuthor: String?
+    var isLastOutgoing = false
+    var isSending = false
+    var isFailed = false
+    var unreadMentions = 0
+    var unreadReactions = 0
+    var isAdmin = false
 
     var activityDate: Date {
         max(date, draftDate ?? date)

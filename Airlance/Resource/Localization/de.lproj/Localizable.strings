@@ -128,7 +128,7 @@
 
 "newChat.title" = "Neuer Chat";
 "newChat.search" = "Nach Name oder Benutzername suchen";
-"newChat.hint" = "Gib mindestens 3 Zeichen ein, um jemanden zu finden.";
+"newChat.hint" = "Gib mindestens 3 Zeichen ein, um Personen, Gruppen oder Kanäle zu finden.";
 "newChat.failed" = "Chat konnte nicht geöffnet werden";
 
 "media.title" = "Medien: %@";
@@ -947,3 +947,50 @@
 "connection.waitingForNetwork" = "Warten auf Netzwerk";
 "connection.connecting" = "Verbindung…";
 "connection.updating" = "Aktualisierung…";
+
+"applink.invalid" = "Dieser Link ist ungültig";
+"applink.share" = "Link teilen";
+"applink.reset" = "Link zurücksetzen";
+"applink.resetConfirm" = "Der alte Link funktioniert nicht mehr, niemand kann darüber noch beitreten.";
+"applink.resetDone" = "Neuer Link erstellt";
+"chat.group.join" = "Beitreten";
+"chat.group.joined" = "Du bist der Gruppe beigetreten";
+
+"settings.agents" = "Agenten";
+"agents.hint" = "Ein Agent führt ein einfaches Szenario in einer Gruppe oder einem Kanal aus, die du verwaltest: ein Ereignis und eine Nachricht. Seine Nachrichten sind gekennzeichnet, und das Protokoll zeigt, was er getan hat.";
+"agents.new" = "Neuer Agent";
+"agents.name" = "Name";
+"agents.chat" = "Chat";
+"agents.text" = "Nachricht";
+"agents.keyword" = "Stichwort";
+"agents.failed" = "Agent konnte nicht gespeichert werden.";
+"agents.noChats" = "Du brauchst eine Gruppe oder einen Kanal, die du verwaltest.";
+"agents.log" = "Protokoll";
+"agents.logEmpty" = "Noch keine Ausführungen";
+"agents.delete" = "Agent löschen";
+"agents.deleteConfirm" = "Diesen Agenten löschen?";
+"agents.trigger.schedule" = "Nach Zeitplan";
+"agents.trigger.joined" = "Neues Mitglied";
+"agents.trigger.keyword" = "Stichwort";
+"agents.trigger.webhook" = "Externer Webhook";
+"agents.hint.name" = "{name} wird durch den Namen der Person ersetzt.";
+"agents.hint.webhook" = "Leer lassen, um das Feld text der Anfrage zu senden, oder {text} verwenden.";
+"agents.hook.title" = "Webhook-Adresse";
+"agents.hook.once" = "Die Adresse wird nur einmal angezeigt. Sende einen POST mit JSON {\"text\": \"...\"}.";
+"agents.hook.rotate" = "Neue Webhook-Adresse";
+"agents.run.sent" = "Gesendet";
+"agents.run.noRights" = "Keine Rechte im Chat";
+"agents.run.limited" = "Übersprungen: Limit von 60 pro Stunde";
+"agents.run.empty" = "Übersprungen: leerer Text";
+
+"chats.preview.photo" = "Foto";
+"chats.preview.video" = "Video";
+"chats.preview.voice" = "Sprachnachricht";
+"chats.preview.videoNote" = "Videonachricht";
+"chats.preview.sticker" = "Sticker";
+"chats.preview.location" = "Standort";
+
+"folders.tags" = "Ordner-Tags anzeigen";
+"folders.tagsFooter" = "In der Chatliste erscheinen farbige Tags der Ordner, in denen der Chat liegt. Die Farbe wählst du in den Ordnereinstellungen.";
+
+"chats.pinFailed" = "Chat konnte nicht angeheftet werden. Prüfe die Verbindung und dass höchstens 20 Chats angeheftet sind.";

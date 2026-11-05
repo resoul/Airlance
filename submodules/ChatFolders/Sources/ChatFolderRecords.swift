@@ -19,7 +19,13 @@ enum ChatFolderRecords {
         }
         let position = try db.fetchOne("SELECT value FROM chat_folder_settings WHERE key = 'allChatsPosition'")
 
-        return ChatFolderList(folders: folders, allChatsPosition: position?["value"].int ?? 0)
+        let tags = try db.fetchOne("SELECT value FROM chat_folder_settings WHERE key = 'showsTags'")
+
+        return ChatFolderList(
+            folders: folders,
+            allChatsPosition: position?["value"].int ?? 0,
+            showsTags: (tags?["value"].int ?? 1) != 0
+        )
     }
 
     static func save(_ folder: ChatFolder, db: any SQLWriter) throws {
@@ -44,6 +50,39 @@ enum ChatFolderRecords {
             ]
         )
         try replacePeers(of: folder, db: db)
+    }
+
+    static func isDirty(_ db: any SQLReader) throws -> Bool {
+        let row = try db.fetchOne("SELECT value FROM chat_folder_settings WHERE key = 'dirty'")
+
+        return (row?["value"].int ?? 0) != 0
+    }
+
+    static func setDirty(_ isDirty: Bool, db: any SQLWriter) throws {
+        try setSetting("dirty", value: isDirty ? 1 : 0, db: db)
+    }
+
+    static func setDirtyIfMissing(db: any SQLWriter) throws {
+        try db.execute("INSERT OR IGNORE INTO chat_folder_settings (key, value) VALUES ('dirty', 1)")
+    }
+
+    static func replaceAll(_ list: ChatFolderList, db: any SQLWriter) throws {
+        try db.execute("DELETE FROM chat_folders")
+        for folder in list.folders {
+            try save(folder, db: db)
+        }
+        try setSetting("allChatsPosition", value: list.allChatsPosition, db: db)
+        try setSetting("showsTags", value: list.showsTags ? 1 : 0, db: db)
+    }
+
+    private static func setSetting(_ key: String, value: Int, db: any SQLWriter) throws {
+        try db.execute(
+            """
+            INSERT INTO chat_folder_settings (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """,
+            [.text(key), SQLValue(value)]
+        )
     }
 
     static func reorder(_ ids: [String], allChatsPosition: Int, db: any SQLWriter) throws {

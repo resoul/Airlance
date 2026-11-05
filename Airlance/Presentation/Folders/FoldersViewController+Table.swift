@@ -3,6 +3,10 @@ import UIKit
 
 extension FoldersViewController: UITableViewDataSource, UITableViewDelegate {
     func numberOfSections(in tableView: UITableView) -> Int {
+        isFailed ? 3 : 2
+    }
+
+    private var tagsSection: Int {
         isFailed ? 2 : 1
     }
 
@@ -15,7 +19,11 @@ extension FoldersViewController: UITableViewDataSource, UITableViewDelegate {
     }
 
     func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        section == 0 && slots.count > 1 ? presentation.strings.foldersFooter : nil
+        if section == tagsSection {
+            return presentation.strings.foldersTagsFooter
+        }
+
+        return section == 0 && slots.count > 1 ? presentation.strings.foldersFooter : nil
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -31,7 +39,11 @@ extension FoldersViewController: UITableViewDataSource, UITableViewDelegate {
         cell.selectionStyle = .default
         cell.backgroundColor = theme.colors.surface
 
-        if indexPath.section == 1 {
+        if indexPath.section == tagsSection {
+            content.text = presentation.strings.foldersTags
+            cell.selectionStyle = .none
+            cell.accessoryView = tagsSwitch()
+        } else if indexPath.section == 1 {
             content.text = presentation.strings.foldersRetry
             content.textProperties.color = theme.colors.accent
             content.image = UIImage(systemName: "arrow.clockwise")
@@ -51,6 +63,10 @@ extension FoldersViewController: UITableViewDataSource, UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
+        guard indexPath.section != tagsSection else {
+            return
+        }
+
         guard indexPath.section == 0 else {
             dependencies.chatFolders.retry()
 
@@ -115,6 +131,24 @@ extension FoldersViewController: UITableViewDataSource, UITableViewDelegate {
         let slot = slots.remove(at: source.row - 1)
         slots.insert(slot, at: destination.row - 1)
         saveOrder()
+    }
+
+    private func tagsSwitch() -> UISwitch {
+        let toggle = UISwitch()
+        let folders = dependencies.chatFolders
+        toggle.isOn = folders.list.showsTags
+        toggle.onTintColor = presentation.theme.colors.accent
+        toggle.addAction(
+            UIAction { [weak toggle] _ in
+                let isOn = toggle?.isOn ?? true
+                Task {
+                    try? await folders.setShowsTags(isOn)
+                }
+            },
+            for: .valueChanged
+        )
+
+        return toggle
     }
 
     private func configure(_ content: inout UIListContentConfiguration, cell: UITableViewCell, slot: Slot) {

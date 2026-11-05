@@ -89,6 +89,7 @@ final class ChatArchiveViewController: ScreenViewController {
 
         let now = Date()
         let stories = dependencies.storiesStore
+        let draft = ChatRowDraft(title: presentation.strings.chatsDraft, color: presentation.theme.colors.destructive)
         let actions = ChatActions(store: dependencies.chatsStore, presentation: presentation, host: view)
         listView.apply(
             items: chats.map { chat in
@@ -97,10 +98,8 @@ final class ChatArchiveViewController: ScreenViewController {
                     timeText: dateFormatter.string(for: chat.activityDate, now: now),
                     story: stories.story(for: chat.id),
                     swipe: actions.swipes(for: chat),
-                    draft: ChatRowDraft(
-                        title: presentation.strings.chatsDraft,
-                        color: presentation.theme.colors.destructive
-                    )
+                    draft: draft,
+                    messageText: chat.rowText(presentation.strings)
                 ) { [router] in
                     router.open(.chat(chat.id))
                 }

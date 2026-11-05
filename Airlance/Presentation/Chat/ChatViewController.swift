@@ -18,6 +18,7 @@ struct ChatDependencies {
     let translation: TranslationSettings
     let contacts: DeviceContactsStore
     let connectionStatus: ConnectionStatusStore
+    var openAppLink: (@MainActor (AirlanceLink) -> Void)?
 }
 
 final class ChatViewController: ScreenViewController {
