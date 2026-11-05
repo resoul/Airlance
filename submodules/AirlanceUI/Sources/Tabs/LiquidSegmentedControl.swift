@@ -35,12 +35,17 @@ public final class LiquidSegmentedControl: UIView {
 
     private static let inset: CGFloat = 3
     private static let padding: CGFloat = 14
+    private static let fadeWidth: CGFloat = 18
 
     public var onSelect: (@MainActor (Int) -> Void)?
     public private(set) var selectedIndex = 0
 
     private let capsule = UIView()
     private let selection = LiquidSelectionView()
+    private let stripHost = UIView()
+    private let strip = UIView()
+    private let fade = CAGradientLayer()
+    private var widthLimit: CGFloat?
     private var labels: [UILabel] = []
     private var titles: [String] = []
     private var style: LiquidSegmentedStyle?
@@ -51,10 +56,14 @@ public final class LiquidSegmentedControl: UIView {
         capsule.layer.cornerCurve = .continuous
         capsule.isUserInteractionEnabled = false
         addSubview(capsule)
-        capsule.addSubview(selection)
+        capsule.addSubview(stripHost)
+        stripHost.addSubview(strip)
+        strip.addSubview(selection)
+        fade.colors = [UIColor.clear.cgColor, UIColor.black.cgColor, UIColor.black.cgColor, UIColor.clear.cgColor]
+        fade.startPoint = CGPoint(x: 0, y: 0.5)
+        fade.endPoint = CGPoint(x: 1, y: 0.5)
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapped(_:))))
-        let pan = UIPanGestureRecognizer(target: self, action: #selector(dragged(_:)))
-        addGestureRecognizer(pan)
+        addGestureRecognizer(UIPanGestureRecognizer(target: self, action: #selector(dragged(_:))))
         isAccessibilityElement = false
     }
 
@@ -64,7 +73,21 @@ public final class LiquidSegmentedControl: UIView {
     }
 
     override public var intrinsicContentSize: CGSize {
-        CGSize(width: segmentWidths.reduce(Self.inset * 2, +), height: Self.height)
+        let width = segmentWidths.reduce(Self.inset * 2, +)
+
+        return CGSize(width: min(widthLimit ?? width, width), height: Self.height)
+    }
+
+    public func limitWidth(to width: CGFloat) {
+        guard width != widthLimit else {
+            return
+        }
+
+        widthLimit = width
+        stripHost.layer.mask = fade
+        invalidateIntrinsicContentSize()
+        sizeToFit()
+        setNeedsLayout()
     }
 
     override public func sizeThatFits(_ size: CGSize) -> CGSize {
@@ -84,7 +107,7 @@ public final class LiquidSegmentedControl: UIView {
                 let label = UILabel()
                 label.textAlignment = .center
                 label.isAccessibilityElement = true
-                capsule.addSubview(label)
+                strip.addSubview(label)
 
                 return label
             }
@@ -115,6 +138,7 @@ public final class LiquidSegmentedControl: UIView {
         selectedIndex = index
         selection.select(index, animated: animated)
         updateLabels()
+        moveStrip(animated: changed && animated)
         if changed, animated {
             bounce(at: index)
         }
@@ -124,7 +148,7 @@ public final class LiquidSegmentedControl: UIView {
         super.layoutSubviews()
         capsule.frame = bounds
         capsule.layer.cornerRadius = bounds.height / 2
-        selection.frame = capsule.bounds
+        stripHost.frame = capsule.bounds
         var x = Self.inset
         var slots: [CGRect] = []
         for (label, width) in zip(labels, segmentWidths) {
@@ -134,7 +158,57 @@ public final class LiquidSegmentedControl: UIView {
             slots.append(frame)
             x += width
         }
+        strip.bounds = CGRect(x: 0, y: 0, width: max(x + Self.inset, bounds.width), height: bounds.height)
+        selection.frame = strip.bounds
         selection.slots = slots
+        moveStrip(animated: false)
+    }
+
+    private var stripOriginX: CGFloat {
+        let hidden = strip.bounds.width - bounds.width
+        guard hidden > 0, selection.slots.indices.contains(selectedIndex) else {
+            return 0
+        }
+
+        return min(0, max(bounds.midX - selection.slots[selectedIndex].midX, -hidden))
+    }
+
+    private func moveStrip(animated: Bool) {
+        let isAnimated = animated && !UIAccessibility.isReduceMotionEnabled
+        layoutFade(animated: isAnimated)
+        let place = {
+            self.strip.frame.origin = CGPoint(x: self.stripOriginX, y: 0)
+        }
+        guard isAnimated else {
+            place()
+
+            return
+        }
+
+        UIView.animate(
+            withDuration: 0.45,
+            delay: 0,
+            usingSpringWithDamping: 0.82,
+            initialSpringVelocity: 0,
+            options: [.allowUserInteraction, .beginFromCurrentState],
+            animations: place
+        )
+    }
+
+    private func layoutFade(animated: Bool) {
+        guard widthLimit != nil, bounds.width > 0 else {
+            return
+        }
+
+        let edge = Double(Self.fadeWidth / bounds.width)
+        let origin = stripOriginX
+        let leading = origin < 0 ? edge : 0
+        let trailing = origin > bounds.width - strip.bounds.width ? edge : 0
+        CATransaction.begin()
+        CATransaction.setDisableActions(!animated)
+        fade.frame = stripHost.bounds
+        fade.locations = [0, NSNumber(value: leading), NSNumber(value: 1 - trailing), 1]
+        CATransaction.commit()
     }
 
     private var segmentWidths: [CGFloat] {
@@ -206,7 +280,7 @@ public final class LiquidSegmentedControl: UIView {
 
     @objc
     private func tapped(_ gesture: UITapGestureRecognizer) {
-        guard let index = index(at: gesture.location(in: capsule)) else {
+        guard let index = index(at: gesture.location(in: strip)) else {
             return
         }
 
@@ -216,7 +290,7 @@ public final class LiquidSegmentedControl: UIView {
 
     @objc
     private func dragged(_ gesture: UIPanGestureRecognizer) {
-        let point = gesture.location(in: capsule)
+        let point = gesture.location(in: strip)
         switch gesture.state {
         case .began, .changed:
             if gesture.state == .began {

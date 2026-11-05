@@ -14,6 +14,7 @@ struct ChatsDependencies {
     let chatsStore: ChatsStore
     let historyStore: ChatHistoryStore
     let storiesStore: StoriesStore
+    let storyLifetime: @MainActor () -> StoryLifetime
     let chatFolders: ChatFolderStore
     let permissionFlow: PermissionFlow
     let videoNotes: VideoNoteSettings

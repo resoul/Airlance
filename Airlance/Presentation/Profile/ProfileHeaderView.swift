@@ -6,6 +6,7 @@ import UIKit
 
 final class ProfileHeaderView: UIView {
     var onPhotoTap: (@MainActor (Bool) -> Void)?
+    var onPhotoSwipe: (@MainActor (Bool) -> Void)?
     var onAction: (@MainActor (ProfileAction, ProfileActionButton) -> Void)?
 
     let photo = UIView()
@@ -13,6 +14,7 @@ final class ProfileHeaderView: UIView {
     let audioPanel = AudioPanelView()
     private let audioCard = FloatingCard()
 
+    private var swipes: PhotoSwipes?
     private let avatar = AvatarNode()
     private let shade = CAGradientLayer()
     private let segments = UIStackView()
@@ -33,6 +35,10 @@ final class ProfileHeaderView: UIView {
         photo.addSubview(avatar.view)
         photo.clipsToBounds = true
         photo.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(photoTapped(_:))))
+        swipes = PhotoSwipes(view: photo)
+        swipes?.onSwipe = { [weak self] forward in
+            self?.onPhotoSwipe?(forward)
+        }
         shade.colors = [UIColor(white: 0, alpha: 0.35), .clear, .clear, UIColor(white: 0, alpha: 0.5)].map(\.cgColor)
         shade.locations = [0, 0.25, 0.6, 1]
         photo.layer.addSublayer(shade)
@@ -149,6 +155,10 @@ final class ProfileHeaderView: UIView {
         let onPhoto = openness > 0.5
         nameLabel.textColor = onPhoto ? .white : textColor
         statusLabel.textColor = onPhoto ? UIColor(white: 1, alpha: 0.8) : statusColor
+    }
+
+    func slidePhoto(forward: Bool) {
+        PhotoSwipes.slide(avatar.layer, forward: forward)
     }
 
     func shakePhoto(forward: Bool) {

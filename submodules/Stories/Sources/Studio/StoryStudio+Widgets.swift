@@ -1,6 +1,13 @@
 import UIKit
 
 extension StoryStudio {
+    func makeDraft(_ media: StoryDraft.Media) -> StoryDraft {
+        var draft = StoryDraft(media: media)
+        draft.settings.lifetime = context.defaultLifetime
+
+        return draft
+    }
+
     func seeded(_ draft: StoryDraft) -> StoryDraft {
         guard case .addYours(let prompt) = seed else {
             return draft

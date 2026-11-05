@@ -100,7 +100,7 @@ PY
             --disable-vp9-highbitdepth --disable-vp9-temporal-denoising \
             --enable-realtime-only --enable-multi-res-encoding --size-limit=8192x8192 \
             --extra-cflags="--target=$triple -isysroot $sdk_path" \
-            "${options[@]}"
+            ${options[@]+"${options[@]}"}
         make -j"$jobs"
         make install
     ) >"$log" 2>&1

@@ -55,31 +55,70 @@ struct EnvelopeReader {
                 return try profileSet(body)
             case .profiledata:
                 return try profileData(body)
-            case .authenticate:
-                let table: Airlance_Wire_Authenticate = try checkedRoot(body)
-
-                return .authenticate(token: table.accessToken ?? "")
-            case .authenticated:
-                let table: Airlance_Wire_Authenticated = try checkedRoot(body)
-
-                return .authenticated(expiresAtUnix: table.expiresAtUnix)
-            case .updatessubscribe:
-                let table: Airlance_Wire_UpdatesSubscribe = try checkedRoot(body)
-
-                return .updatesSubscribe(afterSeq: table.afterSeq)
-            case .updatessubscribed:
-                let table: Airlance_Wire_UpdatesSubscribed = try checkedRoot(body)
-
-                return .updatesSubscribed(latestSeq: table.latestSeq)
+            case .profilephotoadd, .profilephotoremove:
+                return try profilePhoto(kind: kind, body: body)
+            case .authenticate, .authenticated, .updatessubscribe, .updatessubscribed:
+                return try session(kind: kind, body: body)
             case .mediauploadrequest, .mediauploadticket, .mediadownloadrequest, .mediadownloadticket:
                 return try media(kind: kind, body: body)
             case .search, .searchresults, .publicprofileget:
                 return try search(kind: kind, body: body)
             case .none_, nil:
                 return .unsupported(kind: kind)
+            default:
+                return try feature(kind: kind, body: body)
             }
         } catch {
             throw .invalidBody(kind: kind, reason: String(describing: error))
+        }
+    }
+
+    private func feature(kind: UInt16, body: Data) throws -> ProtocolMessage {
+        switch Airlance_Wire_MessageKind(rawValue: kind) {
+        case .storypublish, .storydata, .storiesget, .storiesdata, .storyview, .storydelete, .storieschanged:
+            return try story(kind: kind, body: body)
+        case .contactsget, .contactsdata, .contactadd, .contactaddphone, .contactremove, .contactssync,
+             .contactschanged:
+            return try contact(kind: kind, body: body)
+        case .privacyget, .privacyset, .privacydata, .blocksget, .blocksdata, .blockset:
+            return try privacy(kind: kind, body: body)
+        default:
+            return try chat(kind: kind, body: body)
+        }
+    }
+
+    private func profilePhoto(kind: UInt16, body: Data) throws -> ProtocolMessage {
+        guard Airlance_Wire_MessageKind(rawValue: kind) == .profilephotoadd else {
+            let table: Airlance_Wire_ProfilePhotoRemove = try checkedRoot(body)
+
+            return .profilePhotoRemove(photoMediaID: table.photoMediaId ?? "")
+        }
+
+        let table: Airlance_Wire_ProfilePhotoAdd = try checkedRoot(body)
+
+        return .profilePhotoAdd(photoMediaID: table.photoMediaId ?? "", videoMediaID: table.videoMediaId ?? "")
+    }
+
+    private func session(kind: UInt16, body: Data) throws -> ProtocolMessage {
+        switch Airlance_Wire_MessageKind(rawValue: kind) {
+        case .authenticate:
+            let table: Airlance_Wire_Authenticate = try checkedRoot(body)
+
+            return .authenticate(token: table.accessToken ?? "")
+        case .authenticated:
+            let table: Airlance_Wire_Authenticated = try checkedRoot(body)
+
+            return .authenticated(expiresAtUnix: table.expiresAtUnix)
+        case .updatessubscribe:
+            let table: Airlance_Wire_UpdatesSubscribe = try checkedRoot(body)
+
+            return .updatesSubscribe(afterSeq: table.afterSeq)
+        case .updatessubscribed:
+            let table: Airlance_Wire_UpdatesSubscribed = try checkedRoot(body)
+
+            return .updatesSubscribed(latestSeq: table.latestSeq)
+        default:
+            return .unsupported(kind: kind)
         }
     }
 
@@ -96,7 +135,9 @@ struct EnvelopeReader {
                     subject: row.subject ?? "",
                     firstName: row.firstName ?? "",
                     lastName: row.lastName ?? "",
-                    username: row.username ?? ""
+                    username: row.username ?? "",
+                    photoMediaID: row.photoMediaId ?? "",
+                    videoMediaID: row.videoMediaId ?? ""
                 )
             }
 
@@ -144,7 +185,10 @@ struct EnvelopeReader {
             firstName: set.firstName ?? "",
             lastName: set.lastName ?? "",
             username: set.username ?? "",
-            bio: set.bio ?? ""
+            bio: set.bio ?? "",
+            phone: set.phone ?? "",
+            photoMediaID: set.photoMediaId ?? "",
+            videoMediaID: set.videoMediaId ?? ""
         ))
     }
 
@@ -157,13 +201,23 @@ struct EnvelopeReader {
                 firstName: data.firstName ?? "",
                 lastName: data.lastName ?? "",
                 username: data.username ?? "",
-                bio: data.bio ?? ""
+                bio: data.bio ?? "",
+                phone: data.phone ?? "",
+                photoMediaID: data.photoMediaId ?? "",
+                videoMediaID: data.videoMediaId ?? ""
             ),
+            photos: data.photos.map { photo in
+                ProfilePhotoData(
+                    photoMediaID: photo.photoMediaId ?? "",
+                    videoMediaID: photo.videoMediaId ?? "",
+                    addedAtUnix: photo.addedAtUnix
+                )
+            },
             updatedAtUnix: data.updatedAtUnix
         ))
     }
 
-    private func checkedRoot<T: FlatBufferTable & Verifiable>(_ data: Data, fileID: String? = nil) throws -> T {
+    func checkedRoot<T: FlatBufferTable & Verifiable>(_ data: Data, fileID: String? = nil) throws -> T {
         var buffer = ByteBuffer(data: data)
 
         return try getCheckedRoot(byteBuffer: &buffer, fileId: fileID, options: options)

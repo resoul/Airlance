@@ -50,10 +50,6 @@ enum AppTabItems {
         router: AppRouter,
         accounts: any AccountSwitching
     ) -> [PopupMenuItem]? {
-        let editTabs = PopupMenuItem(title: strings.tabsEdit, symbol: "square.grid.3x1.below.line.grid.1x2") {
-            router.show(.tabSettings)
-        }
-
         switch tab {
         case .chats:
             let addFolder = PopupMenuItem(title: strings.tabsChatsAddFolder, symbol: "folder.badge.plus") {
@@ -61,11 +57,11 @@ enum AppTabItems {
                 router.open(.newChatFolder)
             }
 
-            return [addFolder, editTabs]
+            return [addFolder]
         case .settings:
-            return accountItems(strings: strings, accounts: accounts) + [editTabs]
+            return accountItems(strings: strings, accounts: accounts)
         default:
-            return [editTabs]
+            return nil
         }
     }
 

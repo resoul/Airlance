@@ -1,5 +1,17 @@
 import UIKit
 
+struct AuthProfileFields: Sendable {
+    let firstName: String
+    let lastName: String
+    let username: String
+
+    init(values: [String]) {
+        firstName = values.first ?? ""
+        lastName = values.dropFirst().first ?? ""
+        username = values.dropFirst(2).first ?? ""
+    }
+}
+
 @MainActor
 enum AuthGate {
     static func entry(
@@ -23,7 +35,7 @@ enum AuthGate {
 
     static func profile(
         presentationContext: PresentationContext,
-        onDone: @escaping @MainActor (_ name: String, _ username: String) async -> String?
+        onDone: @escaping @MainActor (_ fields: AuthProfileFields) async -> String?
     ) -> UIViewController {
         let controller = AuthStepController(step: .profile, presentationSource: presentationContext)
         controller.onPrimary = { [weak controller] values in
@@ -32,7 +44,7 @@ enum AuthGate {
             }
             controller?.setBusy(true)
             Task {
-                let failure = await onDone(trimmed.first ?? "", trimmed.dropFirst().first ?? "")
+                let failure = await onDone(AuthProfileFields(values: trimmed))
                 controller?.setBusy(false)
                 if let failure {
                     controller?.showFailure(failure)

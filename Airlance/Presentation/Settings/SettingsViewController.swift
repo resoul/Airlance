@@ -1,4 +1,5 @@
 @preconcurrency import AsyncDisplayKit
+import AvatarUI
 import LiquidUI
 import ListUI
 import Localization
@@ -25,9 +26,19 @@ final class SettingsViewController: ScreenViewController {
         dependencies.myProfile
     }
 
-    private let router: AppRouter
-    private let listView = ListView(theme: ListTheme())
-    private let header = SettingsHeaderView()
+    let router: AppRouter
+    let listView = ListView(theme: ListTheme())
+    let header = SettingsHeaderView()
+    var geometry = SettingsHeaderGeometry()
+    var photos: [AvatarDescriptor] = []
+    var photoIndex = 0
+    var isExpanded = false
+    var isNavigationBarFilled = false
+    var openSpring = Spring(0, stiffness: 15, dampingRatio: 0.78)
+    lazy var openDriver = DisplayLinkDriver { [weak self] deltaTime in
+        self?.stepOpen(deltaTime)
+    }
+    private var offsetObservation: NSKeyValueObservation?
     private var observations: [ObservationToken] = []
 
     init(dependencies: SettingsDependencies, router: AppRouter) {
@@ -40,9 +51,26 @@ final class SettingsViewController: ScreenViewController {
         super.viewDidLoad()
         navigationItem.largeTitleDisplayMode = .never
         listView.headerView = header
-        listView.headerHeight = SettingsHeaderView.height
+        listView.headerHeight = SettingsHeaderGeometry.foldedHeight
         view.addSubnode(listView)
         setContentScrollView(listView.scrollView, for: .bottom)
+        header.onPhotoTap = { [weak self] position in
+            self?.photoTapped(at: position)
+        }
+        header.onPhotoSwipe = { [weak self] forward in
+            self?.photoSwiped(forward: forward)
+        }
+        let scrollView = listView.scrollView
+        offsetObservation = scrollView.observe(\.contentOffset, options: [.old, .new]) { [weak self] _, change in
+            guard change.oldValue != change.newValue else {
+                return
+            }
+
+            MainActor.assumeIsolated {
+                self?.scrollChanged()
+            }
+        }
+        applyNavigationBar(filled: false)
 
         observations = [
             dependencies.themeStore.observeSettings { [weak self] _ in
@@ -65,13 +93,26 @@ final class SettingsViewController: ScreenViewController {
         super.viewDidLayoutSubviews()
         listView.frame = view.bounds
         listView.contentInsets = view.safeAreaInsets
+        geometry.width = view.bounds.width
+        geometry.topInset = view.safeAreaInsets.top
+        geometry.safeTop = view.window?.safeAreaInsets.top ?? max(0, view.safeAreaInsets.top - 44)
+        layoutHeader()
+    }
+
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        geometry.openness > 0.5 ? .lightContent : .default
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        finishOpening()
     }
 
     override func apply(_ presentation: PresentationData) {
         super.apply(presentation)
         let theme = presentation.theme
 
-        navigationItem.title = presentation.strings.settingsTitle
+        navigationItem.backButtonTitle = presentation.strings.settingsTitle
         header.apply(presentation)
         updateHeader()
         listView.theme = ListTheme(
@@ -91,23 +132,23 @@ final class SettingsViewController: ScreenViewController {
                 self?.toggleTheme(isDark: isDark)
             }
         )
-        let router = router
         let editItem = UIBarButtonItem(
             title: presentation.strings.profileEditAction,
-            primaryAction: UIAction { _ in
-                router.open(.settingsPage(.editProfile))
+            primaryAction: UIAction { [weak self] _ in
+                self?.collapseForEditing()
+                self?.router.open(.settingsPage(.editProfile))
             }
         )
         navigationItem.rightBarButtonItems = [editItem, themeItem]
+        applyBarTint()
         render()
     }
 
     private func updateHeader() {
         let profile = dependencies.myProfile.profile
-        header.update(
-            profile,
-            avatar: dependencies.myProfile.avatar(for: profile)
-        )
+        header.update(profile)
+        reloadPhotos()
+        view.setNeedsLayout()
     }
 
     private func toggleTheme(isDark: Bool) {

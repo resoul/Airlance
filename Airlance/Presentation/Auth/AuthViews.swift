@@ -58,8 +58,11 @@ final class AuthFieldView: UIView {
 
     private func configure() {
         switch kind {
-        case .name:
-            textField.textContentType = .name
+        case .firstName:
+            textField.textContentType = .givenName
+            textField.autocapitalizationType = .words
+        case .lastName:
+            textField.textContentType = .familyName
             textField.autocapitalizationType = .words
         case .username:
             textField.autocapitalizationType = .none

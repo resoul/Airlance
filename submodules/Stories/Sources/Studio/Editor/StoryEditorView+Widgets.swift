@@ -53,7 +53,13 @@ extension StoryEditorView {
             return
         }
 
-        let sheet = StoryPublishSheet(audience: audience, settings: settings, strings: strings, peers: mentionPeers)
+        let sheet = StoryPublishSheet(
+            audience: audience,
+            settings: settings,
+            strings: strings,
+            peers: mentionPeers,
+            showsAudienceChoices: showsAudienceChoices
+        )
         sheet.onDone = { [weak self] audience, settings in
             self?.settings = settings
             self?.setAudience(audience)

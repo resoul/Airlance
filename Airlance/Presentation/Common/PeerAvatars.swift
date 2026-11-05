@@ -15,10 +15,27 @@ enum PeerAvatars {
         "me": .video,
     ]
 
+    @MainActor private static var remote: [String: RemoteAvatar] = [:]
+
     static let storyGreen = UIColor(red: 0.34, green: 0.84, blue: 0.45, alpha: 1)
 
+    @MainActor
+    static func server(_ id: String) -> RemoteAvatar? {
+        remote[id]
+    }
+
+    @MainActor
+    static func register(_ avatar: RemoteAvatar, for id: String) {
+        remote[id] = avatar
+    }
+
+    @MainActor
     static func descriptor(id: String, name: String) -> AvatarDescriptor {
         let initials = AvatarDescriptor.initials(from: name)
+        if let avatar = remote[id] {
+            return avatar.descriptor(id: id, initials: initials)
+        }
+
         switch media[id] {
         case .photo:
             return AvatarDescriptor(id: id, initials: initials, image: image("avatar-demo-photo"))
@@ -29,7 +46,12 @@ enum PeerAvatars {
         }
     }
 
+    @MainActor
     static func gallery(id: String, name: String) -> [AvatarDescriptor] {
+        guard remote[id] == nil else {
+            return [descriptor(id: id, name: name)]
+        }
+
         let initials = AvatarDescriptor.initials(from: name)
         let photos = ["avatar-demo-photo", "avatar-demo-poster"].map { name in
             AvatarDescriptor(id: "\(id).\(name)", initials: initials, image: image(name))

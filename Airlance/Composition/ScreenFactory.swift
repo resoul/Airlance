@@ -1,3 +1,4 @@
+import Protocol
 import Stories
 import UIKit
 
@@ -23,28 +24,6 @@ final class ScreenFactory {
         self.router = router
     }
 
-    func makeContacts() -> UIViewController {
-        ContactsViewController(
-            dependencies: ContactsDependencies(
-                presentationContext: scene.presentationContext,
-                contactsSync: app.contactsSync,
-                permissionStore: app.permissionStore,
-                permissionFlow: scene.permissionFlow
-            ),
-            router: router
-        )
-    }
-
-    func makeNewContact() -> UIViewController {
-        NewContactViewController(
-            dependencies: NewContactDependencies(
-                presentationContext: scene.presentationContext,
-                contactsSync: app.contactsSync
-            ),
-            router: router
-        )
-    }
-
     func makeInvite() -> UIViewController {
         InviteViewController(
             dependencies: InviteDependencies(
@@ -62,6 +41,7 @@ final class ScreenFactory {
                 chatsStore: account.chatsStore,
                 historyStore: account.historyStore,
                 storiesStore: account.storiesStore,
+                storyLifetime: storyLifetime,
                 chatFolders: account.chatFolders,
                 permissionFlow: scene.permissionFlow,
                 videoNotes: account.videoNotes,
@@ -138,9 +118,36 @@ final class ScreenFactory {
         NewChatViewController(
             dependencies: NewChatDependencies(
                 presentationContext: scene.presentationContext,
-                chatsStore: account.chatsStore
+                chatsStore: account.chatsStore,
+                search: newChatSearch()
             ),
             router: router
+        )
+    }
+
+    func newChatSearch() -> NewChatSearch? {
+        guard !account.record.isDemo else {
+            return nil
+        }
+
+        let servers = app.servers
+        let id = account.accountID
+
+        return NewChatSearch(
+            search: { query in
+                guard let messaging = servers.server(for: id)?.messaging else {
+                    throw AccountMessagingError.refused
+                }
+
+                return try await messaging.search(query)
+            },
+            open: { person in
+                guard let messaging = servers.server(for: id)?.messaging else {
+                    throw AccountMessagingError.refused
+                }
+
+                return try await messaging.openDirect(with: person)
+            }
         )
     }
 
@@ -160,10 +167,30 @@ final class ScreenFactory {
                 presentationContext: scene.presentationContext,
                 chatsStore: account.chatsStore,
                 groupMembers: account.groupMembers,
-                onAir: account.onAir
+                onAir: account.onAir,
+                publicProfile: publicProfileLoader(),
+                serverContacts: account.serverContacts,
+                privacy: account.privacy
             ),
             router: router
         )
+    }
+
+    private func publicProfileLoader() -> @MainActor (String) async -> ProfileData? {
+        let servers = app.servers
+        let id = account.accountID
+
+        return { subject in
+            await servers.server(for: id)?.messaging?.publicProfile(subject)
+        }
+    }
+
+    private var storyLifetime: @MainActor () -> StoryLifetime {
+        let storage = account.storage
+
+        return {
+            StoryLifetime(rawValue: storage.value(for: .storyLifetimeHours)) ?? .hours24
+        }
     }
 
     func makeStories(peerID: String) -> UIViewController {
@@ -172,9 +199,9 @@ final class ScreenFactory {
         let now = Date()
         let viewer = StoryViewerController(
             authors: store.ordered.map { story in
-                StoryPeers.author(story, published: store.published, strings: strings, now: now)
+                StoryPeers.author(story, store: store, strings: strings, now: now)
             },
-            startPeerID: peerID
+            startPeerID: store.story(for: peerID)?.peerID ?? peerID
         )
         viewer.onSeen = { peerID, item in
             store.markSeen(peerID, through: item)

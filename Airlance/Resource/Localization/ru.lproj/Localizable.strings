@@ -127,6 +127,9 @@
 "chat.quickReplyClose" = "Закрыть";
 
 "newChat.title" = "Новый чат";
+"newChat.search" = "Поиск по имени или username";
+"newChat.hint" = "Введите минимум 3 символа, чтобы найти человека.";
+"newChat.failed" = "Не удалось открыть чат";
 
 "media.title" = "Медиа: %@";
 
@@ -140,8 +143,14 @@
 "profile.muted" = "Уведомления выключены";
 "profileEdit.action" = "Изменить";
 "profileEdit.changePhoto" = "Изменить фото";
-"profileEdit.choosePhoto" = "Выбрать из галереи";
+"avatarEditor.moveHint" = "Переместите и измените масштаб";
+"avatarEditor.trimHint" = "Выбрано %@ с. Можно до 10 с.";
+"profilePhoto.makeMain" = "Сделать главным";
+"profilePhoto.deleteConfirm" = "Удалить это фото?";
+"profilePhoto.choose" = "Выбрать фото";
 "profileEdit.removePhoto" = "Удалить фото";
+"profileEdit.phoneHint" = "Номер не проверяется. Его видите только вы.";
+"profileEdit.phonePlaceholder" = "Номер телефона";
 "profileEdit.firstName" = "Имя";
 "profileEdit.lastName" = "Фамилия";
 "profileEdit.nameHint" = "Укажите имя и, если хотите, добавьте фото профиля.";
@@ -150,9 +159,9 @@
 "profileEdit.birthday" = "День рождения";
 "profileEdit.set" = "Указать";
 "profileEdit.removeBirthday" = "Удалить день рождения";
-"profileEdit.save" = "Сохранить";
-"profileEdit.visibility" = "Кто видит";
-"profileEdit.visibilityHint" = "Кто видит ваш день рождения: %@.";
+"profileEdit.visibilityHintEveryone" = "Ваш день рождения видят все.";
+"profileEdit.visibilityHintContacts" = "Ваш день рождения видят только контакты.";
+"profileEdit.visibilityHintNobody" = "Ваш день рождения скрыт от всех.";
 "profileEdit.visibilityEveryone" = "Все";
 "profileEdit.visibilityContacts" = "Мои контакты";
 "profileEdit.visibilityNobody" = "Никто";
@@ -249,6 +258,8 @@
 
 "chats.empty.title" = "Здесь пока нет чатов";
 "chats.empty.text" = "Здесь появятся чаты, подходящие под эту папку.";
+"chats.emptyAll.title" = "Чатов пока нет";
+"chats.emptyAll.text" = "Новые чаты появятся здесь.";
 "chats.action.read" = "Прочитано";
 "chats.action.unread" = "Не прочитано";
 "chats.action.pin" = "Закрепить";
@@ -558,7 +569,6 @@
 "videoNotes.volumeZoom" = "Зум кнопками громкости";
 "videoNotes.volumeZoomHint" = "В камере чата кнопки громкости приближают и отдаляют. Короткое нажатие переключает на следующий объектив.";
 "tab.onAir" = "Эфир";
-"tabs.edit" = "Изменить вкладки";
 "tabs.title" = "Вкладки";
 "tabs.shown" = "Показаны";
 "tabs.hidden" = "Скрыты";
@@ -819,6 +829,36 @@
 "language.translateHint" = "«Перевести» появляется в меню сообщений на других языках. При переводе чатов целиком появляется панель, если большинство сообщений на другом языке. Перевод выполняется на устройстве.";
 "language.translateUnsupported" = "Для перевода нужна iOS 18.";
 "language.interface" = "Язык интерфейса";
+"power.masterHint" = "Пока включено, приложение учитывает и режим энергосбережения iOS. Выключите, чтобы всегда показывать всё.";
+"settings.stories" = "Истории";
+"stories.lifetimeTitle" = "Сколько хранить истории";
+"stories.lifetimeHours" = "%1$@ часов";
+"stories.lifetimeHint" = "Через это время истории удаляются вместе с файлами. Их видят те, с кем у вас есть чат.";
+"contacts.sync" = "Синхронизировать контакты";
+"contacts.inApp" = "В Airlance";
+"contacts.toInvite" = "Пригласить";
+"contacts.notInApp" = "Такого человека нет в Airlance. Вы можете пригласить его.";
+"newContact.target" = "Номер или @username";
+"profile.addContact" = "Добавить в контакты";
+"profile.removeContact" = "Удалить из контактов";
+"profile.block" = "Заблокировать";
+"profile.unblock" = "Разблокировать";
+"privacy.blocked" = "Чёрный список";
+"privacy.blockedEmpty" = "В чёрном списке никого нет";
+"privacy.phone" = "Номер телефона";
+"privacy.photos" = "Фотографии профиля";
+"privacy.bio" = "Раздел «О себе»";
+"privacy.messages" = "Сообщения";
+"privacy.search" = "Поиск";
+"privacy.everyone" = "Все";
+"privacy.contacts" = "Мои контакты";
+"privacy.nobody" = "Никто";
+"privacy.failed" = "Не удалось сохранить настройку.";
+"privacy.phoneHint" = "Кто видит ваш номер в профиле.";
+"privacy.photosHint" = "Кто видит ваши фото и видео. Без доступа показываются буквы имени.";
+"privacy.bioHint" = "Кто видит раздел «О себе».";
+"privacy.messagesHint" = "Кто может начать с вами новый чат. Уже начатые чаты продолжаются.";
+"privacy.searchHint" = "Кто может найти вас по имени, username и номеру.";
 "power.title" = "Энергосбережение";
 "power.mode" = "Режим энергосбережения";
 "power.off" = "Выкл.";
@@ -892,7 +932,6 @@
 "auth.endedMessage" = "На этом устройстве выполнен выход. Войдите, чтобы продолжить.";
 "auth.profileTitle" = "Как вас зовут?";
 "auth.profileMessage" = "Имя будут видеть в чатах. Фото можно добавить позже в настройках.";
-"auth.profileName" = "Ваше имя";
 "auth.profileUsername" = "Имя пользователя (необязательно)";
 "auth.profileDone" = "Начать общение";
 "auth.addAccount" = "Добавить аккаунт";

@@ -11,6 +11,8 @@ public protocol StoryStudioContext: AnyObject {
     var locale: Locale { get }
     var autoSubtitles: Bool { get }
     var mentionPeers: [StoryMentionPeer] { get }
+    var defaultLifetime: StoryLifetime { get }
+    var showsAudienceChoices: Bool { get }
 
     var draftsDirectory: URL { get }
 
@@ -72,7 +74,7 @@ public final class StoryStudio {
         case .photo(let image):
             let url = context.makeFileURL(extension: "jpg")
             try? image.jpegData(compressionQuality: 0.92)?.write(to: url)
-            edit(.photo(image), draft: seeded(StoryDraft(media: .photo(url))))
+            edit(.photo(image), draft: seeded(makeDraft(.photo(url))))
         case .video(let url):
             Task { [weak self] in
                 let poster = await Self.poster(of: url)
@@ -80,7 +82,7 @@ public final class StoryStudio {
                     return
                 }
 
-                self.edit(.video(url, poster: poster), draft: self.seeded(StoryDraft(media: .video(url))))
+                self.edit(.video(url, poster: poster), draft: self.seeded(makeDraft(.video(url))))
             }
         }
     }
@@ -102,6 +104,7 @@ public final class StoryStudio {
             self?.cutout()
         }
         editor.mentionPeers = context.mentionPeers
+        editor.showsAudienceChoices = context.showsAudienceChoices
         editor.onPickTrack = { [weak self] in
             self?.pickTrack()
         }

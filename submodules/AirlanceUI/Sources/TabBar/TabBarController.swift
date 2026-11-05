@@ -17,7 +17,7 @@ open class TabBarController<Presentation: ThemedPresentation>:
 
     public private(set) var viewControllers: [UIViewController] = []
     public private(set) var selectedIndex = 0
-    public private(set) var isTabBarHidden = false
+    public internal(set) var isTabBarHidden = false
     public internal(set) var detailViewController: UIViewController?
     public internal(set) var isSplit = false
 
@@ -94,10 +94,15 @@ open class TabBarController<Presentation: ThemedPresentation>:
         showSelected()
     }
 
+    override public var childForStatusBarStyle: UIViewController? {
+        selectedViewController
+    }
+
     public func setTabBarHidden(
         _ hidden: Bool,
         animated: Bool,
-        alongside coordinator: (any UIViewControllerTransitionCoordinator)? = nil
+        alongside coordinator: (any UIViewControllerTransitionCoordinator)? = nil,
+        slidesVertically: Bool = false
     ) {
         if follower != nil {
             guard coordinator == nil else {
@@ -110,8 +115,16 @@ open class TabBarController<Presentation: ThemedPresentation>:
             return
         }
 
-        if animated, let coordinator, follow(coordinator, hiding: hidden) {
-            return
+        if animated, let coordinator {
+            if slidesVertically {
+                slide(hidden: hidden, alongside: coordinator)
+
+                return
+            }
+
+            if follow(coordinator, hiding: hidden) {
+                return
+            }
         }
 
         isTabBarHidden = hidden
@@ -209,7 +222,7 @@ open class TabBarController<Presentation: ThemedPresentation>:
         }
     }
 
-    private func applyTabBarVisibility() {
+    func applyTabBarVisibility() {
         let height = TabBarLayout.reservedHeight(bottomInset: view.safeAreaInsets.bottom)
         tabBarView.transform = isTabBarHidden ? CGAffineTransform(translationX: 0, y: height + 24) : .identity
         tabBarView.alpha = isTabBarHidden ? 0 : 1

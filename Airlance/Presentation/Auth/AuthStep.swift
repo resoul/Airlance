@@ -6,7 +6,7 @@ enum AuthStep {
     var fields: [AuthFieldKind] {
         switch self {
         case .profile:
-            [.name, .username]
+            [.firstName, .lastName, .username]
         case .welcome, .sessionEnded:
             []
         }
@@ -62,13 +62,16 @@ struct AuthStepContent {
 }
 
 enum AuthFieldKind {
-    case name
+    case firstName
+    case lastName
     case username
 
     func placeholder(_ strings: AppStrings) -> String {
         switch self {
-        case .name:
-            strings.authProfileName
+        case .firstName:
+            strings.profileEditFirstName
+        case .lastName:
+            strings.profileEditLastName
         case .username:
             strings.authProfileUsername
         }
@@ -77,8 +80,10 @@ enum AuthFieldKind {
     func isValid(_ text: String) -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         switch self {
-        case .name:
+        case .firstName:
             return !trimmed.isEmpty
+        case .lastName:
+            return true
         case .username:
             return trimmed.isEmpty || MyProfile.isValidUsername(trimmed)
         }

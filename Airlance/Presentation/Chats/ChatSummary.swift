@@ -15,6 +15,7 @@ struct ChatSummary: Identifiable, Sendable, Equatable {
     let kind: ChatKind
     var message: String
     var date: Date
+    var avatarKey = ""
     var unread = 0
     var isMuted = false
     var isPinned = false

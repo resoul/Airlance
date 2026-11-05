@@ -98,7 +98,9 @@ extension ChatsViewController {
             })
         }
         guard !chats.isEmpty || !items.isEmpty else {
-            return [ChatsEmptyItem(id: "empty", title: strings.chatsEmptyTitle, text: strings.chatsEmptyText)]
+            return page == .all
+                ? [ChatsEmptyItem(id: "empty", title: strings.chatsEmptyAllTitle, text: strings.chatsEmptyAllText)]
+                : [ChatsEmptyItem(id: "empty", title: strings.chatsEmptyTitle, text: strings.chatsEmptyText)]
         }
 
         let now = Date()

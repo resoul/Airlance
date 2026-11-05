@@ -8,6 +8,7 @@ import Localization
 import MediaLoader
 import MediaStore
 import Permissions
+import PowerSaving
 import Theme
 
 @MainActor
@@ -25,7 +26,8 @@ final class ApplicationContext {
     let contactsSync: ContactsSync
     let accounts: AccountManager
     let translation: TranslationSettings
-    let powerSaving: PowerSaving
+    let powerSaving: PowerSavingStore
+    private let powerSavingEffects: PowerSavingEffects
 
     init() throws {
         MediaRenderer.generatedArt = { seed, size in
@@ -50,7 +52,8 @@ final class ApplicationContext {
         servers = AccountServers(auth: auth)
         accounts = AccountManager(storage: sharedStorage, keychain: keychain, auth: auth, network: network)
         translation = TranslationSettings(storage: sharedStorage)
-        powerSaving = PowerSaving(storage: sharedStorage)
+        powerSaving = PowerSavingStore(storage: sharedStorage)
+        powerSavingEffects = PowerSavingEffects(store: powerSaving)
     }
 
     private static func sharedDirectory() throws -> URL {
@@ -71,7 +74,7 @@ extension AuthConfiguration {
         clientID: "airlance-ios",
         redirectScheme: "airlance",
         redirectURI: "airlance://auth/callback",
-        scope: "openid email profile:read profile:write",
+        scope: "openid email profile:read profile:write messages:read messages:write",
         resource: "https://api.airlance.org"
     )
 }

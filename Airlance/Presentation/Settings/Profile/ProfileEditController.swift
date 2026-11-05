@@ -1,5 +1,6 @@
 import AirlanceUI
 @preconcurrency import AsyncDisplayKit
+import DeviceContacts
 import Haptics
 import ListUI
 import Observers
@@ -8,6 +9,9 @@ import UIKit
 struct ProfileEditDependencies {
     let presentationContext: PresentationContext
     let store: MyProfileStore
+    let contacts: DeviceContactsStore
+    let permissionFlow: PermissionFlow
+    let videoNotes: VideoNoteSettings
 }
 
 final class ProfileEditController: ScreenViewController {
@@ -16,11 +20,17 @@ final class ProfileEditController: ScreenViewController {
 
     private let router: AppRouter
     private let listView = ListView(theme: ListTheme())
-    private let avatarView = ProfileEditAvatarView()
+    let avatarView = ProfileEditAvatarView()
     private var nameCard: ProfileEditNameCard?
     private var bioCard: ProfileEditBioCard?
+    private var birthdayCard: ProfileEditBirthdayCard?
+    private var isBirthdayExpanded = false
     private var observation: ObservationToken?
-    private var isSaved = false
+    private(set) lazy var camera = AvatarCameraFlow(
+        media: dependencies.store.media,
+        permissions: dependencies.permissionFlow,
+        videoNotes: dependencies.videoNotes
+    )
 
     init(dependencies: ProfileEditDependencies, router: AppRouter) {
         self.dependencies = dependencies
@@ -50,8 +60,15 @@ final class ProfileEditController: ScreenViewController {
         avatarView.onTap = { [weak self] in
             self?.photoTapped()
         }
+        avatarView.onAvatarTap = { [weak self] in
+            self?.showPhotoViewer()
+        }
         observation = dependencies.store.observe { [weak self] profile in
             self?.draft.username = profile.username
+            self?.draft.phone = profile.phone
+            self?.draft.photoItems = profile.photoItems
+            self?.draft.photoRemovals = profile.photoRemovals
+            self?.draft.mainPhotoID = profile.mainPhotoID
             self?.render()
         }
         NotificationCenter.default.addObserver(
@@ -62,6 +79,16 @@ final class ProfileEditController: ScreenViewController {
         )
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.interactivePopGestureRecognizer?.isEnabled = false
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.interactivePopGestureRecognizer?.isEnabled = true
+    }
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         listView.frame = view.bounds
@@ -70,18 +97,12 @@ final class ProfileEditController: ScreenViewController {
         }
     }
 
-    override func viewDidDisappear(_ animated: Bool) {
-        super.viewDidDisappear(animated)
-        if isMovingFromParent, !isSaved, let photo = draft.photo, photo != dependencies.store.profile.photo {
-            dependencies.store.media.remove(photo)
-        }
-    }
-
     override func apply(_ presentation: PresentationData) {
         super.apply(presentation)
         let theme = presentation.theme
         navigationItem.rightBarButtonItem?.tintColor = theme.colors.accent
         listView.theme = .settings(theme)
+        applyNavigationBar(background: theme.colors.background)
         nameCard = ProfileEditNameCard(
             first: draft.firstName,
             last: draft.lastName,
@@ -97,11 +118,12 @@ final class ProfileEditController: ScreenViewController {
         bioCard?.onChange = { [weak self] text in
             self?.draft.bio = text
         }
+        birthdayCard = makeBirthdayCard(presentation)
         render()
     }
 
-    func render() {
-        guard isViewLoaded, let nameCard, let bioCard else {
+    func render(animated: Bool = false) {
+        guard isViewLoaded, let nameCard, let bioCard, let birthdayCard else {
             return
         }
 
@@ -111,25 +133,69 @@ final class ProfileEditController: ScreenViewController {
             title: strings.profileEditChangePhoto,
             theme: presentation.theme
         )
+        birthdayCard.apply(
+            birthday: draft.birthday,
+            text: birthdayText ?? strings.profileEditSet,
+            isExpanded: isBirthdayExpanded,
+            theme: presentation.theme
+        )
         var items: [any ListItem] = [
-            ViewHostItem(
-                id: "avatar",
-                height: ProfileEditAvatarView.height,
-                content: avatarView,
-                inset: 0,
-                revision: draft.photo?.name.hashValue ?? 0
-            ),
+            avatarItem,
             ViewHostItem(id: "name", height: ProfileEditNameCard.height, content: nameCard),
             FootnoteItem(id: "name-hint", text: strings.profileEditNameHint),
             ViewHostItem(id: "bio", height: ProfileEditBioCard.height, content: bioCard),
             FootnoteItem(id: "bio-hint", text: strings.profileEditBioHint),
         ]
-        items += birthdayRows().positioned() as [any ListItem]
-        items.append(FootnoteItem(id: "birthday-hint", text: visibilityHint))
+        items.append(ViewHostItem(
+            id: "birthday",
+            height: ProfileEditBirthdayCard.height(isExpanded: isBirthdayExpanded),
+            content: birthdayCard
+        ))
+        items.append(FootnoteItem(
+            id: "birthday-hint",
+            text: visibilityHint,
+            link: strings.profileEditAction
+        ) { [weak self] in
+            self?.showVisibilityMenu()
+        })
         items += accountRows().positioned() as [any ListItem]
         items.append(SpacerItem(id: "bottom", height: 24))
-        listView.apply(items: items, animated: false)
+        listView.apply(items: items, animated: animated)
         updateSave()
+    }
+
+    private func makeBirthdayCard(_ presentation: PresentationData) -> ProfileEditBirthdayCard {
+        let card = ProfileEditBirthdayCard(strings: presentation.strings, theme: presentation.theme)
+        card.onToggle = { [weak self] in
+            self?.birthdayTapped()
+        }
+        card.onChange = { [weak self, weak card] birthday in
+            guard let self else {
+                return
+            }
+
+            self.draft.birthday = birthday
+            card?.setValue(self.birthdayText ?? "")
+        }
+        card.onRemove = { [weak self] in
+            self?.draft.birthday = nil
+            self?.isBirthdayExpanded = false
+            self?.render(animated: true)
+        }
+
+        return card
+    }
+
+    private func birthdayTapped() {
+        view.endEditing(true)
+        if draft.birthday == nil {
+            draft.birthday = Self.defaultBirthday
+            isBirthdayExpanded = true
+        } else {
+            isBirthdayExpanded.toggle()
+        }
+        Haptics.play(.selection)
+        render(animated: true)
     }
 
     private func updateSave() {
@@ -145,9 +211,13 @@ final class ProfileEditController: ScreenViewController {
             SettingsOptionItem(
                 id: "phone",
                 title: strings.profileEditPhone,
-                detail: draft.phone,
+                detail: draft.phone.isEmpty ? strings.profileEditNotSet : draft.phone,
                 symbol: "phone.fill",
-                iconColor: .systemGreen
+                iconColor: .systemGreen,
+                accessory: .chevron,
+                onSelect: {
+                    router.open(.settingsPage(.editPhone))
+                }
             ),
             SettingsOptionItem(
                 id: "username",
@@ -191,7 +261,6 @@ final class ProfileEditController: ScreenViewController {
         draft.firstName = draft.firstName.trimmingCharacters(in: .whitespacesAndNewlines)
         draft.lastName = draft.lastName.trimmingCharacters(in: .whitespacesAndNewlines)
         draft.bio = draft.bio.trimmingCharacters(in: .whitespacesAndNewlines)
-        isSaved = true
         dependencies.store.update(draft)
         Haptics.play(.success)
         router.back()

@@ -11,6 +11,9 @@ final class AppStoryStudioContext: StoryStudioContext {
     let locale: Locale
     let autoSubtitles: Bool
 
+    let defaultLifetime: StoryLifetime
+    let showsAudienceChoices: Bool
+
     private let stories: StoriesStore
     private let chats: ChatsStore
     private let media: MediaStore
@@ -22,8 +25,11 @@ final class AppStoryStudioContext: StoryStudioContext {
         media: MediaStore,
         strings: AppStrings,
         permissions: PermissionFlow,
-        autoSubtitles: Bool
+        autoSubtitles: Bool,
+        defaultLifetime: StoryLifetime
     ) {
+        self.defaultLifetime = defaultLifetime
+        showsAudienceChoices = stories.serverSubject == nil
         self.stories = stories
         self.chats = chats
         self.media = media
@@ -115,7 +121,8 @@ final class AppStoryStudioContext: StoryStudioContext {
                 entity.widget != nil
             },
             aspect: result.draft.aspect,
-            draft: result.draft
+            draft: result.draft,
+            cover: result.cover
         ))
     }
 }

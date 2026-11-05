@@ -13,6 +13,7 @@ final class AttachGallery: UIView, UICollectionViewDataSource, UICollectionViewD
         }
     }
     var onManage: (@MainActor () -> Void)?
+    var onPick: (@MainActor (PHAsset) -> Void)?
     var bottomInset: CGFloat = 0 {
         didSet {
             collection.contentInset.bottom = bottomInset
@@ -143,6 +144,7 @@ final class AttachGallery: UIView, UICollectionViewDataSource, UICollectionViewD
 
         let index = indexPath.item - 1
         let identifier = library.identifier(at: index)
+        photo.showsMark = onPick == nil
         photo.identifier = identifier
         photo.accent = colors?.accent ?? .systemBlue
         photo.setNumber(number(of: identifier), animated: false)
@@ -161,6 +163,13 @@ final class AttachGallery: UIView, UICollectionViewDataSource, UICollectionViewD
     }
 
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        if indexPath.item > 0, let onPick, let library {
+            Haptics.play(.selection)
+            onPick(library.asset(at: indexPath.item - 1))
+
+            return
+        }
+
         guard indexPath.item > 0, let library else {
             let cell = collectionView.cellForItem(at: indexPath)
             onCamera?(cell.map { cell in

@@ -4,6 +4,7 @@ import AvatarUI
 import LiquidUI
 import ListUI
 import Observers
+import Protocol
 import UIKit
 
 struct ProfileDependencies {
@@ -11,6 +12,9 @@ struct ProfileDependencies {
     let chatsStore: ChatsStore
     let groupMembers: GroupMembersStore
     let onAir: OnAirStore
+    var publicProfile: (@MainActor (String) async -> ProfileData?)?
+    var serverContacts: ServerContactsStore?
+    var privacy: PrivacyStore?
 }
 
 final class ProfileViewController: ScreenViewController {
@@ -18,8 +22,8 @@ final class ProfileViewController: ScreenViewController {
     let dependencies: ProfileDependencies
     let chat: ChatSummary?
     let membersPane: ListPane?
-    let peer: ProfilePeer
-    let photos: [AvatarDescriptor]
+    var peer: ProfilePeer
+    var photos: [AvatarDescriptor]
     let router: AppRouter
     let header = ProfileHeaderView()
     let pager = PanePager()
@@ -92,6 +96,7 @@ final class ProfileViewController: ScreenViewController {
         view.addSubview(monthPill)
         view.addSubview(navigationBar)
         showPhoto()
+        loadServerProfile()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -212,6 +217,9 @@ final class ProfileViewController: ScreenViewController {
         header.onPhotoTap = { [weak self] forward in
             self?.photoTapped(forward: forward)
         }
+        header.onPhotoSwipe = { [weak self] forward in
+            self?.photoSwiped(forward: forward)
+        }
         header.onAction = { [weak self] action, button in
             self?.perform(action, from: button)
         }
@@ -243,7 +251,9 @@ final class ProfileViewController: ScreenViewController {
             ProfileInfoCard.Row(value: peer.phone, key: strings.profilePhone, isAccent: false),
             ProfileInfoCard.Row(value: peer.username, key: strings.profileUsername, isAccent: true),
             ProfileInfoCard.Row(value: peer.bio, key: strings.profileBio, isAccent: false),
-        ]
+        ].filter { row in
+            !row.value.isEmpty
+        }
     }
 
     private func applyLists(_ presentation: PresentationData) {

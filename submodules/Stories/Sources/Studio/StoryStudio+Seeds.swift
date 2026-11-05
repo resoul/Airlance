@@ -39,7 +39,7 @@ extension StoryStudio {
             let cardURL = context.makeFileURL(extension: "png")
             try? background.jpegData(compressionQuality: 0.9)?.write(to: backgroundURL)
             try? card.pngData()?.write(to: cardURL)
-            var draft = StoryDraft(media: .photo(backgroundURL))
+            var draft = makeDraft(.photo(backgroundURL))
             let sticker = StorySticker(source: .image(cardURL), width: 0.7)
             draft.entities = [StoryEntity(content: .sticker(sticker), center: CGPoint(x: 0.5, y: 0.44)), mention]
             edit(.photo(background), draft: draft)
@@ -51,7 +51,7 @@ extension StoryStudio {
                 return
             }
 
-            var draft = StoryDraft(media: .video(copy))
+            var draft = makeDraft(.video(copy))
             draft.entities = [mention]
             open(draft)
         }

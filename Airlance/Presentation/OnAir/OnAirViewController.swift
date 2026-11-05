@@ -13,6 +13,7 @@ struct OnAirDependencies {
 
 final class OnAirViewController: ScreenViewController {
     static let seenDelay: TimeInterval = 1
+    private static let sectionControlInset: CGFloat = 76
 
     let dependencies: OnAirDependencies
     let router: AppRouter
@@ -79,6 +80,7 @@ final class OnAirViewController: ScreenViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        sectionControl.limitWidth(to: max(view.bounds.width - Self.sectionControlInset * 2, 0))
         listView.frame = view.bounds
         listView.contentInsets = view.safeAreaInsets
         emptyLabel.frame = view.bounds.inset(by: view.safeAreaInsets).insetBy(dx: 24, dy: 0)

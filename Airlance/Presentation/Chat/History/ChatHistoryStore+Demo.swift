@@ -60,6 +60,12 @@ extension ChatHistoryStore {
     }
 
     func deliver(_ message: HistoryMessage, in id: String) {
+        guard server == nil else {
+            deliverToServer(message, in: id)
+
+            return
+        }
+
         guard !failIfOffline(message, in: id) else {
             return
         }
@@ -114,7 +120,7 @@ extension ChatHistoryStore {
 
     func startFeed() {
         feedTask?.cancel()
-        guard !isShutDown else {
+        guard !isShutDown, fixtureSalt != nil else {
             return
         }
 

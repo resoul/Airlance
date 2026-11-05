@@ -27,6 +27,10 @@ open class AirlanceNavigationController<Presentation: ThemedPresentation>: UINav
         }
     }
 
+    override open var childForStatusBarStyle: UIViewController? {
+        topViewController
+    }
+
     open func apply(_ theme: AppTheme) {
         let colors = theme.colors
         let fonts = theme.fonts

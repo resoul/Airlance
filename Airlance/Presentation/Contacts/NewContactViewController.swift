@@ -1,10 +1,13 @@
 import AirlanceUI
 import DeviceContacts
+import Protocol
 import UIKit
 
 struct NewContactDependencies {
     let presentationContext: PresentationContext
     let contactsSync: ContactsSync
+    var serverContacts: ServerContactsStore?
+    var search: (@MainActor (String) async throws -> [SearchPerson])?
 }
 
 final class NewContactViewController: ScreenViewController {
@@ -59,7 +62,8 @@ final class NewContactViewController: ScreenViewController {
         super.apply(presentation)
         let colors = presentation.theme.colors
         let strings = presentation.strings
-        let placeholders = [strings.newContactFirstName, strings.newContactLastName, strings.newContactPhone]
+        let target = isServer ? strings.newContactTarget : strings.newContactPhone
+        let placeholders = [strings.newContactFirstName, strings.newContactLastName, target]
 
         navigationItem.title = strings.newContactTitle
         for card in [nameCard, phoneCard] {
@@ -81,7 +85,7 @@ final class NewContactViewController: ScreenViewController {
         givenField.textContentType = .givenName
         familyField.textContentType = .familyName
         phoneField.textContentType = .telephoneNumber
-        phoneField.keyboardType = .phonePad
+        phoneField.keyboardType = isServer ? .namePhonePad : .phonePad
         givenField.returnKeyType = .next
         familyField.returnKeyType = .next
 
@@ -147,10 +151,75 @@ final class NewContactViewController: ScreenViewController {
     }
 
     private func updateDone() {
-        navigationItem.rightBarButtonItem?.isEnabled = draft.isValid && !isSaving
+        let isReady = isServer ? !(phoneField.text ?? "").isEmpty : draft.isValid
+        navigationItem.rightBarButtonItem?.isEnabled = isReady && !isSaving
+    }
+
+    private var isServer: Bool {
+        dependencies.serverContacts?.isServerBacked == true
+    }
+
+    private func saveToServer(_ contacts: ServerContactsStore) {
+        let target = (phoneField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let first = (givenField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let last = (familyField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        isSaving = true
+        updateDone()
+        Task {
+            do {
+                if target.contains(where: \.isLetter) || target.hasPrefix("@") {
+                    try await addByUsername(target, contacts: contacts, first: first, last: last)
+                } else {
+                    try await contacts.addPhone(target, firstName: first, lastName: last)
+                }
+                router.dismiss()
+            } catch {
+                isSaving = false
+                updateDone()
+                showNotFound(error)
+            }
+        }
+    }
+
+    private func addByUsername(
+        _ target: String,
+        contacts: ServerContactsStore,
+        first: String,
+        last: String
+    ) async throws {
+        let username = target.hasPrefix("@") ? String(target.dropFirst()) : target
+        let found = try await dependencies.search?(username) ?? []
+        guard let person = found.first(where: { person in
+            person.username.caseInsensitiveCompare(username) == .orderedSame
+        }) else {
+            throw AccountServerError.refused(code: 404, message: "contact_not_found")
+        }
+
+        try await contacts.add(subject: person.subject, firstName: first, lastName: last)
+    }
+
+    private func showNotFound(_ error: any Error) {
+        let strings = presentation.strings
+        var message = strings.newContactError
+        if case AccountServerError.refused(let code, _) = error, code == 404 {
+            message = strings.contactsNotInApp
+        }
+        PopupAlert.show(
+            title: nil,
+            message: message,
+            actions: [PopupAlertAction(title: strings.permissionAlertOk, style: .cancel)],
+            theme: presentation.theme,
+            in: view
+        )
     }
 
     private func save() {
+        if let contacts = dependencies.serverContacts, isServer {
+            saveToServer(contacts)
+
+            return
+        }
+
         let draft = draft
         guard draft.isValid, !isSaving else {
             return

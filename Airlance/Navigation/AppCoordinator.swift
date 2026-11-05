@@ -276,6 +276,23 @@ final class AppCoordinator: NSObject, RouteNavigator {
 extension AppCoordinator: UINavigationControllerDelegate {
     func navigationController(
         _ navigationController: UINavigationController,
+        animationControllerFor operation: UINavigationController.Operation,
+        from fromVC: UIViewController,
+        to toVC: UIViewController
+    ) -> (any UIViewControllerAnimatedTransitioning)? {
+        let editing = AppRoute.settingsPage(.editProfile)
+        switch operation {
+        case .push where routes[ObjectIdentifier(toVC)] == editing:
+            return CrossfadeTransition(isOpening: true)
+        case .pop where routes[ObjectIdentifier(fromVC)] == editing:
+            return CrossfadeTransition(isOpening: false)
+        default:
+            return nil
+        }
+    }
+
+    func navigationController(
+        _ navigationController: UINavigationController,
         willShow viewController: UIViewController,
         animated: Bool
     ) {
@@ -308,61 +325,6 @@ extension AppCoordinator: UIAdaptivePresentationControllerDelegate {
 
         modalNavigations.removeSubrange(index...)
         syncRouter()
-    }
-}
-
-extension AppCoordinator {
-    func updateTabBarVisibility(
-        for navigation: UINavigationController,
-        top: UIViewController?,
-        coordinator: (any UIViewControllerTransitionCoordinator)?
-    ) {
-        guard let index = tabNavigations.firstIndex(where: { tab in
-            tab === navigation
-        }), index == tabBarController.selectedIndex else {
-            return
-        }
-
-        let isRoot = top == nil || top === navigation.viewControllers.first
-        let topRoute = top.flatMap { controller in
-            routes[ObjectIdentifier(controller)]
-        }
-        let hidesTabBar = tabs[index] == .settings || topRoute == .chatArchive || isFullScreenChat(topRoute)
-        let hidden = !isRoot && hidesTabBar
-        tabBarController.setTabBarHidden(hidden, animated: coordinator != nil, alongside: coordinator)
-    }
-}
-
-extension AppCoordinator {
-    fileprivate func isFullScreenChat(_ route: AppRoute?) -> Bool {
-        switch route {
-        case .chat, .profile, .comments:
-            true
-        default:
-            false
-        }
-    }
-
-    fileprivate func makeCloseItem() -> UIBarButtonItem {
-        UIBarButtonItem(
-            systemItem: .close,
-            primaryAction: UIAction { [router] _ in
-                router.dismiss()
-            }
-        )
-    }
-
-    fileprivate func updateTabItems() {
-        guard !isStopped else {
-            return
-        }
-
-        tabBarController.setItems(makeTabItems(presentationContext.presentation))
-    }
-
-    fileprivate func apply(_ presentation: PresentationData) {
-        tabBarController.setItems(makeTabItems(presentation))
-        window.overrideUserInterfaceStyle = presentation.theme.appearance.userInterfaceStyle
     }
 }
 
@@ -430,5 +392,29 @@ extension AppCoordinator {
         default:
             factory.makeAppearance()
         }
+    }
+}
+
+extension AppCoordinator {
+    fileprivate func makeCloseItem() -> UIBarButtonItem {
+        UIBarButtonItem(
+            systemItem: .close,
+            primaryAction: UIAction { [router] _ in
+                router.dismiss()
+            }
+        )
+    }
+
+    fileprivate func updateTabItems() {
+        guard !isStopped else {
+            return
+        }
+
+        tabBarController.setItems(makeTabItems(presentationContext.presentation))
+    }
+
+    fileprivate func apply(_ presentation: PresentationData) {
+        tabBarController.setItems(makeTabItems(presentation))
+        window.overrideUserInterfaceStyle = presentation.theme.appearance.userInterfaceStyle
     }
 }

@@ -7,6 +7,7 @@ final class ProfileEditAvatarView: UIView {
     static let height: CGFloat = 158
 
     var onTap: (@MainActor () -> Void)?
+    var onAvatarTap: (@MainActor () -> Void)?
 
     private let avatar = AvatarNode()
     private let button = UIButton(type: .system)
@@ -14,7 +15,7 @@ final class ProfileEditAvatarView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         addSubview(avatar.view)
-        avatar.view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapped)))
+        avatar.view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(avatarTapped)))
         button.addTarget(self, action: #selector(tapped), for: .touchUpInside)
         addSubview(button)
     }
@@ -33,9 +34,14 @@ final class ProfileEditAvatarView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        let side: CGFloat = 104
-        avatar.frame = CGRect(x: (bounds.width - side) / 2, y: 6, width: side, height: side)
+        let side: CGFloat = 96
+        avatar.frame = CGRect(x: (bounds.width - side) / 2, y: 16, width: side, height: side)
         button.frame = CGRect(x: 16, y: avatar.frame.maxY + 6, width: bounds.width - 32, height: 36)
+    }
+
+    @objc
+    private func avatarTapped() {
+        onAvatarTap?()
     }
 
     @objc

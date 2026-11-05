@@ -12,6 +12,8 @@ struct ServerProfile: Sendable {
     let lastName: String
     let username: String
     let bio: String
+    var phone = ""
+    var photos: [ProfilePhotoData] = []
     var updatedAtUnix: Int64 = 0
 
     init(_ data: ProfileData) {
@@ -19,14 +21,15 @@ struct ServerProfile: Sendable {
         lastName = data.fields.lastName
         username = data.fields.username
         bio = data.fields.bio
+        phone = data.fields.phone
+        photos = data.photos
         updatedAtUnix = data.updatedAtUnix
     }
 
-    init(name: String, username: String) {
-        let parts = name.split(separator: " ", maxSplits: 1).map(String.init)
-        firstName = parts.first ?? ""
-        lastName = parts.count > 1 ? parts[1] : ""
-        self.username = username
+    init(_ fields: AuthProfileFields) {
+        firstName = fields.firstName
+        lastName = fields.lastName
+        username = fields.username
         bio = ""
     }
 
@@ -35,6 +38,7 @@ struct ServerProfile: Sendable {
         lastName = profile.lastName
         username = profile.username
         bio = profile.bio
+        phone = profile.phone
     }
 
     func hasSameFields(as other: ServerProfile?) -> Bool {
@@ -42,6 +46,7 @@ struct ServerProfile: Sendable {
             && lastName == other?.lastName
             && username == other?.username
             && bio == other?.bio
+            && phone == other?.phone
     }
 }
 
@@ -58,14 +63,25 @@ final class AccountServer {
     var onSessionEnded: (@MainActor () -> Void)?
     var onSaveFailed: (@MainActor (any Error) -> Void)?
 
+    let media: ProfileMediaSync
+
     private let connection: ServerConnection
     private weak var store: MyProfileStore?
     private var observation: ObservationToken?
     private var synced: ServerProfile?
     private var sync: AccountSync?
+    private var stories: AccountStories?
+    private(set) var messaging: AccountMessaging?
 
     init(connection: ServerConnection) {
         self.connection = connection
+        media = ProfileMediaSync(connection: connection)
+        media.onFailed = { [weak self] error in
+            self?.onSaveFailed?(error)
+        }
+        media.onProfile = { [weak self] data in
+            self?.apply(ServerProfile(data))
+        }
     }
 
     func fetchProfile() async throws -> ServerProfile? {
@@ -81,7 +97,8 @@ final class AccountServer {
             firstName: profile.firstName,
             lastName: profile.lastName,
             username: profile.username,
-            bio: profile.bio
+            bio: profile.bio,
+            phone: profile.phone
         )
 
         return try Self.profile(from: try await connection.request(.profileSet(fields)))
@@ -93,6 +110,7 @@ final class AccountServer {
         }
 
         self.store = store
+        media.attach(store)
         observation = store.observe { [weak self] profile in
             self?.localChanged(profile)
         }
@@ -103,6 +121,16 @@ final class AccountServer {
             sync = makeSync(account)
         }
         sync?.start()
+        stories?.refresh()
+        account.serverContacts.attach(connection)
+        account.serverContacts.refresh()
+        account.privacy.attach(connection)
+        account.privacy.refresh()
+        let connection = connection
+        let files = account.profileFiles
+        Task {
+            await files.attach(connection)
+        }
     }
 
     func suspend() async {
@@ -125,8 +153,10 @@ final class AccountServer {
         next.lastName = remote.lastName
         next.username = remote.username
         next.bio = remote.bio
-        next.phone = ""
+        next.phone = remote.phone
+        ProfileMediaSync.merge(remote, into: &next)
         store.update(next)
+        media.sync()
     }
 
     func pull() async {
@@ -149,7 +179,34 @@ final class AccountServer {
     }
 
     private func makeSync(_ account: AccountContext) -> AccountSync {
-        let sync = AccountSync(connection: connection, storage: account.storage, status: account.connectionStatus)
+        let history = account.historyStore
+        let messaging = AccountMessaging(
+            connection: connection,
+            storage: account.chatStorage,
+            me: account.record.subject ?? ""
+        ) { [weak history] chatID in
+            history?.isViewed(chatID) ?? false
+        }
+        self.messaging = messaging
+        history.serverSender = { [weak messaging] message in
+            messaging?.send(message)
+        }
+        let sync = AccountSync(
+            connection: connection,
+            storage: account.storage,
+            chats: account.chatStorage,
+            messaging: messaging,
+            status: account.connectionStatus
+        )
+        let stories = AccountStories(connection: connection, files: account.profileFiles, store: account.storiesStore)
+        self.stories = stories
+        sync.onStoriesChanged = { [weak stories, weak account] in
+            stories?.refresh()
+            account?.privacy.refresh()
+        }
+        sync.onContactsChanged = { [weak account] in
+            account?.serverContacts.refresh()
+        }
         sync.onProfile = { [weak self] data in
             self?.apply(ServerProfile(data))
         }
@@ -166,6 +223,7 @@ final class AccountServer {
     }
 
     private func localChanged(_ profile: MyProfile) {
+        media.sync()
         let local = ServerProfile(profile)
         guard !local.hasSameFields(as: synced) else {
             return

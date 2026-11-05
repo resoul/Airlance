@@ -8,6 +8,22 @@ public struct DeviceContact: Sendable, Equatable, Identifiable {
     public let phoneNumbers: [String]
     public let hasImage: Bool
 
+    public init(
+        id: String,
+        givenName: String,
+        familyName: String,
+        displayName: String,
+        phoneNumbers: [String],
+        hasImage: Bool
+    ) {
+        self.id = id
+        self.givenName = givenName
+        self.familyName = familyName
+        self.displayName = displayName
+        self.phoneNumbers = phoneNumbers
+        self.hasImage = hasImage
+    }
+
     public func matches(_ query: String) -> Bool {
         let digits = query.filter(\.isNumber)
 

@@ -1,0 +1,14 @@
+load("@rules_cc//cc:objc_library.bzl", "objc_library")
+
+objc_library(
+    name = "MozjpegBinding",
+    module_name = "MozjpegBinding",
+    enable_modules = True,
+    srcs = glob(["Sources/**/*.m"]),
+    hdrs = glob(["Public/**/*.h"]),
+    includes = ["Public"],
+    sdk_frameworks = ["CoreGraphics", "Foundation"],
+    deps = ["//libraries/mozjpeg:mozjpeg"],
+    target_compatible_with = ["@platforms//cpu:aarch64"],
+    visibility = ["//visibility:public"],
+)

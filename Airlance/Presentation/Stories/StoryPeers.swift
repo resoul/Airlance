@@ -2,6 +2,7 @@ import Foundation
 import Stories
 import UIKit
 
+@MainActor
 enum StoryPeers {
     static func peer(_ story: StorySummary, strings: AppStrings) -> StoryPeer {
         StoryPeer(
@@ -16,10 +17,11 @@ enum StoryPeers {
 
     static func author(
         _ story: StorySummary,
-        published: [PublishedStory],
+        store: StoriesStore,
         strings: AppStrings,
         now: Date
     ) -> StoryAuthor {
+        let published = store.published
         let formatter = RelativeDateTimeFormatter()
         formatter.locale = strings.pack.locale
         formatter.unitsStyle = .short
@@ -27,7 +29,8 @@ enum StoryPeers {
         let own = all.filter { item in
             item.isLive(at: now)
         }
-        let demo = (0..<max(story.total - all.count, 0)).map { index in
+        let demoCount = store.serverSubject == nil ? max(story.total - all.count, 0) : 0
+        let demo = (0..<demoCount).map { index in
             let hoursAgo = Double(story.total - index) * 2.5
             let timeText = formatter.localizedString(for: now - hoursAgo * 3600, relativeTo: now)
 
@@ -51,7 +54,47 @@ enum StoryPeers {
             )
         }
 
-        return StoryAuthor(peer: peer(story, strings: strings), items: demo + mine)
+        let remote = store.remoteItems(for: story.peerID, now: now).map { item in
+            self.item(item, formatter: formatter, now: now)
+        }
+        let items = store.serverSubject == nil ? demo + mine : remote + mine
+
+        return StoryAuthor(peer: peer(story, strings: strings), items: items)
+    }
+
+    private static func item(_ story: RemoteStory, formatter: RelativeDateTimeFormatter, now: Date) -> StoryItem {
+        let meta = StoryServerMeta.decode(story.meta)
+
+        return StoryItem(
+            id: story.id,
+            media: media(story),
+            timeText: formatter.localizedString(for: story.createdAt, relativeTo: now),
+            widgets: meta?.widgets ?? [],
+            aspect: meta?.aspect,
+            caption: meta?.caption ?? "",
+            isProtected: meta?.isProtected ?? false
+        )
+    }
+
+    private static func media(_ story: RemoteStory) -> StoryMedia {
+        if story.isVideo, let url = ProfileMediaFiles.cached(story.mediaID, extension: "mp4") {
+            return .video(url)
+        }
+
+        let imageID = story.isVideo ? story.coverMediaID : story.mediaID
+        guard let files = PeerAvatars.server(story.owner)?.files, !imageID.isEmpty else {
+            return .image { _ in
+                nil
+            }
+        }
+
+        return .image { _ in
+            guard let url = await files.file(imageID, extension: "jpg") else {
+                return nil
+            }
+
+            return UIImage(contentsOfFile: url.path)
+        }
     }
 
     private static func media(_ media: PublishedStory.Media) -> StoryMedia {

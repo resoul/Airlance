@@ -1,41 +1,22 @@
-import AvatarUI
 import DatabaseAPI
-import EffectsUI
 import Foundation
-import LiquidUI
-import ListUI
 import Observers
-import ParticlesUI
 import UIKit
-
-enum PowerFeature: String, CaseIterable, Codable, Sendable {
-    case videoAutoplay
-    case liquidEffects
-    case particleEffects
-    case preload
-}
-
-struct PowerSavingSettings: Codable, Equatable, Sendable {
-    static let off = 0
-    static let always = 100
-
-    var threshold = 15
-    var disabled: Set<PowerFeature> = []
-}
 
 extension StorageKey where Value == PowerSavingSettings {
     static let powerSaving = StorageKey("power.saving", default: PowerSavingSettings())
 }
 
 @MainActor
-final class PowerSaving {
-    private(set) var settings: PowerSavingSettings
+public final class PowerSavingStore {
+    public private(set) var settings: PowerSavingSettings
+
     private let storage: any KeyValueStore
     private let observers = ObserverList<Bool>()
     private var tokens: [any NSObjectProtocol] = []
     private var observation: ObservationToken?
 
-    init(storage: any KeyValueStore) {
+    public init(storage: any KeyValueStore) {
         self.storage = storage
         settings = storage.value(for: .powerSaving)
         UIDevice.current.isBatteryMonitoringEnabled = true
@@ -48,18 +29,17 @@ final class PowerSaving {
         tokens = names.map { name in
             center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated {
-                    self?.apply()
+                    self?.changed()
                 }
             }
         }
         observation = storage.observe(.powerSaving) { [weak self] settings in
             self?.settings = settings
-            self?.apply()
+            self?.changed()
         }
-        apply()
     }
 
-    var isSaving: Bool {
+    public var isSaving: Bool {
         switch settings.threshold {
         case PowerSavingSettings.off:
             false
@@ -68,6 +48,30 @@ final class PowerSaving {
         default:
             ProcessInfo.processInfo.isLowPowerModeEnabled || isBatteryLow
         }
+    }
+
+    public func isEnabled(_ feature: PowerFeature) -> Bool {
+        guard settings.isOn else {
+            return true
+        }
+
+        return !isSaving && !settings.disabled.contains(feature)
+    }
+
+    public func update(_ change: @escaping @Sendable (inout PowerSavingSettings) -> Void) {
+        let storage = storage
+        Task {
+            try? await storage.update(.powerSaving) { settings in
+                change(&settings)
+            }
+        }
+    }
+
+    public func observe(_ onChange: @escaping @MainActor @Sendable (Bool) -> Void) -> ObservationToken {
+        let token = observers.add(onChange)
+        onChange(isSaving)
+
+        return token
     }
 
     private var isBatteryLow: Bool {
@@ -79,32 +83,7 @@ final class PowerSaving {
         return Int((device.batteryLevel * 100).rounded()) <= settings.threshold
     }
 
-    func isEnabled(_ feature: PowerFeature) -> Bool {
-        !isSaving && !settings.disabled.contains(feature)
-    }
-
-    func update(_ change: @escaping @Sendable (inout PowerSavingSettings) -> Void) {
-        let storage = storage
-        Task {
-            try? await storage.update(.powerSaving) { settings in
-                change(&settings)
-            }
-        }
-    }
-
-    func observe(_ onChange: @escaping @MainActor @Sendable (Bool) -> Void) -> ObservationToken {
-        let token = observers.add(onChange)
-        onChange(isSaving)
-
-        return token
-    }
-
-    private func apply() {
-        AvatarPlayback.shared.isAllowed = isEnabled(.videoAutoplay)
-        LiquidEffects.isEnabled = isEnabled(.liquidEffects)
-        ViewEffectsSettings.isEnabled = isEnabled(.particleEffects)
-        ParticleEffects.isEnabled = isEnabled(.particleEffects)
-        ListView.prefetchesAhead = isEnabled(.preload)
+    private func changed() {
         observers.notify(isSaving)
     }
 }

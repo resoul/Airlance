@@ -1,4 +1,5 @@
 import Auth
+import ChatStorage
 import Connectivity
 import DatabaseAPI
 import Foundation
@@ -18,13 +19,17 @@ final class AccountSync {
     private static let longestDelay: Duration = .seconds(60)
     private static let noNetworkPause: Duration = .seconds(3600)
     private static let stableConnection: Duration = .seconds(30)
+    private static let pingEvery: Duration = .seconds(25)
 
     var onProfile: (@MainActor (ProfileData) -> Void)?
+    var onStoriesChanged: (@MainActor () -> Void)?
+    var onContactsChanged: (@MainActor () -> Void)?
     var onJournalLost: (@MainActor () -> Void)?
     var onSessionEnded: (@MainActor () -> Void)?
 
     private let connection: ServerConnection
-    private let storage: any KeyValueStore
+    private let chats: ChatStorage
+    private let messaging: AccountMessaging
     private let status: ConnectionStatusStore
     private var seq: UInt64
     private var delay = AccountSync.firstDelay
@@ -34,9 +39,16 @@ final class AccountSync {
     private var networkKind = NetworkPath.Kind.other
     private var isFollowing = false
 
-    init(connection: ServerConnection, storage: any KeyValueStore, status: ConnectionStatusStore) {
+    init(
+        connection: ServerConnection,
+        storage: any KeyValueStore,
+        chats: ChatStorage,
+        messaging: AccountMessaging,
+        status: ConnectionStatusStore
+    ) {
         self.connection = connection
-        self.storage = storage
+        self.chats = chats
+        self.messaging = messaging
         self.status = status
         seq = storage.value(for: .syncUpdatesSeq)
     }
@@ -86,6 +98,7 @@ final class AccountSync {
     private func run() async {
         delay = Self.firstDelay
         status.setLink(.connecting)
+        seq = max(seq, (try? await chats.seq()) ?? 0)
         while !Task.isCancelled {
             let started = ContinuousClock.now
             if status.network.path.isConnected {
@@ -162,7 +175,12 @@ final class AccountSync {
         isFollowing = true
         status.setUpdating(seq < updates.latestSeq)
         status.setLink(.connected)
+        await messaging.flushPending()
+        let pinger = Task { [connection] in
+            await Self.keepAlive(connection)
+        }
         defer {
+            pinger.cancel()
             isFollowing = false
             status.setUpdating(false)
             if !Task.isCancelled {
@@ -190,10 +208,22 @@ final class AccountSync {
             return true
         }
 
-        if case .profileData(let data) = envelope.message {
+        switch envelope.message {
+        case .chat(.message(let message)):
+            try await messaging.applyUpdate(message, seq: envelope.seq)
+            seq = envelope.seq
+        case .profileData(let data):
             onProfile?(data)
+            try await save(envelope.seq)
+        case .story(.changed):
+            onStoriesChanged?()
+            try await save(envelope.seq)
+        case .contact(.changed):
+            onContactsChanged?()
+            try await save(envelope.seq)
+        default:
+            try await save(envelope.seq)
         }
-        try await save(envelope.seq)
         if seq >= latestSeq {
             status.setUpdating(false)
         }
@@ -202,9 +232,26 @@ final class AccountSync {
     }
 
     private func save(_ next: UInt64) async throws {
-        try await storage.update(.syncUpdatesSeq) { value in
-            value = next
-        }
+        try await chats.saveSeq(next)
         seq = next
+    }
+
+    private static func keepAlive(_ connection: ServerConnection) async {
+        var id: Int64 = 0
+        while !Task.isCancelled {
+            try? await Task.sleep(for: pingEvery)
+            guard !Task.isCancelled else {
+                return
+            }
+
+            id += 1
+            do {
+                _ = try await connection.request(.ping(id: id))
+            } catch {
+                await connection.close()
+
+                return
+            }
+        }
     }
 }

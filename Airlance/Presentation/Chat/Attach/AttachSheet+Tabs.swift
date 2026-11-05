@@ -72,7 +72,7 @@ extension AttachSheet {
         selected = tab
         tabBar.select(tab.rawValue, animated: true)
         setTitle(gallery.selection.isEmpty || tab != .gallery
-            ? title(of: tab)
+            ? (tab == .gallery ? galleryTitle : nil) ?? title(of: tab)
             : presentation.strings.attachSelected(String(gallery.selection.count)))
         showContent()
         guard tab == .gallery || tab == .location || tab == .contact, let authorize else {
@@ -170,7 +170,7 @@ extension AttachSheet {
 
     func selectionChanged(_ count: Int) {
         countLabel.text = "\(count)"
-        setTitle(count == 0 ? title(of: .gallery) : presentation.strings.attachSelected(String(count)))
+        setTitle(count == 0 ? galleryTitle ?? title(of: .gallery) : presentation.strings.attachSelected(String(count)))
         setSendBarShown(count > 0)
     }
 

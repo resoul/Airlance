@@ -10,6 +10,7 @@ struct ContactRowItem: AsyncListItem {
     let revision: Int
     let showsSeparator: Bool
     var isSelected: Bool?
+    var remoteAvatar: AvatarDescriptor?
     var onSelect: (@MainActor () -> Void)?
 
     var id: String {
@@ -68,6 +69,10 @@ struct ContactRowItem: AsyncListItem {
     }
 
     private func avatar() -> AvatarDescriptor {
+        if let remoteAvatar {
+            return remoteAvatar
+        }
+
         let letters = [contact.givenName.first, contact.familyName.first].compactMap { letter in
             letter.map(String.init)
         }

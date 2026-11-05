@@ -33,9 +33,42 @@ extension ScreenFactory {
             makeProfileEdit()
         case .editUsername:
             makeUsernameEdit()
+        case .editPhone:
+            makePhoneEdit()
         case .powerSaving:
             makePowerSaving()
+        case .stories:
+            makeStorySettings()
+        case .privacy, .blocked, .privacyPhone, .privacyPhotos, .privacyBio, .privacyMessages, .privacySearch:
+            makePrivacy(page)
         }
+    }
+
+    private func makePrivacy(_ page: SettingsPage) -> UIViewController {
+        let dependencies = PrivacyDependencies(
+            presentationContext: scene.presentationContext,
+            privacy: account.privacy
+        )
+        if page == .blocked {
+            return BlockedListController(dependencies: dependencies)
+        }
+
+        guard let row = PrivacyRow.allCases.first(where: { row in
+            row.page == page
+        }) else {
+            return PrivacyController(dependencies: dependencies, router: router)
+        }
+
+        return PrivacyOptionController(row: row, dependencies: dependencies)
+    }
+
+    private func makeStorySettings() -> UIViewController {
+        StorySettingsController(
+            dependencies: StorySettingsDependencies(
+                presentationContext: scene.presentationContext,
+                storage: account.storage
+            )
+        )
     }
 
     private func makePowerSaving() -> UIViewController {
@@ -79,7 +112,10 @@ extension ScreenFactory {
         ProfileEditController(
             dependencies: ProfileEditDependencies(
                 presentationContext: scene.presentationContext,
-                store: account.myProfile
+                store: account.myProfile,
+                contacts: app.contactsSync.store,
+                permissionFlow: scene.permissionFlow,
+                videoNotes: account.videoNotes
             ),
             router: router
         )
@@ -87,6 +123,14 @@ extension ScreenFactory {
 
     private func makeUsernameEdit() -> UIViewController {
         UsernameEditController(
+            presentationSource: scene.presentationContext,
+            store: account.myProfile,
+            router: router
+        )
+    }
+
+    private func makePhoneEdit() -> UIViewController {
+        PhoneEditController(
             presentationSource: scene.presentationContext,
             store: account.myProfile,
             router: router

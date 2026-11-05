@@ -63,7 +63,8 @@ extension ChatsViewController {
             media: media,
             strings: presentation.strings,
             permissions: dependencies.permissionFlow,
-            autoSubtitles: dependencies.videoNotes.autoSubtitlesEnabled
+            autoSubtitles: dependencies.videoNotes.autoSubtitlesEnabled,
+            defaultLifetime: dependencies.storyLifetime()
         )
     }
 

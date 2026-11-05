@@ -127,6 +127,9 @@
 "chat.quickReplyClose" = "Închide";
 
 "newChat.title" = "Chat nou";
+"newChat.search" = "Caută după nume sau username";
+"newChat.hint" = "Introdu cel puțin 3 caractere pentru a găsi o persoană.";
+"newChat.failed" = "Chatul nu a putut fi deschis";
 
 "media.title" = "Media: %@";
 
@@ -140,8 +143,14 @@
 "profile.muted" = "Notificări dezactivate";
 "profileEdit.action" = "Editează";
 "profileEdit.changePhoto" = "Schimbă poza";
-"profileEdit.choosePhoto" = "Alege din bibliotecă";
+"avatarEditor.moveHint" = "Mută și scalează";
+"avatarEditor.trimHint" = "%@ s selectate. Până la 10 s.";
+"profilePhoto.makeMain" = "Setează ca principală";
+"profilePhoto.deleteConfirm" = "Ștergi această fotografie?";
+"profilePhoto.choose" = "Alege fotografia";
 "profileEdit.removePhoto" = "Elimină poza";
+"profileEdit.phoneHint" = "Numărul nu este verificat. Îl vezi doar tu.";
+"profileEdit.phonePlaceholder" = "Număr de telefon";
 "profileEdit.firstName" = "Prenume";
 "profileEdit.lastName" = "Nume";
 "profileEdit.nameHint" = "Introdu numele tău și, dacă vrei, adaugă o poză de profil.";
@@ -150,9 +159,9 @@
 "profileEdit.birthday" = "Zi de naștere";
 "profileEdit.set" = "Setează";
 "profileEdit.removeBirthday" = "Elimină ziua de naștere";
-"profileEdit.save" = "Salvează";
-"profileEdit.visibility" = "Cine poate vedea";
-"profileEdit.visibilityHint" = "Cine îți vede ziua de naștere: %@.";
+"profileEdit.visibilityHintEveryone" = "Toată lumea îți poate vedea ziua de naștere.";
+"profileEdit.visibilityHintContacts" = "Doar contactele tale îți pot vedea ziua de naștere.";
+"profileEdit.visibilityHintNobody" = "Ziua ta de naștere este ascunsă tuturor.";
 "profileEdit.visibilityEveryone" = "Toată lumea";
 "profileEdit.visibilityContacts" = "Contactele mele";
 "profileEdit.visibilityNobody" = "Nimeni";
@@ -249,6 +258,8 @@
 
 "chats.empty.title" = "Încă nu sunt chaturi aici";
 "chats.empty.text" = "Aici vor apărea chaturile care se potrivesc acestui dosar.";
+"chats.emptyAll.title" = "Încă nu există chaturi";
+"chats.emptyAll.text" = "Chaturile noi vor apărea aici.";
 "chats.action.read" = "Citit";
 "chats.action.unread" = "Necitit";
 "chats.action.pin" = "Fixează";
@@ -558,7 +569,6 @@
 "videoNotes.volumeZoom" = "Zoom cu butoanele de volum";
 "videoNotes.volumeZoomHint" = "În camera chatului, butoanele de volum măresc și micșorează imaginea. O apăsare scurtă trece la obiectivul următor.";
 "tab.onAir" = "În eter";
-"tabs.edit" = "Editează filele";
 "tabs.title" = "File";
 "tabs.shown" = "Afișate";
 "tabs.hidden" = "Ascunse";
@@ -819,6 +829,36 @@
 "language.translateHint" = "Tradu apare în meniul mesajelor scrise în alte limbi. Chaturile întregi adaugă o bară când majoritatea mesajelor sunt în altă limbă. Traducerea se face pe dispozitiv.";
 "language.translateUnsupported" = "Traducerea necesită iOS 18.";
 "language.interface" = "Limba interfeței";
+"power.masterHint" = "Cât timp este activat, aplicația ține cont și de modul de economisire iOS. Dezactivează-l ca să afișezi mereu totul.";
+"settings.stories" = "Povești";
+"stories.lifetimeTitle" = "Păstrează poveștile";
+"stories.lifetimeHours" = "%1$@ ore";
+"stories.lifetimeHint" = "După acest timp, poveștile sunt șterse împreună cu fișierele. Le văd persoanele cu care ai o conversație.";
+"contacts.sync" = "Sincronizează contactele";
+"contacts.inApp" = "Pe Airlance";
+"contacts.toInvite" = "Invită";
+"contacts.notInApp" = "Această persoană nu este încă pe Airlance. O poți invita.";
+"newContact.target" = "Număr sau @username";
+"profile.addContact" = "Adaugă la contacte";
+"profile.removeContact" = "Elimină din contacte";
+"profile.block" = "Blochează";
+"profile.unblock" = "Deblochează";
+"privacy.blocked" = "Utilizatori blocați";
+"privacy.blockedEmpty" = "Nimeni nu este blocat";
+"privacy.phone" = "Număr de telefon";
+"privacy.photos" = "Fotografii de profil";
+"privacy.bio" = "Despre mine";
+"privacy.messages" = "Mesaje";
+"privacy.search" = "Căutare";
+"privacy.everyone" = "Toți";
+"privacy.contacts" = "Contactele mele";
+"privacy.nobody" = "Nimeni";
+"privacy.failed" = "Setarea nu a putut fi salvată.";
+"privacy.phoneHint" = "Cine îți vede numărul în profil.";
+"privacy.photosHint" = "Cine îți vede fotografiile și videoclipurile. Ceilalți văd inițialele.";
+"privacy.bioHint" = "Cine vede secțiunea Despre mine.";
+"privacy.messagesHint" = "Cine poate începe o conversație nouă cu tine. Cele existente continuă.";
+"privacy.searchHint" = "Cine te poate găsi după nume, username și număr.";
 "power.title" = "Economisirea energiei";
 "power.mode" = "Mod de economisire a energiei";
 "power.off" = "Dezactivat";
@@ -892,7 +932,6 @@
 "auth.endedMessage" = "Acest dispozitiv a fost deconectat. Conectează-te pentru a continua.";
 "auth.profileTitle" = "Cum te numești?";
 "auth.profileMessage" = "Ceilalți îl vor vedea în chaturi. Poți adăuga o poză mai târziu, în setări.";
-"auth.profileName" = "Numele tău";
 "auth.profileUsername" = "Nume de utilizator (opțional)";
 "auth.profileDone" = "Începe să scrii";
 "auth.addAccount" = "Adaugă un cont";

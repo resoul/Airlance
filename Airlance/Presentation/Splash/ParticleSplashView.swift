@@ -12,7 +12,7 @@ final class ParticleSplashView: UIView {
     private static var didShow = false
 
     private let backdrop = UIView()
-    private let chart = ParticleChartView()
+    private let chart = ParticleChartView(ignoresPowerSaving: true)
     private let tint: UIColor
     private var wordmark: ParticleWordmark?
     private var timeline: Task<Void, Never>?
@@ -68,7 +68,7 @@ final class ParticleSplashView: UIView {
     }
 
     private func start() {
-        guard ParticleChartView.isSupported, !UIAccessibility.isReduceMotionEnabled else {
+        guard ParticleChartView.isHardwareSupported, !UIAccessibility.isReduceMotionEnabled else {
             showStill()
 
             return

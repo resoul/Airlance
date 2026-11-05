@@ -115,15 +115,14 @@ extension SceneContext {
     private func saveFirstProfile(
         id: AccountID,
         account: AccountContext,
-        name: String,
-        username: String
+        fields: AuthProfileFields
     ) async -> String? {
         guard let server = app.servers.server(for: id) else {
             return nil
         }
 
         do {
-            let remote = try await server.saveProfile(ServerProfile(name: name, username: username))
+            let remote = try await server.saveProfile(ServerProfile(fields))
             server.attach(account.myProfile)
             server.apply(remote)
             app.accounts.setStatus(.active, for: id)
@@ -184,8 +183,8 @@ extension SceneContext {
         case .needsProfile:
             window.rootViewController = AuthGate.profile(
                 presentationContext: presentationContext
-            ) { [weak self] name, username in
-                await self?.saveFirstProfile(id: id, account: account, name: name, username: username)
+            ) { [weak self] fields in
+                await self?.saveFirstProfile(id: id, account: account, fields: fields)
             }
         default:
             return false

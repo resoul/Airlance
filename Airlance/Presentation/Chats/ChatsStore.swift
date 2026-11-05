@@ -29,6 +29,34 @@ final class ChatsStore {
         })
     }
 
+    func setServerChats(_ next: [ChatSummary], empty: [ChatSummary]) {
+        let merged = next.map { chat in
+            var chat = chat
+            if let current = self.chats.first(where: { current in
+                current.id == chat.id
+            }) {
+                chat.isMuted = current.isMuted
+                chat.isPinned = current.isPinned
+                chat.isArchived = current.isArchived
+                chat.draft = current.draft
+                chat.draftDate = current.draftDate
+            }
+
+            return chat
+        }
+        chats = merged.sorted { left, right in
+            left.date > right.date
+        }
+        for chat in empty {
+            previews[chat.id] = chat
+        }
+        observers.notify(chats)
+    }
+
+    func addServerPreview(_ chat: ChatSummary) {
+        previews[chat.id] = chat
+    }
+
     func chat(_ id: String) -> ChatSummary? {
         chats.first { chat in
             chat.id == id

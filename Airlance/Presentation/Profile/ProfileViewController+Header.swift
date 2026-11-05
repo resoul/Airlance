@@ -70,6 +70,17 @@ extension ProfileViewController {
         showPhoto()
     }
 
+    func photoSwiped(forward: Bool) {
+        guard isExpanded else {
+            return
+        }
+
+        if photos.indices.contains(photoIndex + (forward ? 1 : -1)) {
+            header.slidePhoto(forward: forward)
+        }
+        photoTapped(forward: forward)
+    }
+
     func perform(_ action: ProfileAction, from button: UIView) {
         UIView.animate(withDuration: 0.1) {
             button.transform = CGAffineTransform(scaleX: 0.92, y: 0.92)

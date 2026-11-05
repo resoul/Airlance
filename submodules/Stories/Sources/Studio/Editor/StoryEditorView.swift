@@ -20,6 +20,7 @@ final class StoryEditorView: UIView, UIGestureRecognizerDelegate {
     var onPickTrack: (@MainActor () -> Void)?
     var onRecordVoice: (@MainActor () -> Void)?
     var mentionPeers: [StoryMentionPeer] = []
+    var showsAudienceChoices = true
 
     let strings: StoryStudioStrings
     let media: StudioMedia

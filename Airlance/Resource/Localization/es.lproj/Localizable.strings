@@ -127,6 +127,9 @@
 "chat.quickReplyClose" = "Cerrar";
 
 "newChat.title" = "Nuevo chat";
+"newChat.search" = "Buscar por nombre o usuario";
+"newChat.hint" = "Escribe al menos 3 caracteres para encontrar a alguien.";
+"newChat.failed" = "No se pudo abrir el chat";
 
 "media.title" = "Multimedia: %@";
 
@@ -140,8 +143,14 @@
 "profile.muted" = "Notificaciones desactivadas";
 "profileEdit.action" = "Editar";
 "profileEdit.changePhoto" = "Cambiar foto";
-"profileEdit.choosePhoto" = "Elegir de la galería";
+"avatarEditor.moveHint" = "Mueve y ajusta la escala";
+"avatarEditor.trimHint" = "%@ s seleccionados. Hasta 10 s.";
+"profilePhoto.makeMain" = "Establecer como principal";
+"profilePhoto.deleteConfirm" = "¿Eliminar esta foto?";
+"profilePhoto.choose" = "Elegir foto";
 "profileEdit.removePhoto" = "Eliminar foto";
+"profileEdit.phoneHint" = "El número no se verifica. Solo lo ves tú.";
+"profileEdit.phonePlaceholder" = "Número de teléfono";
 "profileEdit.firstName" = "Nombre";
 "profileEdit.lastName" = "Apellidos";
 "profileEdit.nameHint" = "Escribe tu nombre y, si quieres, añade una foto de perfil.";
@@ -150,9 +159,9 @@
 "profileEdit.birthday" = "Cumpleaños";
 "profileEdit.set" = "Añadir";
 "profileEdit.removeBirthday" = "Quitar cumpleaños";
-"profileEdit.save" = "Guardar";
-"profileEdit.visibility" = "Quién lo ve";
-"profileEdit.visibilityHint" = "Tu cumpleaños lo ven: %@.";
+"profileEdit.visibilityHintEveryone" = "Todos pueden ver tu cumpleaños.";
+"profileEdit.visibilityHintContacts" = "Solo tus contactos pueden ver tu cumpleaños.";
+"profileEdit.visibilityHintNobody" = "Tu cumpleaños está oculto para todos.";
 "profileEdit.visibilityEveryone" = "Todos";
 "profileEdit.visibilityContacts" = "Mis contactos";
 "profileEdit.visibilityNobody" = "Nadie";
@@ -249,6 +258,8 @@
 
 "chats.empty.title" = "Aún no hay chats aquí";
 "chats.empty.text" = "Aquí aparecerán los chats que encajen en esta carpeta.";
+"chats.emptyAll.title" = "Aún no hay chats";
+"chats.emptyAll.text" = "Los chats nuevos aparecerán aquí.";
 "chats.action.read" = "Leído";
 "chats.action.unread" = "No leído";
 "chats.action.pin" = "Fijar";
@@ -558,7 +569,6 @@
 "videoNotes.volumeZoom" = "Zoom con los botones de volumen";
 "videoNotes.volumeZoomHint" = "En la cámara del chat los botones de volumen acercan y alejan. Una pulsación corta salta al siguiente objetivo.";
 "tab.onAir" = "Al aire";
-"tabs.edit" = "Editar pestañas";
 "tabs.title" = "Pestañas";
 "tabs.shown" = "Visibles";
 "tabs.hidden" = "Ocultas";
@@ -819,6 +829,36 @@
 "language.translateHint" = "«Traducir» aparece en el menú de mensajes en otros idiomas. Chats completos muestra una barra cuando la mayoría está en otro idioma. Traduce el sistema en el dispositivo.";
 "language.translateUnsupported" = "La traducción requiere iOS 18.";
 "language.interface" = "Idioma de la interfaz";
+"power.masterHint" = "Mientras esté activado, la app también sigue el modo de bajo consumo de iOS. Desactívalo para mostrar siempre todo.";
+"settings.stories" = "Historias";
+"stories.lifetimeTitle" = "Conservar historias";
+"stories.lifetimeHours" = "%1$@ horas";
+"stories.lifetimeHint" = "Pasado este tiempo, las historias se eliminan junto con sus archivos. Las ven las personas con las que tienes un chat.";
+"contacts.sync" = "Sincronizar contactos";
+"contacts.inApp" = "En Airlance";
+"contacts.toInvite" = "Invitar";
+"contacts.notInApp" = "Esta persona aún no está en Airlance. Puedes invitarla.";
+"newContact.target" = "Número o @usuario";
+"profile.addContact" = "Añadir a contactos";
+"profile.removeContact" = "Quitar de contactos";
+"profile.block" = "Bloquear";
+"profile.unblock" = "Desbloquear";
+"privacy.blocked" = "Bloqueados";
+"privacy.blockedEmpty" = "No hay nadie bloqueado";
+"privacy.phone" = "Número de teléfono";
+"privacy.photos" = "Fotos de perfil";
+"privacy.bio" = "Biografía";
+"privacy.messages" = "Mensajes";
+"privacy.search" = "Búsqueda";
+"privacy.everyone" = "Todos";
+"privacy.contacts" = "Mis contactos";
+"privacy.nobody" = "Nadie";
+"privacy.failed" = "No se pudo guardar el ajuste.";
+"privacy.phoneHint" = "Quién ve tu número en el perfil.";
+"privacy.photosHint" = "Quién ve tus fotos y vídeos. Los demás ven tus iniciales.";
+"privacy.bioHint" = "Quién ve tu biografía.";
+"privacy.messagesHint" = "Quién puede iniciar un chat nuevo contigo. Los chats existentes continúan.";
+"privacy.searchHint" = "Quién puede encontrarte por nombre, usuario y número.";
 "power.title" = "Ahorro de energía";
 "power.mode" = "Modo de ahorro";
 "power.off" = "No";
@@ -892,7 +932,6 @@
 "auth.endedMessage" = "Se cerró la sesión en este dispositivo. Inicia sesión para continuar.";
 "auth.profileTitle" = "¿Cómo te llamas?";
 "auth.profileMessage" = "Los demás lo verán en los chats. Puedes añadir una foto más tarde en ajustes.";
-"auth.profileName" = "Tu nombre";
 "auth.profileUsername" = "Nombre de usuario (opcional)";
 "auth.profileDone" = "Empezar a chatear";
 "auth.addAccount" = "Añadir cuenta";

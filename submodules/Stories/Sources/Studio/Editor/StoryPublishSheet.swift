@@ -14,6 +14,8 @@ final class StoryPublishSheet: UIView {
     private let audienceRows: [StoryAudience: StorySheetRow]
     private let peopleRow: StorySheetRow
     private let lifetime: UISegmentedControl
+    private let lifetimes: [StoryLifetime] = [.hours12, .hours24, .hours48]
+    private let showsAudienceChoices: Bool
     private let pinRow: StorySheetRow
     private let protectRow: StorySheetRow
     private let doneButton = UIButton(type: .system)
@@ -24,8 +26,10 @@ final class StoryPublishSheet: UIView {
         audience: StoryAudience,
         settings: StoryPublishSettings,
         strings: StoryStudioStrings,
-        peers: [StoryMentionPeer]
+        peers: [StoryMentionPeer],
+        showsAudienceChoices: Bool = true
     ) {
+        self.showsAudienceChoices = showsAudienceChoices
         self.audience = audience
         self.settings = settings
         self.strings = strings
@@ -34,7 +38,7 @@ final class StoryPublishSheet: UIView {
             (option, StorySheetRow(symbol: option.symbol, title: option.title(strings)))
         })
         peopleRow = StorySheetRow(symbol: "person.2.slash", title: "")
-        lifetime = UISegmentedControl(items: StoryLifetime.allCases.map { option in
+        lifetime = UISegmentedControl(items: [StoryLifetime.hours12, .hours24, .hours48].map { option in
             "\(option.rawValue) " + strings.label(.hoursShort)
         })
         pinRow = StorySheetRow(symbol: "pin.fill", title: strings.label(.pinToProfile), hasToggle: true)
@@ -75,27 +79,45 @@ final class StoryPublishSheet: UIView {
         var y: CGFloat = 18
         caption.frame = CGRect(x: 20, y: y, width: inner, height: 44)
         y += 60
+        y = layoutAudience(from: y, width: inner)
+        lifetimeHeader.frame = CGRect(x: 20, y: y, width: inner, height: 20)
+        lifetime.frame = CGRect(x: 20, y: y + 26, width: inner, height: 34)
+        y += 74
+        pinRow.isHidden = !showsAudienceChoices
+        if showsAudienceChoices {
+            pinRow.frame = CGRect(x: 20, y: y, width: inner, height: StorySheetRow.height)
+            y += StorySheetRow.height
+        }
+        protectRow.frame = CGRect(x: 20, y: y, width: inner, height: StorySheetRow.height)
+        y += StorySheetRow.height + 14
+        doneButton.frame = CGRect(x: 20, y: y, width: inner, height: 50)
+        let height = doneButton.frame.maxY + max(safeAreaInsets.bottom, 16)
+        card.frame = CGRect(x: 0, y: bounds.height - height, width: bounds.width, height: height)
+    }
+
+    private func layoutAudience(from top: CGFloat, width inner: CGFloat) -> CGFloat {
+        header.isHidden = !showsAudienceChoices
+        for row in audienceRows.values {
+            row.isHidden = !showsAudienceChoices
+        }
+        peopleRow.isHidden = !showsAudienceChoices || audience == .closeFriends
+        guard showsAudienceChoices else {
+            return top
+        }
+
+        var y = top
         header.frame = CGRect(x: 20, y: y, width: inner, height: 20)
         y += 26
         for option in StoryAudience.allCases {
             audienceRows[option]?.frame = CGRect(x: 20, y: y, width: inner, height: StorySheetRow.height)
             y += StorySheetRow.height
         }
-        peopleRow.isHidden = audience == .closeFriends
         if !peopleRow.isHidden {
             peopleRow.frame = CGRect(x: 20, y: y, width: inner, height: StorySheetRow.height)
             y += StorySheetRow.height
         }
-        y += 12
-        lifetimeHeader.frame = CGRect(x: 20, y: y, width: inner, height: 20)
-        lifetime.frame = CGRect(x: 20, y: y + 26, width: inner, height: 34)
-        y += 74
-        pinRow.frame = CGRect(x: 20, y: y, width: inner, height: StorySheetRow.height)
-        protectRow.frame = CGRect(x: 20, y: y + StorySheetRow.height, width: inner, height: StorySheetRow.height)
-        y += StorySheetRow.height * 2 + 14
-        doneButton.frame = CGRect(x: 20, y: y, width: inner, height: 50)
-        let height = doneButton.frame.maxY + max(safeAreaInsets.bottom, 16)
-        card.frame = CGRect(x: 0, y: bounds.height - height, width: bounds.width, height: height)
+
+        return y + 12
     }
 
     private func apply() {
@@ -107,7 +129,7 @@ final class StoryPublishSheet: UIView {
         let names = people.map(\.name).joined(separator: ", ")
         peopleRow.setTitle(strings.label(isSelected ? .choosePeople : .exceptPeople))
         peopleRow.setDetail(people.isEmpty ? strings.label(.nobody) : names)
-        lifetime.selectedSegmentIndex = StoryLifetime.allCases.firstIndex(of: settings.lifetime) ?? 2
+        lifetime.selectedSegmentIndex = lifetimes.firstIndex(of: settings.lifetime) ?? 0
         pinRow.toggle.isOn = settings.isPinned
         protectRow.toggle.isOn = settings.isProtected
         caption.text = settings.caption
@@ -148,7 +170,7 @@ final class StoryPublishSheet: UIView {
         settings.isPinned = pinRow.toggle.isOn
         settings.isProtected = protectRow.toggle.isOn
         let index = lifetime.selectedSegmentIndex
-        settings.lifetime = StoryLifetime.allCases.indices.contains(index) ? StoryLifetime.allCases[index] : .hours24
+        settings.lifetime = lifetimes.indices.contains(index) ? lifetimes[index] : .hours24
         onDone?(audience, settings)
     }
 }

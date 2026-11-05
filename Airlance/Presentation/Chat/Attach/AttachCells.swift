@@ -61,6 +61,11 @@ final class AttachPhotoCell: UICollectionViewCell {
     var request: PHImageRequestID?
     var cancel: (@MainActor (PHImageRequestID) -> Void)?
     var accent = UIColor.systemBlue
+    var showsMark = true {
+        didSet {
+            mark.isHidden = !showsMark
+        }
+    }
 
     private let mark = UILabel()
     private let duration = UILabel()

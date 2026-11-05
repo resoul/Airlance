@@ -58,12 +58,12 @@ extension StoryStudio {
                 return nil
             }
 
-            var draft = StoryDraft(media: .photo(url))
+            var draft = makeDraft(.photo(url))
             draft.aspect = aspect
 
             return StoryResult(media: .photo(url), draft: draft)
         case .video(let url):
-            var draft = StoryDraft(media: .video(url))
+            var draft = makeDraft(.video(url))
             draft.aspect = aspect
             let duration = (try? await AVURLAsset(url: url).load(.duration).seconds) ?? 0
             var options = StoryRenderOptions()

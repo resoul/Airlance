@@ -1,5 +1,7 @@
 import AvatarUI
+import Protocol
 
+@MainActor
 struct ProfilePeer {
     private static let bios = [
         "Дизайн, Metal і плавні інтерфейси 💧",
@@ -10,9 +12,9 @@ struct ProfilePeer {
 
     let peerID: String
     let name: String
-    let phone: String
-    let username: String
-    let bio: String
+    var phone: String
+    var username: String
+    var bio: String
     let isOnline: Bool
 
     var avatars: [AvatarDescriptor] {
@@ -28,9 +30,26 @@ struct ProfilePeer {
             person.id == id
         }
         name = chat?.name ?? member?.name ?? id
+        isOnline = chat?.isOnline ?? false
+        if let server = PeerAvatars.server(id) {
+            phone = ""
+            username = Self.handle(server.username)
+            bio = ""
+
+            return
+        }
+
         phone = "+380 67 \(100 + seed % 900) \(10 + seed % 90) \(10 + seed / 7 % 90)"
         username = "@\(id)"
         bio = Self.bios[seed % Self.bios.count]
-        isOnline = chat?.isOnline ?? false
+    }
+
+    mutating func apply(_ fields: ProfileFields) {
+        username = Self.handle(fields.username)
+        bio = fields.bio
+    }
+
+    private static func handle(_ username: String) -> String {
+        username.isEmpty ? "" : "@\(username)"
     }
 }

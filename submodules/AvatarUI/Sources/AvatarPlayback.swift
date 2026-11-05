@@ -13,11 +13,6 @@ protocol AvatarPlaybackParticipant: AnyObject {
 public final class AvatarPlayback {
     public static let shared = AvatarPlayback()
 
-    public var respectsLowPowerMode = true {
-        didSet {
-            update()
-        }
-    }
     public var respectsReduceMotion = true {
         didSet {
             update()
@@ -40,7 +35,6 @@ public final class AvatarPlayback {
         let names: [Notification.Name] = [
             UIApplication.willResignActiveNotification,
             UIApplication.didBecomeActiveNotification,
-            .NSProcessInfoPowerStateDidChange,
             UIAccessibility.reduceMotionStatusDidChangeNotification,
         ]
         observers = names.map { name in
@@ -88,23 +82,21 @@ public final class AvatarPlayback {
         participants = participants.filter { _, entry in
             entry.value != nil
         }
-        let winner = isEnabled ? candidate() : nil
+        let winner = isActive && !isMotionReduced ? candidate() : nil
         for entry in participants.values where entry.value !== winner {
             entry.value?.setPlaybackAllowed(false)
         }
         winner?.setPlaybackAllowed(true)
     }
 
-    private var isEnabled: Bool {
-        let lowPower = respectsLowPowerMode && ProcessInfo.processInfo.isLowPowerModeEnabled
-        let reduceMotion = respectsReduceMotion && UIAccessibility.isReduceMotionEnabled
-
-        return isAllowed && isActive && !lowPower && !reduceMotion
+    private var isMotionReduced: Bool {
+        respectsReduceMotion && UIAccessibility.isReduceMotionEnabled
     }
 
     private func candidate() -> (any AvatarPlaybackParticipant)? {
+        let lowest = !isAllowed ? AvatarPresentation.profile.playbackPriority : Int.min
         let wanting = participants.values.compactMap { entry -> (value: any AvatarPlaybackParticipant, order: Int)? in
-            guard let value = entry.value, value.wantsPlayback else {
+            guard let value = entry.value, value.wantsPlayback, value.playbackPriority >= lowest else {
                 return nil
             }
 

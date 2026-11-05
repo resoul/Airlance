@@ -23,46 +23,66 @@ enum EnvelopeWriter {
         _ message: ProtocolMessage
     ) throws(ProtocolError) -> (Airlance_Wire_MessageKind, Data) {
         var builder = FlatBufferBuilder(initialSize: 64)
-        let kind: Airlance_Wire_MessageKind
-        let root: Offset
+        let (kind, root): (Airlance_Wire_MessageKind, Offset)
         switch message {
         case .ping(let id):
-            kind = .ping
-            root = Airlance_Wire_Ping.createPing(&builder, pingId: id)
+            (kind, root) = (.ping, Airlance_Wire_Ping.createPing(&builder, pingId: id))
         case .pong(let id):
-            kind = .pong
-            root = Airlance_Wire_Pong.createPong(&builder, pingId: id)
+            (kind, root) = (.pong, Airlance_Wire_Pong.createPong(&builder, pingId: id))
         case .error(let error):
-            kind = .error
-            root = writeError(error, into: &builder)
+            (kind, root) = (.error, writeError(error, into: &builder))
         case .profileGet:
-            kind = .profileget
-            root = writeProfileGet(into: &builder)
+            (kind, root) = (.profileget, writeProfileGet(into: &builder))
         case .profileSet(let fields):
-            kind = .profileset
-            root = writeProfileSet(fields, into: &builder)
+            (kind, root) = (.profileset, writeProfileSet(fields, into: &builder))
         case .profileData(let data):
-            kind = .profiledata
-            root = writeProfileData(data, into: &builder)
+            (kind, root) = (.profiledata, writeProfileData(data, into: &builder))
+        case .profilePhotoAdd(let photoMediaID, let videoMediaID):
+            (kind, root) = (.profilephotoadd, writeProfilePhotoAdd(photoMediaID, videoMediaID, into: &builder))
+        case .profilePhotoRemove(let photoMediaID):
+            (kind, root) = (.profilephotoremove, writeProfilePhotoRemove(photoMediaID, into: &builder))
         case .authenticate(let token):
             (kind, root) = writeAuthenticate(token, into: &builder)
         case .authenticated(let expiresAtUnix):
-            kind = .authenticated
-            root = Airlance_Wire_Authenticated.createAuthenticated(&builder, expiresAtUnix: expiresAtUnix)
+            (kind, root) = (.authenticated, writeAuthenticated(expiresAtUnix, into: &builder))
         case .updatesSubscribe(let afterSeq):
             (kind, root) = (.updatessubscribe, writeUpdatesSubscribe(afterSeq, into: &builder))
         case .updatesSubscribed(let latestSeq):
             (kind, root) = (.updatessubscribed, writeUpdatesSubscribed(latestSeq, into: &builder))
         case .media(let media):
             (kind, root) = writeMedia(media, into: &builder)
-        case .search(let search):
-            (kind, root) = writeSearch(search, into: &builder)
+        case .search, .chat, .story, .contact, .privacy:
+            (kind, root) = writeFeature(message, into: &builder)
         case .unsupported(let raw):
             throw .unencodable(kind: raw)
         }
         builder.finish(offset: root)
 
         return (kind, builder.data)
+    }
+
+    private static func writeAuthenticated(_ expiresAtUnix: Int64, into builder: inout FlatBufferBuilder) -> Offset {
+        Airlance_Wire_Authenticated.createAuthenticated(&builder, expiresAtUnix: expiresAtUnix)
+    }
+
+    private static func writeFeature(
+        _ message: ProtocolMessage,
+        into builder: inout FlatBufferBuilder
+    ) -> (Airlance_Wire_MessageKind, Offset) {
+        switch message {
+        case .search(let search):
+            writeSearch(search, into: &builder)
+        case .chat(let chat):
+            writeChat(chat, into: &builder)
+        case .story(let story):
+            writeStory(story, into: &builder)
+        case .contact(let contact):
+            writeContact(contact, into: &builder)
+        case .privacy(let privacy):
+            writePrivacy(privacy, into: &builder)
+        default:
+            (.profileget, writeProfileGet(into: &builder))
+        }
     }
 
     private static func writeMedia(
@@ -140,13 +160,17 @@ enum EnvelopeWriter {
         let first = builder.create(string: person.firstName)
         let last = builder.create(string: person.lastName)
         let username = builder.create(string: person.username)
+        let photo = builder.create(string: person.photoMediaID)
+        let video = builder.create(string: person.videoMediaID)
 
         return Airlance_Wire_SearchPerson.createSearchPerson(
             &builder,
             subjectOffset: subject,
             firstNameOffset: first,
             lastNameOffset: last,
-            usernameOffset: username
+            usernameOffset: username,
+            photoMediaIdOffset: photo,
+            videoMediaIdOffset: video
         )
     }
 
@@ -176,13 +200,19 @@ enum EnvelopeWriter {
         let last = builder.create(string: fields.lastName)
         let username = builder.create(string: fields.username)
         let bio = builder.create(string: fields.bio)
+        let phone = builder.create(string: fields.phone)
+        let photo = builder.create(string: fields.photoMediaID)
+        let video = builder.create(string: fields.videoMediaID)
 
         return Airlance_Wire_ProfileSet.createProfileSet(
             &builder,
             firstNameOffset: first,
             lastNameOffset: last,
             usernameOffset: username,
-            bioOffset: bio
+            bioOffset: bio,
+            phoneOffset: phone,
+            photoMediaIdOffset: photo,
+            videoMediaIdOffset: video
         )
     }
 
@@ -192,6 +222,13 @@ enum EnvelopeWriter {
         let last = builder.create(string: data.fields.lastName)
         let username = builder.create(string: data.fields.username)
         let bio = builder.create(string: data.fields.bio)
+        let phone = builder.create(string: data.fields.phone)
+        let photo = builder.create(string: data.fields.photoMediaID)
+        let video = builder.create(string: data.fields.videoMediaID)
+        let rows = data.photos.map { photo in
+            writeProfilePhoto(photo, into: &builder)
+        }
+        let photos = builder.createVector(ofOffsets: rows)
 
         return Airlance_Wire_ProfileData.createProfileData(
             &builder,
@@ -200,7 +237,47 @@ enum EnvelopeWriter {
             lastNameOffset: last,
             usernameOffset: username,
             bioOffset: bio,
-            updatedAtUnix: data.updatedAtUnix
+            updatedAtUnix: data.updatedAtUnix,
+            phoneOffset: phone,
+            photoMediaIdOffset: photo,
+            videoMediaIdOffset: video,
+            photosVectorOffset: photos
         )
+    }
+
+    private static func writeProfilePhoto(_ photo: ProfilePhotoData, into builder: inout FlatBufferBuilder) -> Offset {
+        let image = builder.create(string: photo.photoMediaID)
+        let video = builder.create(string: photo.videoMediaID)
+
+        return Airlance_Wire_ProfilePhoto.createProfilePhoto(
+            &builder,
+            photoMediaIdOffset: image,
+            videoMediaIdOffset: video,
+            addedAtUnix: photo.addedAtUnix
+        )
+    }
+
+    private static func writeProfilePhotoAdd(
+        _ photoMediaID: String,
+        _ videoMediaID: String,
+        into builder: inout FlatBufferBuilder
+    ) -> Offset {
+        let image = builder.create(string: photoMediaID)
+        let video = builder.create(string: videoMediaID)
+
+        return Airlance_Wire_ProfilePhotoAdd.createProfilePhotoAdd(
+            &builder,
+            photoMediaIdOffset: image,
+            videoMediaIdOffset: video
+        )
+    }
+
+    private static func writeProfilePhotoRemove(
+        _ photoMediaID: String,
+        into builder: inout FlatBufferBuilder
+    ) -> Offset {
+        let image = builder.create(string: photoMediaID)
+
+        return Airlance_Wire_ProfilePhotoRemove.createProfilePhotoRemove(&builder, photoMediaIdOffset: image)
     }
 }

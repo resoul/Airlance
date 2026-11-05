@@ -1,0 +1,14 @@
+load("@rules_cc//cc:objc_library.bzl", "objc_library")
+
+objc_library(
+    name = "FFmpegBinding",
+    module_name = "FFmpegBinding",
+    enable_modules = True,
+    srcs = glob(["Sources/**/*.m"]),
+    hdrs = glob(["Public/**/*.h"]),
+    includes = ["Public"],
+    sdk_frameworks = ["Foundation"],
+    deps = ["//libraries/ffmpeg:ffmpeg"],
+    target_compatible_with = ["@platforms//cpu:aarch64"],
+    visibility = ["//visibility:public"],
+)

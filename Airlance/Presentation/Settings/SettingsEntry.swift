@@ -14,6 +14,7 @@ enum SettingsEntry: String, CaseIterable {
     case tabs
     case storage
     case powerSaving
+    case stories
     case language
     case about
 
@@ -22,7 +23,7 @@ enum SettingsEntry: String, CaseIterable {
         case .profile, .saved, .calls, .devices, .folders:
             0
         case .notifications, .privacy, .permissions, .passcode, .appearance, .tabs, .storage,
-             .powerSaving, .language:
+             .powerSaving, .stories, .language:
             1
         case .about:
             2
@@ -57,6 +58,8 @@ enum SettingsEntry: String, CaseIterable {
             "internaldrive.fill"
         case .powerSaving:
             "battery.75percent"
+        case .stories:
+            "circle.dashed"
         case .language:
             "globe"
         case .about:
@@ -74,7 +77,7 @@ enum SettingsEntry: String, CaseIterable {
             .systemGreen
         case .devices, .powerSaving:
             .systemOrange
-        case .folders:
+        case .folders, .stories:
             .systemTeal
         case .privacy:
             .systemGray
@@ -95,6 +98,10 @@ enum SettingsEntry: String, CaseIterable {
             .settingsPage(.language)
         case .powerSaving:
             .settingsPage(.powerSaving)
+        case .stories:
+            .settingsPage(.stories)
+        case .privacy:
+            .settingsPage(.privacy)
         case .folders:
             .chatFolders
         case .storage:
@@ -134,6 +141,8 @@ enum SettingsEntry: String, CaseIterable {
             strings.settingsStorage
         case .powerSaving:
             strings.powerTitle
+        case .stories:
+            strings.settingsStories
         case .language:
             strings.settingsLanguage
         case .about:

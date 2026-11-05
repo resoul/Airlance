@@ -26,6 +26,7 @@ final class AttachSheet: UIView, UITextFieldDelegate {
     var onManage: (@MainActor () -> Void)?
     var authorize: (@MainActor (Tab) async -> Bool)?
     var isLimited: (@MainActor () -> Bool)?
+    var galleryTitle: String?
 
     let presentation: PresentationData
     let tabs: [Tab]
@@ -98,6 +99,7 @@ final class AttachSheet: UIView, UITextFieldDelegate {
     }
 
     func present() {
+        tabBar.isHidden = tabs.count < 2
         select(.gallery)
         UIView.animate(withDuration: 0.3) {
             self.dim.alpha = 1

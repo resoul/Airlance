@@ -15,7 +15,7 @@ extension ProfileViewController {
     private func moreItems() -> [PopupMenuItem] {
         let strings = presentation.strings
         guard let chat, chat.kind == .channel else {
-            return []
+            return personItems()
         }
 
         if chat.canPost {

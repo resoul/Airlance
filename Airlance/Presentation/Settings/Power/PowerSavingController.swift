@@ -1,10 +1,11 @@
 import ListUI
 import Observers
+import PowerSaving
 import UIKit
 
 struct PowerSavingDependencies {
     let presentationContext: PresentationContext
-    let powerSaving: PowerSaving
+    let powerSaving: PowerSavingStore
 }
 
 final class PowerSavingController: ScreenViewController {
@@ -49,7 +50,43 @@ final class PowerSavingController: ScreenViewController {
         let power = dependencies.powerSaving
         let settings = power.settings
         let isAlways = settings.threshold >= PowerSavingSettings.always
-        var items: [any ListItem] = [
+        var items = masterItems(settings)
+        if settings.isOn {
+            items += modeItems(settings)
+            items += featureRows(settings, isAlways: isAlways) as [any ListItem]
+            if power.isSaving, !isAlways {
+                items.append(FootnoteItem(id: "active", text: strings.powerActive))
+            }
+        }
+        items.append(SpacerItem(id: "bottom", height: 24))
+        listView.apply(items: items, animated: false)
+    }
+
+    private func masterItems(_ settings: PowerSavingSettings) -> [any ListItem] {
+        let strings = presentation.strings
+        let power = dependencies.powerSaving
+        let master = SettingsOptionItem(
+            id: "master",
+            title: strings.powerTitle,
+            symbol: "battery.50",
+            iconColor: .systemGreen,
+            accessory: .toggle(settings.isOn),
+            onToggle: { isOn in
+                power.update { settings in
+                    settings.setOn(isOn)
+                }
+            }
+        )
+        let hint = settings.isOn ? strings.powerMasterHint : strings.powerNeverHint
+
+        return [master, FootnoteItem(id: "master-hint", text: hint), SpacerItem(id: "master-gap", height: 12)]
+    }
+
+    private func modeItems(_ settings: PowerSavingSettings) -> [any ListItem] {
+        let strings = presentation.strings
+        let power = dependencies.powerSaving
+
+        return [
             SectionHeaderItem(id: "mode", title: strings.powerMode),
             SettingsSliderItem(
                 id: "slider",
@@ -69,12 +106,6 @@ final class PowerSavingController: ScreenViewController {
             SpacerItem(id: "gap", height: 12),
             SectionHeaderItem(id: "features", title: strings.powerFeatures),
         ]
-        items += featureRows(settings, isAlways: isAlways)
-        if power.isSaving, !isAlways {
-            items.append(FootnoteItem(id: "active", text: strings.powerActive))
-        }
-        items.append(SpacerItem(id: "bottom", height: 24))
-        listView.apply(items: items, animated: false)
     }
 
     private func featureRows(_ settings: PowerSavingSettings, isAlways: Bool) -> [SettingsOptionItem] {

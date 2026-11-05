@@ -1,4 +1,5 @@
 import ChatHistory
+import ChatStorage
 import Foundation
 import Observers
 
@@ -10,7 +11,11 @@ struct IncomingMessage: Sendable {
 @MainActor
 final class ChatHistoryStore: HistorySource {
     let chatsStore: ChatsStore
-    let fixtureSalt: Int
+    let fixtureSalt: Int?
+    let server: ServerHistory?
+    var serverSender: (@MainActor (StoredMessage) -> Void)?
+    var loadedServerChats: Set<String> = []
+    private var serverObservation: ObservationToken?
     var histories: [String: ChatHistoryFixtures.History] = [:]
     var liveCount = 0
     var demoTasks: [String: Task<Void, Never>] = [:]
@@ -32,10 +37,14 @@ final class ChatHistoryStore: HistorySource {
     let expirations = ObserverList<IncomingMessage>()
     private var sentCount = 0
 
-    init(chatsStore: ChatsStore, fixtureSalt: Int = 0) {
+    init(chatsStore: ChatsStore, fixtureSalt: Int?, server: ServerHistory?) {
         self.chatsStore = chatsStore
         self.fixtureSalt = fixtureSalt
+        self.server = server
         _ = DemoNetwork.shared
+        serverObservation = server?.storage.observeMessages { [weak self] event in
+            self?.ingest(event)
+        }
     }
 
     func history(for id: String) -> ChatHistoryFixtures.History? {
@@ -47,13 +56,22 @@ final class ChatHistoryStore: HistorySource {
             return threadHistory(id)
         }
 
-        let history = discussionHistory(chat) ?? ChatHistoryFixtures.history(for: chat, salt: fixtureSalt)
+        let history = initialHistory(of: chat)
         histories[id] = history
 
         return history
     }
 
+    private func initialHistory(of chat: ChatSummary) -> ChatHistoryFixtures.History {
+        guard let fixtureSalt else {
+            return ChatHistoryFixtures.History(messages: [], unreadFrom: nil)
+        }
+
+        return discussionHistory(chat) ?? ChatHistoryFixtures.history(for: chat, salt: fixtureSalt)
+    }
+
     func slice(_ request: HistoryRequest, in chatID: String) async -> HistorySlice {
+        await loadServerHistory(chatID)
         guard let history = history(for: chatID) else {
             return .empty
         }
@@ -129,8 +147,13 @@ final class ChatHistoryStore: HistorySource {
         let token = UUID()
         viewers[id, default: []].insert(token)
         watchPollDeadlines(in: id)
-        if viewers[id]?.count == 1 {
+        if viewers[id]?.count == 1, fixtureSalt != nil {
             startDemo(for: id)
+        }
+        if let server {
+            Task {
+                try? await server.storage.markRead(id)
+            }
         }
 
         return ObservationToken { [weak self] in
@@ -183,7 +206,7 @@ final class ChatHistoryStore: HistorySource {
         sentCount += 1
 
         return HistoryMessage(
-            id: "\(id)-out-\(sentCount)",
+            id: server == nil ? "\(id)-out-\(sentCount)" : UUID().uuidString,
             authorID: "me",
             authorName: "",
             isOutgoing: true,

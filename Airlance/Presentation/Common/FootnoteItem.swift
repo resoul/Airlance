@@ -5,13 +5,21 @@ import UIKit
 struct FootnoteItem: ListItem {
     let id: String
     let text: String
+    var link: String?
+    var onSelect: (@MainActor () -> Void)?
+
+    private var shownText: String {
+        link.map { link in
+            "\(text) \(link) \u{203A}"
+        } ?? text
+    }
 
     var version: Int {
-        text.hashValue
+        shownText.hashValue
     }
 
     func height(for width: CGFloat, theme: ListTheme) -> CGFloat {
-        let bounds = (text as NSString).boundingRect(
+        let bounds = (shownText as NSString).boundingRect(
             with: CGSize(width: max(1, width - 64), height: .greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin, .usesFontLeading],
             attributes: [.font: Self.font(theme)],
@@ -26,7 +34,11 @@ struct FootnoteItem: ListItem {
     }
 
     func update(node: ListItemNode, theme: ListTheme) {
-        (node as? FootnoteNode)?.update(text: text, font: Self.font(theme), theme: theme)
+        (node as? FootnoteNode)?.update(text: text, link: link, font: Self.font(theme), theme: theme)
+    }
+
+    func selected() {
+        onSelect?()
     }
 
     static func font(_ theme: ListTheme) -> UIFont {
@@ -43,12 +55,19 @@ final class FootnoteNode: ListItemNode {
         addSubnode(label)
     }
 
-    func update(text: String, font: UIFont, theme: ListTheme) {
+    func update(text: String, link: String?, font: UIFont, theme: ListTheme) {
         backgroundColor = theme.background
-        label.attributedText = NSAttributedString(
+        let shown = NSMutableAttributedString(
             string: text,
             attributes: [.font: font, .foregroundColor: theme.secondary]
         )
+        if let link {
+            shown.append(NSAttributedString(
+                string: " \(link) \u{203A}",
+                attributes: [.font: font, .foregroundColor: theme.accent]
+            ))
+        }
+        label.attributedText = shown
         setNeedsLayout()
     }
 
